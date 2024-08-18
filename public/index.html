@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>ByzanTone</title>
+  <link
+    rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=IM+Fell+Double+Pica:ital@0;1&family=Lora:ital@0;1&display=swap"
+  />
+  <link
+    rel="stylesheet"
+    href="https://cdn.jsdelivr.net/gh/danielgarthur/byzhtml@1.0.16/dist/Neanes.css"
+  />
+  <script src="https://cdn.jsdelivr.net/gh/danielgarthur/byzhtml@1.0.16/dist/byzhtml.min.js"></script>
+  <link rel="stylesheet" type="text/css" href="dist/main.css">
+</head>
+<body>
+  <script src="dist/elm.js"></script>
+  <div id="elm-app"></div>
+  <script>
+    const elm = Elm.Main.init({
+      node: document.getElementById("elm-app")
+    });
+  </script>
+
+
+  <script src="dist/src/chant_engine.js"></script>
+</body>
+</html>

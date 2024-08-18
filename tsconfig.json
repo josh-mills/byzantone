@@ -1,0 +1,12 @@
+{
+    "compilerOptions": {
+        "target": "ES6",
+        "module": "ESNext",
+        "outDir": "public/dist",
+        "rootDir": ".",
+        "strict": true
+    },
+    "files": [
+        "./src/chant_engine.ts"
+    ]
+}
