@@ -2,13 +2,7 @@
 
 ## Running in Dev Mode
 
-There are three scripts set up that currently need to be run in three different
-terminal processes:
-1. `npm run tailwind`
-2. `npx elm-watch hot`
-3. `npm run start`
-
-New Tailwind classes will require a page reload.
+Run `npm run dev`. New Tailwind classes will require a page reload.
 
 ## Building
 
