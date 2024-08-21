@@ -1,6 +1,9 @@
 module Main exposing (main)
 
 import Browser
+import Byzantine.ByzHtml.Martyria as Martyria
+import Byzantine.Martyria as Martyria
+import Byzantine.Scale as Scale exposing (Scale(..))
 import Html exposing (Html, button, div, fieldset, input, label, legend, span, text)
 import Html.Attributes exposing (checked, class, classList, for, id, style, type_)
 import Html.Events exposing (onClick)
@@ -47,30 +50,8 @@ type alias Model =
 -- TYPES
 
 
-type Scale
-    = Diatonic
-    | Enharmonic
-    | Chromatic
-
-
-allScales : List Scale
-allScales =
-    [ Diatonic, Enharmonic, Chromatic ]
-
-
-scaleName : Scale -> String
-scaleName scale =
-    case scale of
-        Diatonic ->
-            "Diatonic"
-
-        Enharmonic ->
-            "Enharmonic"
-
-        Chromatic ->
-            "Chromatic"
-
-
+{-| These need work!
+-}
 scaleIntervals : Scale -> List Interval
 scaleIntervals scale =
     case scale of
@@ -80,8 +61,11 @@ scaleIntervals scale =
         Enharmonic ->
             [ 12, 6, 12, 12, 6, 12, 12 ]
 
-        Chromatic ->
+        HardChromatic ->
             [ 6, 20, 4, 12, 6, 20, 4 ]
+
+        SoftChromatic ->
+            [ 8, 14, 8, 12, 8, 14, 8 ]
 
 
 type alias Interval =
@@ -238,6 +222,33 @@ viewPitch showSpacing ordinal pitchHeight =
     let
         totalHeight =
             pitchHeight.aboveCenter + pitchHeight.belowCenter |> String.fromInt
+
+        martyria_HACK =
+            Martyria.for Scale.Diatonic <|
+                case ordinal of
+                    0 ->
+                        Scale.Pa
+
+                    1 ->
+                        Scale.Bou
+
+                    2 ->
+                        Scale.Ga
+
+                    3 ->
+                        Scale.Di
+
+                    4 ->
+                        Scale.Ke
+
+                    5 ->
+                        Scale.Zo_
+
+                    6 ->
+                        Scale.Ni_
+
+                    _ ->
+                        Scale.Pa_
     in
     div
         [ classList [ ( "border border-gray-500 bg-slate-200", showSpacing ) ]
@@ -256,6 +267,9 @@ viewPitch showSpacing ordinal pitchHeight =
                 ]
                 [ text <| String.fromInt <| ordinal + 1
                 , viewIf showSpacing <| text <| " (" ++ totalHeight ++ " = " ++ String.fromInt pitchHeight.belowCenter ++ " + " ++ String.fromInt pitchHeight.aboveCenter ++ ")"
+                , span [ class "text-3xl mx-4" ]
+                    [ Martyria.view martyria_HACK
+                    ]
                 ]
             ]
         ]
@@ -294,28 +308,28 @@ selectScale model =
     let
         radioOption scale =
             let
-                scaleName_ =
-                    scaleName scale
+                scaleName =
+                    Scale.name scale
             in
             div []
                 [ input
                     [ type_ "radio"
                     , onClick (SetScale scale)
                     , class "cursor-pointer m-2"
-                    , id <| "select" ++ scaleName_
+                    , id <| "select" ++ scaleName
                     , checked (model.scale == scale)
                     ]
                     []
                 , label
-                    [ for <| "select" ++ scaleName_
+                    [ for <| "select" ++ scaleName
                     , class "cursor-pointer"
                     ]
-                    [ text scaleName_ ]
+                    [ text scaleName ]
                 ]
     in
     fieldset [] <|
         legend [] [ text "Select scale" ]
-            :: List.map radioOption allScales
+            :: List.map radioOption Scale.all
 
 
 viewCurrentPitch : Maybe Int -> Html Msg
