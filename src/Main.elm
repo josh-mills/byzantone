@@ -1,7 +1,9 @@
 module Main exposing (main)
 
+import Array
 import Browser
 import Byzantine.ByzHtml.Martyria as Martyria
+import Byzantine.Degree as Degree exposing (Degree(..))
 import Byzantine.Martyria as Martyria
 import Byzantine.Scale as Scale exposing (Scale(..))
 import Html exposing (Html, button, div, fieldset, input, label, legend, span, text)
@@ -30,6 +32,8 @@ init _ =
     ( { scale = Diatonic
       , showSpacing = False
       , currentPitch = Nothing
+
+      --   , currentPitchDegree = Nothing
       }
     , Cmd.none
     )
@@ -42,7 +46,9 @@ init _ =
 type alias Model =
     { scale : Scale
     , showSpacing : Bool
-    , currentPitch : Maybe Int
+    , currentPitch : Maybe Degree
+
+    -- , currentPitchDegree : Maybe Degree
     }
 
 
@@ -120,7 +126,7 @@ intervalsToPitches intervals =
 
 
 type Msg
-    = SelectPitch (Maybe Int)
+    = SelectPitch (Maybe Degree)
     | SetScale Scale
     | ToggleSpacing
 
@@ -151,19 +157,19 @@ update msg model =
 view : Model -> Html Msg
 view model =
     div [ class "container m-4 flex flex-row" ]
-        [ pitchSpace model.showSpacing <| scaleIntervals model.scale
+        [ pitchSpace model.scale model.showSpacing <| scaleIntervals model.scale
         , viewControls model
         ]
 
 
-pitchSpace : Bool -> List Interval -> Html Msg
-pitchSpace showSpacing intervals =
+pitchSpace : Scale -> Bool -> List Interval -> Html Msg
+pitchSpace scale showSpacing intervals =
     div
         [ class "flex flex-row flex-nowrap transition-all duration-500"
         , class "min-w-[360px]"
         ]
         [ intervalCol showSpacing intervals
-        , pitchCol showSpacing intervals
+        , pitchCol scale showSpacing intervals
         ]
 
 
@@ -209,46 +215,23 @@ spacerInterval showSpacing i =
         [ viewIf showSpacing <| text <| "(" ++ String.fromInt (i // 2) ++ ")" ]
 
 
-pitchCol : Bool -> List Int -> Html Msg
-pitchCol showSpacing intervals =
+pitchCol : Scale -> Bool -> List Int -> Html Msg
+pitchCol scale showSpacing intervals =
     intervalsToPitches intervals
-        |> List.indexedMap (viewPitch showSpacing)
+        |> List.indexedMap (viewPitch scale showSpacing)
         |> List.reverse
         |> div []
 
 
-viewPitch : Bool -> Int -> PitchHeight -> Html Msg
-viewPitch showSpacing ordinal pitchHeight =
+viewPitch : Scale -> Bool -> Int -> PitchHeight -> Html Msg
+viewPitch scale showSpacing ordinal pitchHeight =
     let
+        degree =
+            Degree.baseOctave scale
+                |> Array.get ordinal
+
         totalHeight =
             pitchHeight.aboveCenter + pitchHeight.belowCenter |> String.fromInt
-
-        martyria_HACK =
-            Martyria.for Scale.Diatonic <|
-                case ordinal of
-                    0 ->
-                        Scale.Pa
-
-                    1 ->
-                        Scale.Bou
-
-                    2 ->
-                        Scale.Ga
-
-                    3 ->
-                        Scale.Di
-
-                    4 ->
-                        Scale.Ke
-
-                    5 ->
-                        Scale.Zo_
-
-                    6 ->
-                        Scale.Ni_
-
-                    _ ->
-                        Scale.Pa_
     in
     div
         [ classList [ ( "border border-gray-500 bg-slate-200", showSpacing ) ]
@@ -259,17 +242,21 @@ viewPitch showSpacing ordinal pitchHeight =
         [ button
             [ class "flex px-4 w-full min-w-[40px] hover:bg-slate-200"
             , classList [ ( "bg-green-300", showSpacing ) ]
-            , onClick (SelectPitch <| Just ordinal)
+            , onClick (SelectPitch degree)
             ]
             [ span
-                [ style "padding-top" <| String.fromInt (pitchHeight.aboveCenter * 10 - 10) ++ "px"
+                [ style "padding-top" <| String.fromInt (pitchHeight.aboveCenter * 8) ++ "px"
                 , transition
+                , class "flex flex-row gap-2 absolute"
                 ]
-                [ text <| String.fromInt <| ordinal + 1
-                , viewIf showSpacing <| text <| " (" ++ totalHeight ++ " = " ++ String.fromInt pitchHeight.belowCenter ++ " + " ++ String.fromInt pitchHeight.aboveCenter ++ ")"
-                , span [ class "text-3xl mx-4" ]
-                    [ Martyria.view martyria_HACK
+                [ div
+                    [ class "text-3xl" -- can I adjust position on this ?
                     ]
+                    [ viewMaybe (Martyria.view << Martyria.for scale) degree ]
+
+                --     [ Martyria.view (Martyria.for scale Degree.Pa)
+                --     ]
+                , viewIf showSpacing <| text <| " (" ++ totalHeight ++ " = " ++ String.fromInt pitchHeight.belowCenter ++ " + " ++ String.fromInt pitchHeight.aboveCenter ++ ")"
                 ]
             ]
         ]
@@ -284,7 +271,8 @@ viewControls model =
     div []
         [ spacingButton model.showSpacing
         , selectScale model
-        , viewCurrentPitch model.currentPitch
+
+        -- , viewCurrentPitch model.currentPitch
         ]
 
 

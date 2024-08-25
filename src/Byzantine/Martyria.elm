@@ -1,9 +1,7 @@
 module Byzantine.Martyria exposing
     ( Martyria
     , ModalSignature(..)
-    , degree
     , for
-    , signature
     , unwrap
     )
 
@@ -11,7 +9,8 @@ module Byzantine.Martyria exposing
 representing a note within the context of a given modal context.
 -}
 
-import Byzantine.Scale exposing (Degree(..), Scale(..))
+import Byzantine.Degree exposing (Degree(..))
+import Byzantine.Scale exposing (Scale(..))
 
 
 {-| The μαρτυρἰαι ("testimonies"), or signatures, of Byzantine music,
@@ -25,22 +24,12 @@ type Martyria
     = Martyria Degree ModalSignature
 
 
-degree : Martyria -> Degree
-degree (Martyria degree_ _) =
-    degree_
-
-
-signature : Martyria -> ModalSignature
-signature (Martyria _ signature_) =
-    signature_
-
-
 unwrap : Martyria -> ( Degree, ModalSignature )
-unwrap (Martyria degree_ signature_) =
-    ( degree_, signature_ )
+unwrap (Martyria degree signature) =
+    ( degree, signature )
 
 
-{-| A modal signature (μαπτυρικὀν σημείον, "testimonal sign") is a shorthand
+{-| A modal signature (μαπτυρικὀν σημείον, "testimonial sign") is a shorthand
 representation of the mode based on a given note. This indicates what scale
 scale system a degree is operating within.
 -}
@@ -61,24 +50,24 @@ type ModalSignature
 {-| Construct the maryria for a given scale and degree.
 -}
 for : Scale -> Degree -> Martyria
-for scale step =
+for scale degree =
     case scale of
         Diatonic ->
-            Martyria step (diatonicSignature step)
+            Martyria degree (diatonicSignature degree)
 
         HardChromatic ->
-            Martyria step (hardChromaticSignature step)
+            Martyria degree (hardChromaticSignature degree)
 
         SoftChromatic ->
-            Martyria step (softChromaticSignature step)
+            Martyria degree (softChromaticSignature degree)
 
         Enharmonic ->
-            Martyria step (enharmonicSignature step)
+            Martyria degree (enharmonicSignature degree)
 
 
 diatonicSignature : Degree -> ModalSignature
-diatonicSignature step =
-    case step of
+diatonicSignature degree =
+    case degree of
         GA ->
             NaNa
 
