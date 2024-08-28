@@ -32,8 +32,6 @@ init _ =
     ( { scale = Diatonic
       , showSpacing = False
       , currentPitch = Nothing
-
-      --   , currentPitchDegree = Nothing
       }
     , Cmd.none
     )
@@ -47,31 +45,11 @@ type alias Model =
     { scale : Scale
     , showSpacing : Bool
     , currentPitch : Maybe Degree
-
-    -- , currentPitchDegree : Maybe Degree
     }
 
 
 
 -- TYPES
-
-
-{-| These need work!
--}
-scaleIntervals : Scale -> List Interval
-scaleIntervals scale =
-    case scale of
-        Diatonic ->
-            [ 10, 8, 12, 12, 10, 8, 12 ]
-
-        Enharmonic ->
-            [ 12, 6, 12, 12, 6, 12, 12 ]
-
-        HardChromatic ->
-            [ 6, 20, 4, 12, 6, 20, 4 ]
-
-        SoftChromatic ->
-            [ 8, 14, 8, 12, 8, 14, 8 ]
 
 
 type alias Interval =
@@ -157,7 +135,8 @@ update msg model =
 view : Model -> Html Msg
 view model =
     div [ class "container m-4 flex flex-row" ]
-        [ pitchSpace model.scale model.showSpacing <| scaleIntervals model.scale
+        [ Degree.baseOctaveIntervals model.scale
+            |> pitchSpace model.scale model.showSpacing
         , viewControls model
         ]
 

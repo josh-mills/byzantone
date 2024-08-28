@@ -1,4 +1,4 @@
-module Byzantine.Degree exposing (Degree(..), baseOctave, gamut, indexOf)
+module Byzantine.Degree exposing (Degree(..), baseOctave, baseOctaveIntervals, gamut, indexOf, intervalsFrom, pitchPosition, step, toString)
 
 import Array exposing (Array)
 import Byzantine.Scale exposing (Scale(..))
@@ -30,6 +30,55 @@ type Degree
     | Pa_
     | Bou_
     | Ga_
+
+
+toString : Degree -> String
+toString degree =
+    case degree of
+        GA ->
+            "GA"
+
+        DI ->
+            "DI"
+
+        KE ->
+            "KE"
+
+        Zo ->
+            "Zo"
+
+        Ni ->
+            "Ni"
+
+        Pa ->
+            "Pa"
+
+        Bou ->
+            "Bou"
+
+        Ga ->
+            "Ga"
+
+        Di ->
+            "Di"
+
+        Ke ->
+            "Ke"
+
+        Zo_ ->
+            "Zo_"
+
+        Ni_ ->
+            "Ni_"
+
+        Pa_ ->
+            "Pa_"
+
+        Bou_ ->
+            "Bou_"
+
+        Ga_ ->
+            "Ga_"
 
 
 gamut : Array Degree
@@ -86,6 +135,11 @@ indexOf degree =
             14
 
 
+step : Degree -> Int -> Maybe Degree
+step degree interval =
+    Array.get (indexOf degree + interval) gamut
+
+
 baseOctave : Scale -> Array Degree
 baseOctave scale =
     let
@@ -108,3 +162,98 @@ baseOctave scale =
 
         HardChromatic ->
             octaveFrom Pa
+
+
+baseOctaveIntervals : Scale -> List Int
+baseOctaveIntervals scale =
+    let
+        startingPitch =
+            case scale of
+                Diatonic ->
+                    Pa
+
+                Enharmonic ->
+                    Ni
+
+                SoftChromatic ->
+                    Ni
+
+                HardChromatic ->
+                    Pa
+    in
+    pitchPositions scale
+        |> Array.slice (indexOf startingPitch) (indexOf startingPitch + 8)
+        |> Array.toList
+        |> toIntervals
+
+
+intervalsFrom : Scale -> Degree -> Degree -> List Int
+intervalsFrom scale lower upper =
+    pitchPositions scale
+        |> Array.slice (indexOf lower) (indexOf upper)
+        |> Array.toList
+        |> toIntervals
+
+
+toIntervals : List Int -> List Int
+toIntervals pitchPositions_ =
+    case pitchPositions_ of
+        lower :: upper :: rest ->
+            upper - lower :: toIntervals (upper :: rest)
+
+        _ ->
+            []
+
+
+pitchPositions : Scale -> Array Int
+pitchPositions scale =
+    case scale of
+        Diatonic ->
+            diatonicPitchPositions
+
+        Enharmonic ->
+            enharmonicPitchPositions
+
+        SoftChromatic ->
+            softChromaticPitchPositions
+
+        HardChromatic ->
+            hardChromaticPitchPositions
+
+
+{-| Calculate the pitch position in moria for the degree. Di is constant at 84.
+
+In actual practice, this will need to be based on the tetrachord for a given
+mode, not a fixed position based merely on the scale. So there will be
+additional complexity that we'll need to model somehow.
+
+(We might want an advanced setting to use Ke for mode II instead as equivalent
+to Di for other modes; see discussion in Melling.)
+
+-}
+pitchPosition : Scale -> Degree -> Int
+pitchPosition scale degree =
+    pitchPositions scale
+        |> Array.get (indexOf degree)
+        -- tests ensure that the -1 sentinel value never occurs.
+        |> Maybe.withDefault -1
+
+
+diatonicPitchPositions : Array Int
+diatonicPitchPositions =
+    Array.fromList [ 0, 12, 24, 34, 42, 54, 64, 72, 84, 96, 106, 114, 126, 136, 144 ]
+
+
+enharmonicPitchPositions : Array Int
+enharmonicPitchPositions =
+    Array.fromList [ 0, 12, 24, 30, 42, 54, 60, 72, 84, 96, 102, 114, 126, 132, 144 ]
+
+
+softChromaticPitchPositions : Array Int
+softChromaticPitchPositions =
+    Array.fromList [ 0, 8, 22, 30, 42, 50, 64, 72, 84, 92, 106, 114, 126, 134, 148 ]
+
+
+hardChromaticPitchPositions : Array Int
+hardChromaticPitchPositions =
+    Array.fromList [ 0, 12, 18, 38, 42, 54, 60, 80, 84, 96, 102, 122, 126, 138, 150 ]
