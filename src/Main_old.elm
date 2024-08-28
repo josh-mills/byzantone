@@ -57,19 +57,6 @@ scaleToString scale =
             "Enharmonic"
 
 
-{-| Still thinking about this... What's the point? Also, we may need some sort
-of octave designations (perhaps `Νη_`, `Ζω_`, etc.) and chromaticism.
--}
-type Παραλλαγή
-    = Πα
-    | Βου
-    | Γα
-    | Δι
-    | Κε
-    | Ζω
-    | Νη
-
-
 
 -- UPDATE
 
@@ -179,7 +166,7 @@ controls model =
     let
         playButton steps =
             button
-                [ onClick (StartWithFrequency <| frequencyFromΠα steps)
+                [ onClick (StartWithFrequency <| frequencyFromPa steps)
                 , class "bg-gray-100 m-2 p-2 rounded-md"
                 ]
                 [ text <| "play " ++ String.fromInt steps ]
@@ -257,7 +244,8 @@ frequency referenceFrequency stepsRemoved =
     2 ^ (toFloat stepsRemoved / 72) * referenceFrequency
 
 
-frequencyFromΠα =
+frequencyFromPa : Int -> Float
+frequencyFromPa =
     frequency referencePitch
 
 
