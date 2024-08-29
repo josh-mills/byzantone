@@ -118,7 +118,7 @@ update msg model =
             )
 
         SetScale scale ->
-            ( { model | scale = scale }
+            ( { model | scale = scale, currentPitch = Nothing }
             , Cmd.none
             )
 
@@ -136,19 +136,19 @@ view : Model -> Html Msg
 view model =
     div [ class "container m-4 flex flex-row" ]
         [ Degree.baseOctaveIntervals model.scale
-            |> pitchSpace model.scale model.showSpacing
+            |> pitchSpace model
         , viewControls model
         ]
 
 
-pitchSpace : Scale -> Bool -> List Interval -> Html Msg
-pitchSpace scale showSpacing intervals =
+pitchSpace : Model -> List Interval -> Html Msg
+pitchSpace model intervals =
     div
         [ class "flex flex-row flex-nowrap transition-all duration-500"
         , class "min-w-[360px]"
         ]
-        [ intervalCol showSpacing intervals
-        , pitchCol scale showSpacing intervals
+        [ intervalCol model.showSpacing intervals
+        , pitchCol model intervals
         ]
 
 
@@ -194,16 +194,16 @@ spacerInterval showSpacing i =
         [ viewIf showSpacing <| text <| "(" ++ String.fromInt (i // 2) ++ ")" ]
 
 
-pitchCol : Scale -> Bool -> List Int -> Html Msg
-pitchCol scale showSpacing intervals =
+pitchCol : Model -> List Int -> Html Msg
+pitchCol model intervals =
     intervalsToPitches intervals
-        |> List.indexedMap (viewPitch scale showSpacing)
+        |> List.indexedMap (viewPitch model)
         |> List.reverse
         |> div []
 
 
-viewPitch : Scale -> Bool -> Int -> PitchHeight -> Html Msg
-viewPitch scale showSpacing ordinal pitchHeight =
+viewPitch : Model -> Int -> PitchHeight -> Html Msg
+viewPitch { scale, showSpacing, currentPitch } ordinal pitchHeight =
     let
         degree =
             Degree.baseOctave scale
@@ -211,6 +211,9 @@ viewPitch scale showSpacing ordinal pitchHeight =
 
         totalHeight =
             pitchHeight.aboveCenter + pitchHeight.belowCenter |> String.fromInt
+
+        spacingText =
+            "(" ++ totalHeight ++ " = " ++ String.fromInt pitchHeight.belowCenter ++ " + " ++ String.fromInt pitchHeight.aboveCenter ++ ")"
     in
     div
         [ classList [ ( "border border-gray-500 bg-slate-200", showSpacing ) ]
@@ -219,7 +222,7 @@ viewPitch scale showSpacing ordinal pitchHeight =
         , transition
         ]
         [ button
-            [ class "flex px-4 w-full min-w-[40px] hover:bg-slate-200"
+            [ class "flex px-4 w-full min-w-[40px] hover:text-green-700"
             , classList [ ( "bg-green-300", showSpacing ) ]
             , onClick (SelectPitch degree)
             ]
@@ -227,15 +230,11 @@ viewPitch scale showSpacing ordinal pitchHeight =
                 [ style "padding-top" <| String.fromInt (pitchHeight.aboveCenter * 8) ++ "px"
                 , transition
                 , class "flex flex-row gap-2 absolute"
+                , classList [ ( "text-red-600", degree == currentPitch ) ]
                 ]
-                [ div
-                    [ class "text-3xl" -- can I adjust position on this ?
-                    ]
+                [ div [ class "text-3xl relative -top-5" ]
                     [ viewMaybe (Martyria.view << Martyria.for scale) degree ]
-
-                --     [ Martyria.view (Martyria.for scale Degree.Pa)
-                --     ]
-                , viewIf showSpacing <| text <| " (" ++ totalHeight ++ " = " ++ String.fromInt pitchHeight.belowCenter ++ " + " ++ String.fromInt pitchHeight.aboveCenter ++ ")"
+                , viewIf showSpacing <| span [ class "ms-2" ] [ text spacingText ]
                 ]
             ]
         ]
@@ -250,8 +249,8 @@ viewControls model =
     div []
         [ spacingButton model.showSpacing
         , selectScale model
-
-        -- , viewCurrentPitch model.currentPitch
+        , viewCurrentPitch model.currentPitch
+        , clearPitchButton
         ]
 
 
@@ -299,7 +298,7 @@ selectScale model =
             :: List.map radioOption Scale.all
 
 
-viewCurrentPitch : Maybe Int -> Html Msg
+viewCurrentPitch : Maybe Degree -> Html Msg
 viewCurrentPitch pitch =
     div [ class "mt-2" ]
         [ text <| "Current Pitch: "
@@ -308,8 +307,17 @@ viewCurrentPitch pitch =
                 text "none"
 
             Just p ->
-                text <| String.fromInt p
+                text <| Degree.toString p
         ]
+
+
+clearPitchButton : Html Msg
+clearPitchButton =
+    button
+        [ class "bg-gray-200 my-2 py-1 px-3 rounded-md"
+        , onClick (SelectPitch Nothing)
+        ]
+        [ text "clear" ]
 
 
 
