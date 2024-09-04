@@ -2,6 +2,7 @@ module Tests exposing (..)
 
 import Array
 import Byzantine.Degree as Degree exposing (Degree(..))
+import Byzantine.Pitch as Pitch
 import Byzantine.Scale as Scale exposing (Scale(..))
 import Expect
 import Test exposing (Test, describe, test)
@@ -40,7 +41,7 @@ degreeTests =
                         (\degree ->
                             test (Scale.name scale ++ " pitch position for " ++ Degree.toString degree ++ " is not negative") <|
                                 \_ ->
-                                    Expect.greaterThan -1 (Degree.pitchPosition scale degree)
+                                    Expect.greaterThan -1 (Pitch.pitchPosition scale degree)
                         )
                         gamutBuilder
                 )

@@ -5,8 +5,9 @@ import Browser
 import Byzantine.ByzHtml.Martyria as Martyria
 import Byzantine.Degree as Degree exposing (Degree(..))
 import Byzantine.Martyria as Martyria
+import Byzantine.Pitch as Pitch
 import Byzantine.Scale as Scale exposing (Scale(..))
-import Html exposing (Html, button, div, fieldset, input, label, legend, span, text)
+import Html exposing (Html, button, div, fieldset, input, label, legend, main_, span, text)
 import Html.Attributes exposing (checked, class, classList, for, id, style, type_)
 import Html.Events exposing (onClick)
 import Html.Extra exposing (viewIf, viewMaybe)
@@ -134,15 +135,18 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
-    div [ class "container m-4 flex flex-row" ]
-        [ Degree.baseOctaveIntervals model.scale
-            |> pitchSpace model
+    main_ [ class "container m-4 flex flex-row" ]
+        [ pitchSpace model
         , viewControls model
         ]
 
 
-pitchSpace : Model -> List Interval -> Html Msg
-pitchSpace model intervals =
+pitchSpace : Model -> Html Msg
+pitchSpace model =
+    let
+        intervals =
+            Pitch.intervalsFrom model.scale DI Ga_
+    in
     div
         [ class "flex flex-row flex-nowrap transition-all duration-500"
         , class "min-w-[360px]"
@@ -209,6 +213,9 @@ viewPitch { scale, showSpacing, currentPitch } ordinal pitchHeight =
             Degree.baseOctave scale
                 |> Array.get ordinal
 
+        isCurrentPitch =
+            degree == currentPitch
+
         totalHeight =
             pitchHeight.aboveCenter + pitchHeight.belowCenter |> String.fromInt
 
@@ -230,7 +237,7 @@ viewPitch { scale, showSpacing, currentPitch } ordinal pitchHeight =
                 [ style "padding-top" <| String.fromInt (pitchHeight.aboveCenter * 8) ++ "px"
                 , transition
                 , class "flex flex-row gap-2 absolute"
-                , classList [ ( "text-red-600", degree == currentPitch ) ]
+                , classList [ ( "text-red-600", isCurrentPitch ) ]
                 ]
                 [ div [ class "text-3xl relative -top-5" ]
                     [ viewMaybe (Martyria.view << Martyria.for scale) degree ]
