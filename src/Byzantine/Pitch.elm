@@ -1,6 +1,6 @@
 module Byzantine.Pitch exposing
     ( pitchPosition, pitchPositions
-    , intervalsFrom
+    , Interval, intervalsFrom
     )
 
 {-| Pitch positions and derived intervals. Di is fixed at 84.
@@ -18,7 +18,7 @@ attractions and inflections.
 
 # Intervals
 
-@docs intervalsFrom
+@docs Interval, intervalsFrom
 
 -}
 
@@ -85,24 +85,31 @@ hardChromaticPitchPositions =
 -- INTERVALS
 
 
-getInterval : Scale -> Degree -> Degree -> Int
+type alias Interval =
+    { from : Degree
+    , to : Degree
+    , moria : Int
+    }
+
+
+getInterval : Scale -> Degree -> Degree -> Interval
 getInterval scale from to =
-    pitchPosition scale to - pitchPosition scale from
+    { from = from
+    , to = to
+    , moria = pitchPosition scale to - pitchPosition scale from
+    }
 
 
-intervalsFrom : Scale -> Degree -> Degree -> List Int
+intervalsFrom : Scale -> Degree -> Degree -> List Interval
 intervalsFrom scale lower upper =
-    pitchPositions scale
-        |> Array.slice (Degree.indexOf lower) (Degree.indexOf upper)
-        |> Array.toList
-        |> toIntervals
+    let
+        go degrees =
+            case degrees of
+                a :: b :: rest ->
+                    getInterval scale a b :: go (b :: rest)
 
-
-toIntervals : List Int -> List Int
-toIntervals pitchPositions_ =
-    case pitchPositions_ of
-        lower :: upper :: rest ->
-            upper - lower :: toIntervals (upper :: rest)
-
-        _ ->
-            []
+                _ ->
+                    []
+    in
+    Degree.range lower upper
+        |> go

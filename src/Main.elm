@@ -1,16 +1,16 @@
 module Main exposing (main)
 
-import Array
 import Browser
 import Byzantine.ByzHtml.Martyria as Martyria
 import Byzantine.Degree as Degree exposing (Degree(..))
 import Byzantine.Martyria as Martyria
-import Byzantine.Pitch as Pitch
+import Byzantine.Pitch as Pitch exposing (Interval)
 import Byzantine.Scale as Scale exposing (Scale(..))
 import Html exposing (Html, button, div, fieldset, input, label, legend, main_, span, text)
 import Html.Attributes exposing (checked, class, classList, for, id, style, type_)
 import Html.Events exposing (onClick)
 import Html.Extra exposing (viewIf, viewMaybe)
+import Icons
 import List.Extra as List
 
 
@@ -53,18 +53,17 @@ type alias Model =
 -- TYPES
 
 
-type alias Interval =
-    Int
-
-
+{-| This is a fundamentally a view concern, not a domain type.
+-}
 type alias PitchHeight =
-    { belowCenter : Int
+    { degree : Degree
+    , belowCenter : Int
     , aboveCenter : Int
     }
 
 
-intervalsToPitches : List Interval -> List PitchHeight
-intervalsToPitches intervals =
+intervalsToPitchHeights : List Interval -> List PitchHeight
+intervalsToPitchHeights intervals =
     let
         go : PitchHeight -> List Interval -> List PitchHeight
         go prev rest =
@@ -73,15 +72,22 @@ intervalsToPitches intervals =
                     []
 
                 x :: [] ->
-                    [ { belowCenter = prev.aboveCenter, aboveCenter = x // 2 }
-                    , { belowCenter = x // 2, aboveCenter = x // 2 }
+                    [ { degree = x.from
+                      , belowCenter = prev.aboveCenter
+                      , aboveCenter = x.moria // 2
+                      }
+                    , { degree = x.to
+                      , belowCenter = x.moria // 2
+                      , aboveCenter = x.moria // 2
+                      }
                     ]
 
                 x :: xs ->
                     let
                         next =
-                            { belowCenter = prev.aboveCenter
-                            , aboveCenter = x // 2
+                            { degree = x.from
+                            , belowCenter = prev.aboveCenter
+                            , aboveCenter = x.moria // 2
                             }
                     in
                     next :: go next xs
@@ -93,8 +99,9 @@ intervalsToPitches intervals =
         x :: xs ->
             let
                 firstPitch =
-                    { belowCenter = x // 2
-                    , aboveCenter = x // 2
+                    { degree = x.from
+                    , belowCenter = x.moria // 2
+                    , aboveCenter = x.moria // 2
                     }
             in
             firstPitch :: go firstPitch xs
@@ -145,7 +152,7 @@ pitchSpace : Model -> Html Msg
 pitchSpace model =
     let
         intervals =
-            Pitch.intervalsFrom model.scale DI Ga_
+            Pitch.intervalsFrom model.scale Ni Pa_
     in
     div
         [ class "flex flex-row flex-nowrap transition-all duration-500"
@@ -156,7 +163,7 @@ pitchSpace model =
         ]
 
 
-intervalCol : Bool -> List Int -> Html Msg
+intervalCol : Bool -> List Interval -> Html Msg
 intervalCol showSpacing intervals =
     let
         definedIntervals =
@@ -177,41 +184,40 @@ intervalCol showSpacing intervals =
         (spacerTop :: definedIntervals ++ spacerBottom)
 
 
-viewInterval : Int -> Html Msg
-viewInterval i =
+viewInterval : Interval -> Html Msg
+viewInterval { moria } =
     div
         [ class "border border-gray-300"
         , class "flex flex-row justify-center"
-        , height (i * 10)
+        , height (moria * 10)
         , transition
         ]
-        [ span [ class "my-auto" ] [ text (String.fromInt i) ] ]
+        [ span [ class "my-auto" ] [ text (String.fromInt moria) ] ]
 
 
-spacerInterval : Bool -> Int -> Html Msg
-spacerInterval showSpacing i =
+spacerInterval : Bool -> Interval -> Html Msg
+spacerInterval showSpacing { moria } =
     div
-        [ height (i * 10 // 2)
+        [ height (moria * 10 // 2)
         , transition
         , classList [ ( "text-center bg-slate-300", showSpacing ) ]
         ]
-        [ viewIf showSpacing <| text <| "(" ++ String.fromInt (i // 2) ++ ")" ]
+        [ viewIf showSpacing <| text <| "(" ++ String.fromInt (moria // 2) ++ ")" ]
 
 
-pitchCol : Model -> List Int -> Html Msg
+pitchCol : Model -> List Interval -> Html Msg
 pitchCol model intervals =
-    intervalsToPitches intervals
-        |> List.indexedMap (viewPitch model)
+    intervalsToPitchHeights intervals
+        |> List.map (viewPitch model)
         |> List.reverse
         |> div []
 
 
-viewPitch : Model -> Int -> PitchHeight -> Html Msg
-viewPitch { scale, showSpacing, currentPitch } ordinal pitchHeight =
+viewPitch : Model -> PitchHeight -> Html Msg
+viewPitch { scale, showSpacing, currentPitch } pitchHeight =
     let
         degree =
-            Degree.baseOctave scale
-                |> Array.get ordinal
+            Just pitchHeight.degree
 
         isCurrentPitch =
             degree == currentPitch
@@ -231,7 +237,12 @@ viewPitch { scale, showSpacing, currentPitch } ordinal pitchHeight =
         [ button
             [ class "flex px-4 w-full min-w-[40px] hover:text-green-700"
             , classList [ ( "bg-green-300", showSpacing ) ]
-            , onClick (SelectPitch degree)
+            , onClick <|
+                if isCurrentPitch then
+                    SelectPitch Nothing
+
+                else
+                    SelectPitch degree
             ]
             [ span
                 [ style "padding-top" <| String.fromInt (pitchHeight.aboveCenter * 8) ++ "px"
@@ -241,6 +252,8 @@ viewPitch { scale, showSpacing, currentPitch } ordinal pitchHeight =
                 ]
                 [ div [ class "text-3xl relative -top-5" ]
                     [ viewMaybe (Martyria.view << Martyria.for scale) degree ]
+                , viewIf isCurrentPitch <|
+                    div [ class "w-4" ] [ Icons.xmark ]
                 , viewIf showSpacing <| span [ class "ms-2" ] [ text spacingText ]
                 ]
             ]
