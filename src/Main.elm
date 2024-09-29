@@ -1,8 +1,10 @@
 module Main exposing (main)
 
 import Browser
+import Byzantine.ByzHtml.Interval as Interval
 import Byzantine.ByzHtml.Martyria as Martyria
 import Byzantine.Degree as Degree exposing (Degree(..))
+import Byzantine.IntervalCharacter exposing (..)
 import Byzantine.Martyria as Martyria
 import Byzantine.Pitch as Pitch exposing (Interval)
 import Byzantine.Scale as Scale exposing (Scale(..))
@@ -158,18 +160,18 @@ pitchSpace model =
         [ class "flex flex-row flex-nowrap transition-all duration-500"
         , class "min-w-[360px]"
         ]
-        [ intervalCol model.showSpacing intervals
+        [ intervalCol model intervals
         , pitchCol model intervals
         ]
 
 
-intervalCol : Bool -> List Interval -> Html Msg
-intervalCol showSpacing intervals =
+intervalCol : Model -> List Interval -> Html Msg
+intervalCol { showSpacing, currentPitch } intervals =
     let
         definedIntervals =
             intervals
                 |> List.reverse
-                |> List.map viewInterval
+                |> List.map (viewInterval currentPitch)
 
         spacerTop =
             List.last intervals
@@ -184,15 +186,41 @@ intervalCol showSpacing intervals =
         (spacerTop :: definedIntervals ++ spacerBottom)
 
 
-viewInterval : Interval -> Html Msg
-viewInterval { moria } =
+viewInterval : Maybe Degree -> Interval -> Html Msg
+viewInterval currentPitch { from, to, moria } =
+    let
+        -- effectively compensates for not knowing whether the interval is
+        -- ascending or descending from the current pitch, which means that we
+        -- don't easily know whether to take the `from` or `to` pitch from the
+        -- interval.
+        adjustNegative int =
+            if int > 0 then
+                int
+
+            else
+                int - 1
+
+        maybeInterval =
+            currentPitch
+                |> Maybe.andThen
+                    (\current ->
+                        Degree.getInterval current to
+                            |> adjustNegative
+                            |> basicInterval
+                    )
+                |> Html.Extra.viewMaybe Interval.view
+    in
     div
         [ class "border border-gray-300"
         , class "flex flex-row justify-center"
         , height (moria * 10)
         , transition
         ]
-        [ span [ class "my-auto" ] [ text (String.fromInt moria) ] ]
+        [ span [ class "my-auto" ]
+            [ maybeInterval
+            , text (String.fromInt moria)
+            ]
+        ]
 
 
 spacerInterval : Bool -> Interval -> Html Msg
@@ -253,7 +281,7 @@ viewPitch { scale, showSpacing, currentPitch } pitchHeight =
                 [ div [ class "text-3xl relative -top-5" ]
                     [ viewMaybe (Martyria.view << Martyria.for scale) degree ]
                 , viewIf isCurrentPitch <|
-                    div [ class "w-4" ] [ Icons.xmark ]
+                    div [ class "w-4 ms-2" ] [ Icons.xmark ]
                 , viewIf showSpacing <| span [ class "ms-2" ] [ text spacingText ]
                 ]
             ]

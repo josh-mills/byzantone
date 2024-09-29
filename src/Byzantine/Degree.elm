@@ -1,4 +1,4 @@
-module Byzantine.Degree exposing (Degree(..), baseOctave, gamut, indexOf, range, step, toString)
+module Byzantine.Degree exposing (Degree(..), baseOctave, gamut, getInterval, indexOf, range, step, toString)
 
 import Array exposing (Array)
 import Byzantine.Scale exposing (Scale(..))
@@ -146,6 +146,11 @@ indexOf degree =
 step : Degree -> Int -> Maybe Degree
 step degree interval =
     Array.get (indexOf degree + interval) gamut
+
+
+getInterval : Degree -> Degree -> Int
+getInterval from to =
+    indexOf to - indexOf from
 
 
 baseOctave : Scale -> Array Degree
