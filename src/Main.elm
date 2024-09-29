@@ -10,6 +10,7 @@ import Byzantine.Pitch as Pitch exposing (Interval)
 import Byzantine.Scale as Scale exposing (Scale(..))
 import Html exposing (Html, button, div, fieldset, input, label, legend, main_, span, text)
 import Html.Attributes exposing (checked, class, classList, for, id, style, type_)
+import Html.Attributes.Extra
 import Html.Events exposing (onClick)
 import Html.Extra exposing (viewIf, viewMaybe)
 import Icons
@@ -55,7 +56,7 @@ type alias Model =
 -- TYPES
 
 
-{-| This is a fundamentally a view concern, not a domain type.
+{-| These are fundamentally view concerns, not domain types.
 -}
 type alias PitchHeight =
     { degree : Degree
@@ -107,6 +108,29 @@ intervalsToPitchHeights intervals =
                     }
             in
             firstPitch :: go firstPitch xs
+
+
+type Movement
+    = AscendTo Degree
+    | DescendTo Degree
+    | None
+
+
+movement : Maybe Degree -> Interval -> Movement
+movement currentPitch interval =
+    case currentPitch of
+        Nothing ->
+            None
+
+        Just current ->
+            if Degree.indexOf interval.to > Degree.indexOf current then
+                AscendTo interval.to
+
+            else if Degree.indexOf interval.from < Degree.indexOf current then
+                DescendTo interval.from
+
+            else
+                None
 
 
 
@@ -187,38 +211,45 @@ intervalCol { showSpacing, currentPitch } intervals =
 
 
 viewInterval : Maybe Degree -> Interval -> Html Msg
-viewInterval currentPitch { from, to, moria } =
+viewInterval currentPitch interval =
     let
-        -- effectively compensates for not knowing whether the interval is
-        -- ascending or descending from the current pitch, which means that we
-        -- don't easily know whether to take the `from` or `to` pitch from the
-        -- interval.
-        adjustNegative int =
-            if int > 0 then
-                int
-
-            else
-                int - 1
-
-        maybeInterval =
+        viewIntervalCharacter degree =
             currentPitch
-                |> Maybe.andThen
-                    (\current ->
-                        Degree.getInterval current to
-                            |> adjustNegative
-                            |> basicInterval
+                |> Maybe.map (\current -> Degree.getInterval current degree)
+                |> Maybe.andThen basicInterval
+                |> Html.Extra.viewMaybe
+                    (Interval.view >> List.singleton >> span [ class "me-2" ])
+
+        ( maybeIntervalCharacter, attr, element ) =
+            case movement currentPitch interval of
+                AscendTo degree ->
+                    ( viewIntervalCharacter degree
+                    , onClick (SelectPitch (Just degree))
+                    , button
                     )
-                |> Html.Extra.viewMaybe Interval.view
+
+                DescendTo degree ->
+                    ( viewIntervalCharacter degree
+                    , onClick (SelectPitch (Just degree))
+                    , button
+                    )
+
+                None ->
+                    ( Html.Extra.nothing
+                    , Html.Attributes.Extra.empty
+                    , div
+                    )
     in
-    div
+    element
         [ class "border border-gray-300"
-        , class "flex flex-row justify-center"
-        , height (moria * 10)
+        , class "flex flex-row justify-center w-full"
+        , height (interval.moria * 10)
         , transition
+        , attr
         ]
         [ span [ class "my-auto" ]
-            [ maybeInterval
-            , text (String.fromInt moria)
+            [ maybeIntervalCharacter
+            , text (String.fromInt interval.moria)
             ]
         ]
 
