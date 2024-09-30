@@ -10,11 +10,11 @@ import Byzantine.Pitch as Pitch exposing (Interval)
 import Byzantine.Scale as Scale exposing (Scale(..))
 import Html exposing (Html, button, div, fieldset, input, label, legend, main_, span, text)
 import Html.Attributes exposing (checked, class, classList, for, id, style, type_)
-import Html.Attributes.Extra
-import Html.Events exposing (onClick)
+import Html.Events exposing (onClick, onFocus, onMouseEnter)
 import Html.Extra exposing (viewIf, viewMaybe)
 import Icons
 import List.Extra as List
+import Maybe.Extra as Maybe
 
 
 
@@ -36,6 +36,7 @@ init _ =
     ( { scale = Diatonic
       , showSpacing = False
       , currentPitch = Nothing
+      , proposedMovement = None
       }
     , Cmd.none
     )
@@ -49,6 +50,7 @@ type alias Model =
     { scale : Scale
     , showSpacing : Bool
     , currentPitch : Maybe Degree
+    , proposedMovement : Movement
     }
 
 
@@ -133,12 +135,42 @@ movement currentPitch interval =
                 None
 
 
+shouldHighlight : Maybe Degree -> Movement -> Interval -> Bool
+shouldHighlight currentPitch proposedMovement interval =
+    Maybe.unwrap False
+        (\current ->
+            let
+                currentPitchIndex =
+                    Degree.indexOf current
+
+                fromIndex =
+                    Degree.indexOf interval.from
+
+                toIndex =
+                    Degree.indexOf interval.to
+            in
+            case proposedMovement of
+                AscendTo degree ->
+                    (currentPitchIndex < toIndex)
+                        && (toIndex <= Degree.indexOf degree)
+
+                DescendTo degree ->
+                    (currentPitchIndex > fromIndex)
+                        && (fromIndex >= Degree.indexOf degree)
+
+                None ->
+                    False
+        )
+        currentPitch
+
+
 
 -- UPDATE
 
 
 type Msg
     = SelectPitch (Maybe Degree)
+    | SelectProposedMovement Movement
     | SetScale Scale
     | ToggleSpacing
 
@@ -147,12 +179,24 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         SelectPitch pitch ->
-            ( { model | currentPitch = pitch }
+            ( { model
+                | currentPitch = pitch
+                , proposedMovement = None
+              }
+            , Cmd.none
+            )
+
+        SelectProposedMovement movement_ ->
+            ( { model | proposedMovement = movement_ }
             , Cmd.none
             )
 
         SetScale scale ->
-            ( { model | scale = scale, currentPitch = Nothing }
+            ( { model
+                | scale = scale
+
+                -- , currentPitch = Nothing -- consider this.
+              }
             , Cmd.none
             )
 
@@ -190,12 +234,12 @@ pitchSpace model =
 
 
 intervalCol : Model -> List Interval -> Html Msg
-intervalCol { showSpacing, currentPitch } intervals =
+intervalCol ({ showSpacing } as model) intervals =
     let
         definedIntervals =
             intervals
                 |> List.reverse
-                |> List.map (viewInterval currentPitch)
+                |> List.map (viewInterval model)
 
         spacerTop =
             List.last intervals
@@ -210,8 +254,8 @@ intervalCol { showSpacing, currentPitch } intervals =
         (spacerTop :: definedIntervals ++ spacerBottom)
 
 
-viewInterval : Maybe Degree -> Interval -> Html Msg
-viewInterval currentPitch interval =
+viewInterval : Model -> Interval -> Html Msg
+viewInterval { currentPitch, proposedMovement } interval =
     let
         viewIntervalCharacter degree =
             currentPitch
@@ -220,33 +264,46 @@ viewInterval currentPitch interval =
                 |> Html.Extra.viewMaybe
                     (Interval.view >> List.singleton >> span [ class "me-2" ])
 
-        ( maybeIntervalCharacter, attr, element ) =
-            case movement currentPitch interval of
-                AscendTo degree ->
+        ( maybeIntervalCharacter, attrs, element ) =
+            let
+                movementOfThisInterval =
+                    movement currentPitch interval
+
+                movementTo degree =
                     ( viewIntervalCharacter degree
-                    , onClick (SelectPitch (Just degree))
+                    , [ onClick (SelectPitch (Just degree))
+
+                      -- TODO: onBlur or onMouseLeave? how to handle this?
+                      , onFocus (SelectProposedMovement movementOfThisInterval)
+                      , onMouseEnter (SelectProposedMovement movementOfThisInterval)
+                      ]
                     , button
                     )
+            in
+            case movementOfThisInterval of
+                AscendTo degree ->
+                    movementTo degree
 
                 DescendTo degree ->
-                    ( viewIntervalCharacter degree
-                    , onClick (SelectPitch (Just degree))
-                    , button
-                    )
+                    movementTo degree
 
                 None ->
-                    ( Html.Extra.nothing
-                    , Html.Attributes.Extra.empty
-                    , div
-                    )
+                    ( Html.Extra.nothing, [], div )
     in
     element
-        [ class "border border-gray-300"
-        , class "flex flex-row justify-center w-full"
-        , height (interval.moria * 10)
-        , transition
-        , attr
-        ]
+        ([ class "border border-gray-300"
+         , class "flex flex-row justify-center w-full"
+         , height (interval.moria * 10)
+         , transition
+         , classList
+            [ ( "bg-slate-200"
+              , shouldHighlight currentPitch proposedMovement interval
+              )
+            , ( "hover:bg-slate-200", Maybe.isJust currentPitch )
+            ]
+         ]
+            ++ attrs
+        )
         [ span [ class "my-auto" ]
             [ maybeIntervalCharacter
             , text (String.fromInt interval.moria)
@@ -330,6 +387,23 @@ viewControls model =
         , selectScale model
         , viewCurrentPitch model.currentPitch
         , clearPitchButton
+        , viewProposedMovement model.proposedMovement
+        ]
+
+
+viewProposedMovement : Movement -> Html Msg
+viewProposedMovement movement_ =
+    div []
+        [ text <| "Proposed Movement: "
+        , case movement_ of
+            AscendTo degree ->
+                text <| "ascend to " ++ Degree.toString degree
+
+            DescendTo degree ->
+                text <| "descend to " ++ Degree.toString degree
+
+            None ->
+                text "none"
         ]
 
 
