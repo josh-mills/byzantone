@@ -1,5 +1,6 @@
 module Byzantine.Pitch exposing
     ( pitchPosition, pitchPositions
+    , frequency
     , Interval, intervalsFrom
     )
 
@@ -14,6 +15,11 @@ attractions and inflections.
 # Pitch Positions
 
 @docs pitchPosition, pitchPositions
+
+
+# Frequency
+
+@docs frequency
 
 
 # Intervals
@@ -79,6 +85,21 @@ softChromaticPitchPositions =
 hardChromaticPitchPositions : Array Int
 hardChromaticPitchPositions =
     Array.fromList [ 0, 12, 18, 38, 42, 54, 60, 80, 84, 96, 102, 122, 126, 138, 150 ]
+
+
+
+-- FREQUENCY
+
+
+{-| Frequency relative to a fixed pitch of 384 Hz for Di.
+-}
+frequency : Scale -> Degree -> Float
+frequency scale degree =
+    let
+        position =
+            pitchPosition scale degree - 84 |> toFloat
+    in
+    2 ^ (position / 72) * 384
 
 
 

@@ -10,7 +10,7 @@ import Byzantine.Pitch as Pitch exposing (Interval)
 import Byzantine.Scale as Scale exposing (Scale(..))
 import Html exposing (Html, button, div, fieldset, input, label, legend, main_, span, text)
 import Html.Attributes exposing (checked, class, classList, for, id, style, type_)
-import Html.Events exposing (onClick, onFocus, onMouseEnter)
+import Html.Events exposing (onClick, onFocus, onMouseEnter, onMouseLeave)
 import Html.Extra exposing (viewIf, viewMaybe)
 import Icons
 import List.Extra as List
@@ -213,7 +213,8 @@ update msg model =
 view : Model -> Html Msg
 view model =
     main_ [ class "container m-4 flex flex-row" ]
-        [ pitchSpace model
+        [ audio model
+        , pitchSpace model
         , viewControls model
         ]
 
@@ -250,7 +251,10 @@ intervalCol ({ showSpacing } as model) intervals =
                 |> viewMaybe (spacerInterval showSpacing)
                 |> List.singleton
     in
-    div [ class "w-36" ]
+    div
+        [ class "w-36"
+        , onMouseLeave (SelectProposedMovement None)
+        ]
         (spacerTop :: definedIntervals ++ spacerBottom)
 
 
@@ -487,3 +491,23 @@ height h =
 transition : Html.Attribute Msg
 transition =
     class "transition-all duration-500"
+
+
+
+-- AUDIO
+
+
+audio : Model -> Html msg
+audio model =
+    Html.node "chant-engine"
+        (case model.currentPitch of
+            Nothing ->
+                []
+
+            Just pitch ->
+                Pitch.frequency model.scale pitch
+                    |> String.fromFloat
+                    |> Html.Attributes.attribute "ison"
+                    |> List.singleton
+        )
+        []

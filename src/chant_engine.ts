@@ -14,22 +14,26 @@ class ChantEngine extends HTMLElement {
         super();
 
         this.audioContext = new AudioContext();
-
-        this.ison = undefined;
-
+        
         this.mainGainNode = this.audioContext.createGain();
         this.mainGainNode.connect(this.audioContext.destination);
-        this.mainGainNode.gain.value = 0.5;
+        this.mainGainNode.gain.value = 0.2;
 
     }
-
-
+    
+    
     connectedCallback() {
-        // this.makeSillyButton();
+        // console.log("connecting...");
+    }
+
+    disconnectedCallback() {
+        // console.log("disconnecting...");
+        this.stopTone(this.ison);
+        this.audioContext.close();
     }
 
     static get observedAttributes(): string[] { 
-        return ['gain', 'ison', 'melos']; 
+        return ['gain', 'ison', 'melos'];  
     }
 
     attributeChangedCallback(
@@ -39,13 +43,22 @@ class ChantEngine extends HTMLElement {
     ): void {
         switch (name) {
             case "ison":
-                console.log("stopping tone?")
-                this.stopTone(this.ison);
-
-                if (!this.ison) {
-                    // this.ison.stop();
+                const oldFreq = parseFloat(oldValue);
+                const newFreq = parseFloat(newValue);
+                if (this.ison) {
+                    // TODO: if oldFreq == newFreq, some sort of re-articulation
+                    if (newFreq) {
+                        console.log(`changing frequency to ${newFreq}`);
+                        this.ison.frequency.value = newFreq;
+                    } else {
+                        console.log("stopping tone");
+                        this.stopTone(this.ison);
+                        this.ison = undefined;
+                    }
+                } else {
+                    
                     console.log("playing tone")
-                    this.ison = this.playTone(parseFloat(newValue));
+                    this.ison = this.playTone(newFreq);
                 }
                 break;
 

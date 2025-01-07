@@ -5,10 +5,11 @@
   "main": "index.js",
   "scripts": {
     "codegen": "node codegen/run.js",
-    "dev": "concurrently \"npm run tailwind\"  \"npm run start\" \"npx elm-watch hot\"",
+    "dev": "concurrently \"npm run tailwind\" \"npm run start\" \"npx elm-watch hot\" \"npm run watch\"",
+    "start": "node server.js",
     "tailwind": "npx tailwindcss -o public/dist/main.css --watch",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "nodemon --watch 'src/chant_engine.ts' --exec 'ts-node' server.js"
+    "watch": "nodemon --watch 'src/chant_engine.ts' --exec 'tsc'"
   },
   "author": "",
   "license": "ISC",
