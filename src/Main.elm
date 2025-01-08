@@ -9,8 +9,9 @@ import Byzantine.Martyria as Martyria
 import Byzantine.Pitch as Pitch exposing (Interval)
 import Byzantine.Scale as Scale exposing (Scale(..))
 import Html exposing (Html, button, div, fieldset, input, label, legend, main_, span, text)
-import Html.Attributes exposing (checked, class, classList, for, id, style, type_)
-import Html.Events exposing (onClick, onFocus, onMouseEnter, onMouseLeave)
+import Html.Attributes as Attr exposing (checked, class, classList, for, id, style, type_)
+import Html.Attributes.Extra as Attr
+import Html.Events exposing (onClick, onFocus, onInput, onMouseEnter, onMouseLeave)
 import Html.Extra exposing (viewIf, viewMaybe)
 import Icons
 import List.Extra as List
@@ -33,7 +34,9 @@ main =
 
 init : () -> ( Model, Cmd Msg )
 init _ =
-    ( { scale = Diatonic
+    ( { audioSettings =
+            { gain = 0.5 }
+      , scale = Diatonic
       , showSpacing = False
       , currentPitch = Nothing
       , proposedMovement = None
@@ -47,11 +50,16 @@ init _ =
 
 
 type alias Model =
-    { scale : Scale
+    { audioSettings : AudioSettings
+    , scale : Scale
     , showSpacing : Bool
     , currentPitch : Maybe Degree
     , proposedMovement : Movement
     }
+
+
+type alias AudioSettings =
+    { gain : Float }
 
 
 
@@ -184,6 +192,7 @@ shouldHighlight currentPitch proposedMovement interval =
 type Msg
     = SelectPitch (Maybe Degree) (Maybe Movement)
     | SelectProposedMovement Movement
+    | SetGain Float
     | SetScale Scale
     | ToggleSpacing
 
@@ -201,6 +210,15 @@ update msg model =
 
         SelectProposedMovement movement_ ->
             ( { model | proposedMovement = movement_ }
+            , Cmd.none
+            )
+
+        SetGain gain ->
+            let
+                audioSettings =
+                    model.audioSettings
+            in
+            ( { model | audioSettings = { audioSettings | gain = clamp 0 1 gain } }
             , Cmd.none
             )
 
@@ -422,6 +440,7 @@ viewControls model =
         , viewCurrentPitch model.currentPitch
         , clearPitchButton
         , viewProposedMovement model.proposedMovement
+        , gainInput model.audioSettings
         ]
 
 
@@ -444,7 +463,7 @@ viewProposedMovement movement_ =
 spacingButton : Bool -> Html Msg
 spacingButton showSpacing =
     button
-        [ class "bg-gray-100 m-2 p-2 rounded-md"
+        [ buttonClass
         , onClick ToggleSpacing
         ]
         [ text <|
@@ -501,14 +520,48 @@ viewCurrentPitch pitch =
 clearPitchButton : Html Msg
 clearPitchButton =
     button
-        [ class "bg-gray-200 my-2 py-1 px-3 rounded-md"
+        [ buttonClass
         , onClick (SelectPitch Nothing Nothing)
         ]
         [ text "clear" ]
 
 
+gainInput : AudioSettings -> Html Msg
+gainInput { gain } =
+    let
+        ( buttonText, msg ) =
+            if gain > 0 then
+                ( "mute", SetGain 0 )
+
+            else
+                ( "unmute", SetGain 0.2 )
+    in
+    div []
+        [ button
+            [ buttonClass
+            , class "w-24 mr-4"
+            , onClick msg
+            ]
+            [ text buttonText ]
+        , input
+            [ type_ "range"
+            , Attr.min "0"
+            , Attr.max "1"
+            , Attr.step "0.02"
+            , Attr.value <| String.fromFloat gain
+            , onInput (SetGain << Maybe.withDefault gain << String.toFloat)
+            ]
+            []
+        ]
+
+
 
 -- HELPERS
+
+
+buttonClass : Html.Attribute Msg
+buttonClass =
+    class "bg-gray-200 my-2 py-1 px-3 rounded-md"
 
 
 {-| in px
@@ -530,14 +583,16 @@ transition =
 audio : Model -> Html msg
 audio model =
     Html.node "chant-engine"
-        (case model.currentPitch of
+        [ model.audioSettings.gain
+            |> String.fromFloat
+            |> Attr.attribute "gain"
+        , case model.currentPitch of
             Nothing ->
-                []
+                Attr.empty
 
             Just pitch ->
                 Pitch.frequency model.scale pitch
                     |> String.fromFloat
-                    |> Html.Attributes.attribute "ison"
-                    |> List.singleton
-        )
+                    |> Attr.attribute "ison"
+        ]
         []
