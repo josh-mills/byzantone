@@ -135,6 +135,19 @@ movement currentPitch interval =
                 None
 
 
+movementToDegree : Movement -> Maybe Degree
+movementToDegree movement_ =
+    case movement_ of
+        AscendTo degree ->
+            Just degree
+
+        DescendTo degree ->
+            Just degree
+
+        None ->
+            Nothing
+
+
 shouldHighlight : Maybe Degree -> Movement -> Interval -> Bool
 shouldHighlight currentPitch proposedMovement interval =
     Maybe.unwrap False
@@ -169,7 +182,7 @@ shouldHighlight currentPitch proposedMovement interval =
 
 
 type Msg
-    = SelectPitch (Maybe Degree)
+    = SelectPitch (Maybe Degree) (Maybe Movement)
     | SelectProposedMovement Movement
     | SetScale Scale
     | ToggleSpacing
@@ -178,10 +191,10 @@ type Msg
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        SelectPitch pitch ->
+        SelectPitch pitch maybeMovement ->
             ( { model
                 | currentPitch = pitch
-                , proposedMovement = None
+                , proposedMovement = Maybe.withDefault model.proposedMovement maybeMovement
               }
             , Cmd.none
             )
@@ -273,9 +286,9 @@ viewInterval { currentPitch, proposedMovement } interval =
                 movementOfThisInterval =
                     movement currentPitch interval
 
-                movementTo degree =
+                movementTo degree maybeNewMovement =
                     ( viewIntervalCharacter degree
-                    , [ onClick (SelectPitch (Just degree))
+                    , [ onClick (SelectPitch (Just degree) maybeNewMovement)
 
                       -- TODO: onBlur or onMouseLeave? how to handle this?
                       , onFocus (SelectProposedMovement movementOfThisInterval)
@@ -286,10 +299,20 @@ viewInterval { currentPitch, proposedMovement } interval =
             in
             case movementOfThisInterval of
                 AscendTo degree ->
-                    movementTo degree
+                    let
+                        newMovement : Maybe Movement
+                        newMovement =
+                            Maybe.map DescendTo (Degree.step degree -1)
+                    in
+                    movementTo degree newMovement
 
                 DescendTo degree ->
-                    movementTo degree
+                    let
+                        newMovement : Maybe Movement
+                        newMovement =
+                            Maybe.map AscendTo (Degree.step degree 1)
+                    in
+                    movementTo degree newMovement
 
                 None ->
                     ( Html.Extra.nothing, [], div )
@@ -330,11 +353,11 @@ pitchCol model intervals =
     intervalsToPitchHeights intervals
         |> List.map (viewPitch model)
         |> List.reverse
-        |> div []
+        |> div [ class "w-16" ]
 
 
 viewPitch : Model -> PitchHeight -> Html Msg
-viewPitch { scale, showSpacing, currentPitch } pitchHeight =
+viewPitch { scale, showSpacing, currentPitch, proposedMovement } pitchHeight =
     let
         degree =
             Just pitchHeight.degree
@@ -346,6 +369,7 @@ viewPitch { scale, showSpacing, currentPitch } pitchHeight =
             pitchHeight.aboveCenter + pitchHeight.belowCenter |> String.fromInt
 
         spacingText =
+            -- for dev purposes only; will eventually be deleted
             "(" ++ totalHeight ++ " = " ++ String.fromInt pitchHeight.belowCenter ++ " + " ++ String.fromInt pitchHeight.aboveCenter ++ ")"
     in
     div
@@ -355,14 +379,20 @@ viewPitch { scale, showSpacing, currentPitch } pitchHeight =
         , transition
         ]
         [ button
-            [ class "flex px-4 w-full min-w-[40px] hover:text-green-700"
-            , classList [ ( "bg-green-300", showSpacing ) ]
+            [ class "flex px-4 w-full rounded-full"
+            , transition
+            , classList
+                [ ( "bg-green-300", showSpacing ) -- for dev purposes only; will eventually be deleted
+                , ( "text-green-700 bg-slate-200", movementToDegree proposedMovement == degree )
+                , ( "bg-red-200", isCurrentPitch )
+                , ( "hover:text-green-700 hover:bg-slate-200", not isCurrentPitch )
+                ]
             , onClick <|
                 if isCurrentPitch then
-                    SelectPitch Nothing
+                    SelectPitch Nothing Nothing
 
                 else
-                    SelectPitch degree
+                    SelectPitch degree Nothing
             ]
             [ span
                 [ style "padding-top" <| String.fromInt (pitchHeight.aboveCenter * 8) ++ "px"
@@ -472,7 +502,7 @@ clearPitchButton : Html Msg
 clearPitchButton =
     button
         [ class "bg-gray-200 my-2 py-1 px-3 rounded-md"
-        , onClick (SelectPitch Nothing)
+        , onClick (SelectPitch Nothing Nothing)
         ]
         [ text "clear" ]
 
