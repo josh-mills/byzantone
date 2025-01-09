@@ -1,6 +1,7 @@
 module Main exposing (main)
 
 import Browser
+import Browser.Dom as Dom
 import Byzantine.ByzHtml.Interval as Interval
 import Byzantine.ByzHtml.Martyria as Martyria
 import Byzantine.Degree as Degree exposing (Degree(..))
@@ -8,14 +9,16 @@ import Byzantine.IntervalCharacter exposing (..)
 import Byzantine.Martyria as Martyria
 import Byzantine.Pitch as Pitch exposing (Interval)
 import Byzantine.Scale as Scale exposing (Scale(..))
-import Html exposing (Html, button, div, fieldset, input, label, legend, main_, span, text)
+import Html exposing (Html, button, div, fieldset, h1, input, label, legend, main_, p, span, text)
 import Html.Attributes as Attr exposing (checked, class, classList, for, id, style, type_)
 import Html.Attributes.Extra as Attr
 import Html.Events exposing (onClick, onFocus, onInput, onMouseEnter, onMouseLeave)
 import Html.Extra exposing (viewIf, viewMaybe)
 import Icons
+import Json.Decode exposing (Decoder)
 import List.Extra as List
 import Maybe.Extra as Maybe
+import Task
 
 
 
@@ -195,11 +198,16 @@ type Msg
     | SetGain Float
     | SetScale Scale
     | ToggleSpacing
+    | Keydown String
+    | NoOp
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        NoOp ->
+            ( model, Cmd.none )
+
         SelectPitch pitch maybeMovement ->
             ( { model
                 | currentPitch = pitch
@@ -236,6 +244,123 @@ update msg model =
             , Cmd.none
             )
 
+        Keydown key ->
+            let
+                moveAndFocus i =
+                    let
+                        degree =
+                            Maybe.map (\d -> Degree.step d i |> Maybe.withDefault d) model.currentPitch
+                    in
+                    ( { model | currentPitch = degree }
+                    , Maybe.unwrap Cmd.none
+                        (Degree.toString >> (++) "p_" >> Dom.focus >> Task.attempt (always NoOp))
+                        degree
+                    )
+
+                setAndFocus d =
+                    ( { model | currentPitch = Just d }
+                    , Degree.toString d |> (++) "p_" |> Dom.focus |> Task.attempt (always NoOp)
+                    )
+            in
+            case key of
+                "ArrowUp" ->
+                    moveAndFocus 1
+
+                "ArrowDown" ->
+                    moveAndFocus -1
+
+                "Escape" ->
+                    ( { model | currentPitch = Nothing }
+                    , Cmd.none
+                    )
+
+                "1" ->
+                    moveAndFocus 1
+
+                "2" ->
+                    moveAndFocus 2
+
+                "3" ->
+                    moveAndFocus 3
+
+                "4" ->
+                    moveAndFocus 4
+
+                "5" ->
+                    moveAndFocus 5
+
+                "6" ->
+                    moveAndFocus 6
+
+                "7" ->
+                    moveAndFocus 7
+
+                "8" ->
+                    moveAndFocus 8
+
+                "9" ->
+                    moveAndFocus 9
+
+                "!" ->
+                    moveAndFocus -1
+
+                "@" ->
+                    moveAndFocus -2
+
+                "#" ->
+                    moveAndFocus -3
+
+                "$" ->
+                    moveAndFocus -4
+
+                "%" ->
+                    moveAndFocus -5
+
+                "^" ->
+                    moveAndFocus -6
+
+                "&" ->
+                    moveAndFocus -7
+
+                "*" ->
+                    moveAndFocus -8
+
+                "(" ->
+                    moveAndFocus -9
+
+                "n" ->
+                    setAndFocus Ni
+
+                "p" ->
+                    setAndFocus Pa
+
+                "b" ->
+                    setAndFocus Bou
+
+                "v" ->
+                    setAndFocus Bou
+
+                "g" ->
+                    setAndFocus Ga
+
+                "d" ->
+                    setAndFocus Di
+
+                "k" ->
+                    setAndFocus Ke
+
+                "z" ->
+                    setAndFocus Zo_
+
+                _ ->
+                    ( model, Cmd.none )
+
+
+keyDecoder : Decoder Msg
+keyDecoder =
+    Json.Decode.field "key" Json.Decode.string
+        |> Json.Decode.map Keydown
+
 
 
 -- VIEW
@@ -243,10 +368,27 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
-    main_ [ class "container m-4 flex flex-row" ]
+    div
+        [ class "container m-4" ]
         [ audio model
-        , pitchSpace model
-        , viewControls model
+        , header
+        , main_
+            [ class "flex flex-row font-serif"
+            , Html.Events.on "keydown" keyDecoder
+            ]
+            [ pitchSpace model
+            , viewControls model
+            ]
+        ]
+
+
+header : Html Msg
+header =
+    div [ class "flex flex-col mb-4" ]
+        [ h1 [ class "font-heading text-4xl text-center" ]
+            [ text "ByzanTone" ]
+        , p [ class "font-serif text-center" ]
+            [ text "A tool for learning the pitches and intervals of Byzantine chant." ]
         ]
 
 
@@ -398,6 +540,7 @@ viewPitch { scale, showSpacing, currentPitch, proposedMovement } pitchHeight =
         ]
         [ button
             [ class "flex px-4 w-full rounded-full"
+            , id <| "p_" ++ Degree.toString pitchHeight.degree
             , transition
             , classList
                 [ ( "bg-green-300", showSpacing ) -- for dev purposes only; will eventually be deleted
