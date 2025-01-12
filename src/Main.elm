@@ -2,6 +2,7 @@ module Main exposing (main)
 
 import Browser
 import Browser.Dom as Dom
+import Browser.Events
 import Byzantine.ByzHtml.Interval as Interval
 import Byzantine.ByzHtml.Martyria as Martyria
 import Byzantine.Degree as Degree exposing (Degree(..))
@@ -31,20 +32,24 @@ main =
         { init = init
         , view = view
         , update = update
-        , subscriptions = always Sub.none
+        , subscriptions = always (Browser.Events.onResize ViewportResize)
         }
 
 
 init : () -> ( Model, Cmd Msg )
 init _ =
     ( { audioSettings =
-            { gain = 0.5 }
+            { gain = 0.3 }
       , scale = Diatonic
       , showSpacing = False
       , currentPitch = Nothing
       , proposedMovement = None
+      , viewport =
+            { scene = { width = 0, height = 0 }
+            , viewport = { x = 0, y = 0, width = 0, height = 0 }
+            }
       }
-    , Cmd.none
+    , Task.perform GotViewport Dom.getViewport
     )
 
 
@@ -58,6 +63,7 @@ type alias Model =
     , showSpacing : Bool
     , currentPitch : Maybe Degree
     , proposedMovement : Movement
+    , viewport : Dom.Viewport
     }
 
 
@@ -193,20 +199,32 @@ shouldHighlight currentPitch proposedMovement interval =
 
 
 type Msg
-    = SelectPitch (Maybe Degree) (Maybe Movement)
+    = GotViewport Dom.Viewport
+    | ViewportResize Int Int
+    | Keydown String
+    | NoOp
+    | SelectPitch (Maybe Degree) (Maybe Movement)
     | SelectProposedMovement Movement
     | SetGain Float
     | SetScale Scale
     | ToggleSpacing
-    | Keydown String
-    | NoOp
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         NoOp ->
-            ( model, Cmd.none )
+            ( model, Task.perform GotViewport Dom.getViewport )
+
+        GotViewport viewport ->
+            ( { model | viewport = viewport }
+            , Cmd.none
+            )
+
+        ViewportResize _ _ ->
+            ( model
+            , Task.perform GotViewport Dom.getViewport
+            )
 
         SelectPitch pitch maybeMovement ->
             ( { model
@@ -382,6 +400,13 @@ view model =
         ]
 
 
+heightFactor : Dom.Viewport -> Int
+heightFactor viewport =
+    (viewport.viewport.height / 100)
+        |> truncate
+        |> clamp 6 12
+
+
 header : Html Msg
 header =
     div [ class "flex flex-col mb-4" ]
@@ -408,7 +433,7 @@ pitchSpace model =
 
 
 intervalCol : Model -> List Interval -> Html Msg
-intervalCol ({ showSpacing } as model) intervals =
+intervalCol ({ showSpacing, viewport } as model) intervals =
     let
         definedIntervals =
             intervals
@@ -417,11 +442,11 @@ intervalCol ({ showSpacing } as model) intervals =
 
         spacerTop =
             List.last intervals
-                |> viewMaybe (spacerInterval showSpacing)
+                |> viewMaybe (spacerInterval viewport showSpacing)
 
         spacerBottom =
             List.head intervals
-                |> viewMaybe (spacerInterval showSpacing)
+                |> viewMaybe (spacerInterval viewport showSpacing)
                 |> List.singleton
     in
     div
@@ -432,7 +457,7 @@ intervalCol ({ showSpacing } as model) intervals =
 
 
 viewInterval : Model -> Interval -> Html Msg
-viewInterval { currentPitch, proposedMovement } interval =
+viewInterval { currentPitch, proposedMovement, viewport } interval =
     let
         viewIntervalCharacter degree =
             currentPitch
@@ -480,7 +505,7 @@ viewInterval { currentPitch, proposedMovement } interval =
     element
         ([ class "border border-gray-300"
          , class "flex flex-row justify-center w-full"
-         , height (interval.moria * 10)
+         , height (interval.moria * heightFactor viewport)
          , transition
          , classList
             [ ( "bg-slate-200"
@@ -498,10 +523,10 @@ viewInterval { currentPitch, proposedMovement } interval =
         ]
 
 
-spacerInterval : Bool -> Interval -> Html Msg
-spacerInterval showSpacing { moria } =
+spacerInterval : Dom.Viewport -> Bool -> Interval -> Html Msg
+spacerInterval viewport showSpacing { moria } =
     div
-        [ height (moria * 10 // 2)
+        [ height (moria * heightFactor viewport // 2)
         , transition
         , classList [ ( "text-center bg-slate-300", showSpacing ) ]
         ]
@@ -517,7 +542,7 @@ pitchCol model intervals =
 
 
 viewPitch : Model -> PitchHeight -> Html Msg
-viewPitch { scale, showSpacing, currentPitch, proposedMovement } pitchHeight =
+viewPitch { scale, showSpacing, currentPitch, proposedMovement, viewport } pitchHeight =
     let
         degree =
             Just pitchHeight.degree
@@ -535,7 +560,7 @@ viewPitch { scale, showSpacing, currentPitch, proposedMovement } pitchHeight =
     div
         [ classList [ ( "border border-gray-500 bg-slate-200", showSpacing ) ]
         , class "flex flex-row justify-center"
-        , height <| (pitchHeight.belowCenter + pitchHeight.aboveCenter) * 10
+        , height <| (pitchHeight.belowCenter + pitchHeight.aboveCenter) * heightFactor viewport
         , transition
         ]
         [ button
@@ -556,12 +581,12 @@ viewPitch { scale, showSpacing, currentPitch, proposedMovement } pitchHeight =
                     SelectPitch degree Nothing
             ]
             [ span
-                [ style "padding-top" <| String.fromInt (pitchHeight.aboveCenter * 8) ++ "px"
+                [ style "padding-top" <| String.fromInt (pitchHeight.aboveCenter * (heightFactor viewport - 2)) ++ "px"
                 , transition
                 , class "flex flex-row gap-2 absolute"
                 , classList [ ( "text-red-600", isCurrentPitch ) ]
                 ]
-                [ div [ class "text-3xl relative -top-5" ]
+                [ div [ class "text-xl sm:text-3xl relative -top-5" ]
                     [ viewMaybe (Martyria.view << Martyria.for scale) degree ]
                 , viewIf isCurrentPitch <|
                     div [ class "w-4 ms-2" ] [ Icons.xmark ]
