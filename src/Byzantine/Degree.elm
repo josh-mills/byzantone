@@ -1,7 +1,9 @@
-module Byzantine.Degree exposing (Degree(..), baseOctave, gamut, getInterval, indexOf, range, step, toString)
+module Byzantine.Degree exposing (Degree(..), baseOctave, gamut, getInterval, indexOf, range, step, text, toString)
 
 import Array exposing (Array)
 import Byzantine.Scale exposing (Scale(..))
+import Html exposing (Html)
+import Html.Attributes exposing (class)
 
 
 {-| The seven basic scale degrees or steps (παραλλαγή) of the Byzantine system:
@@ -79,6 +81,60 @@ toString degree =
 
         Ga_ ->
             "Ga_"
+
+
+{-| Greek text representation of the degree, e.g., `<span
+class="font-greek">Δι</span>`. No differentiation for different octaves.
+-}
+text : Degree -> Html msg
+text degree =
+    Html.span [ class "font-greek" ]
+        [ case degree of
+            GA ->
+                Html.text "Γα"
+
+            DI ->
+                Html.text "Δι"
+
+            KE ->
+                Html.text "Κε"
+
+            Zo ->
+                Html.text "Ζω"
+
+            Ni ->
+                Html.text "Νη"
+
+            Pa ->
+                Html.text "Πα"
+
+            Bou ->
+                Html.text "Βου"
+
+            Ga ->
+                Html.text "Γα"
+
+            Di ->
+                Html.text "Δι"
+
+            Ke ->
+                Html.text "Κε"
+
+            Zo_ ->
+                Html.text "Ζω"
+
+            Ni_ ->
+                Html.text "Νη"
+
+            Pa_ ->
+                Html.text "Πα"
+
+            Bou_ ->
+                Html.text "Βου"
+
+            Ga_ ->
+                Html.text "Γα"
+        ]
 
 
 gamut : Array Degree

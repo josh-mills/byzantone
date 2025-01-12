@@ -656,7 +656,7 @@ viewCurrentPitch pitch =
                 text "none"
 
             Just p ->
-                text <| Degree.toString p
+                Degree.text p
         ]
 
 
