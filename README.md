@@ -1,31 +1,70 @@
-# Setup
+# ByzanTone
 
-## Running in Dev Mode
+ByzanTone is a tool for learning the pitches and intervals of Byzantine chant.
+It provides an interactive interface to help users understand and practice the
+scales and intervals used in Byzantine music.
 
-Run `npm run dev`. New Tailwind classes will require a page reload.
+## Features
 
-## Building
+- Visualization of Byzantine scales
+- Interactive pitch and interval training
+- Customizable audio settings
+- Real-time feedback on pitch accuracy
 
-TBD...
+## Installation
 
-# Audio Issues
+To install and run ByzanTone locally, follow these steps:
 
-1. The sine wave is nice and all, but there should at least be an onset
-   envelope.
-2. I need different wave forms.
+1. **Clone the repository**:
+    ```sh
+    git clone https://github.com/josh-mills/byzantone.git
+    cd byzantone
+    ```
 
+2. **Install dependencies**: Install the Elm compiler following the instructions
+   [here](elm-install), and Node.js if not
+   already installed. Then install the Node dependencies:
 
-# Content Issues
+    ```sh
+    npm install
+    ```
 
-1. Need the right fonts. I'm still befuddled by this one.
+3. **Run the development server**:
+    ```sh
+    npm run dev
+    ```
 
+4. **Open your browser**:
+    Navigate to `http://localhost:3002` to start using ByzanTone.
 
-# To Consider
+## Usage
 
-- Consider setting this up as an `elm-pages` project, if for no other reason
-  than to get the pre-rendered html.
+### Starting the Application
 
-- See if we can get byzhtml (https://github.com/danielgarthur/byzhtml) included
-  with the build rather than needing the CDN.
+To start the application, run the following command:
+```sh
+npm run dev
+```
 
-- See if you can deploy this using github pages.
+### Keyboard Shortcuts
+
+- `Up/Down Arrow Keys`: step up or down from the currently playing tone
+- `Escape`: stop the currently playing tone
+- `1–9`: ascend 1–9 tones from the currently playing tone
+- `Shift + 1–9`: descend 1–9 tones from the currently playing tone
+
+## Acknowledgements
+
+- Daniel Garthur, for his [byzhtml][byzhtml], which provides custom web
+components for displaying Byzantine Chant neumes in HTML, and for his
+[Standard Byzantine Music Font Layout](SBMuFL) project.
+
+- [Elm](elm), for being a delightful language for front-end development.
+
+[elm]: https://elm-lang.org/
+
+[elm-install]: https://guide.elm-lang.org/install/elm.html
+
+[byzhtml]: https://github.com/danielgarthur/byzhtml
+
+[SBMuFL]: https://github.com/neanes/sbmufl
