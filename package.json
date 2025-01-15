@@ -9,7 +9,7 @@
     "dev": "concurrently \"npm run tailwind\" \"npm run start\" \"npx elm-watch hot\" \"npm run watch\"",
     "start": "node server.js",
     "tailwind": "npx tailwindcss -o public/dist/main.css --watch",
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "npx elm-test",
     "watch": "nodemon --watch 'src/chant_engine.ts' --exec 'tsc'"
   },
   "author": "",
