@@ -25,7 +25,7 @@ when to combine symbols. It's curiously sensitive and looks towards whitespace
 clues.
 
 I wonder if the better way to go about this is to see if you can use the
-underlying font more directly. See <https://danielgarthur.github.io/sbmufl/#/>
+underlying font more directly. See <https://neanes.github.io/sbmufl/#/>
 and <https://github.com/danielgarthur/sbmufl>.
 
 -}
