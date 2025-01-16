@@ -387,7 +387,7 @@ keyDecoder =
 view : Model -> Html Msg
 view model =
     div
-        [ class "container m-4" ]
+        [ class "lg:container m-4 lg:mx-auto" ]
         [ audio model
         , header
         , main_
