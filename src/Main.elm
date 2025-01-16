@@ -19,6 +19,7 @@ import Icons
 import Json.Decode exposing (Decoder)
 import List.Extra as List
 import Maybe.Extra as Maybe
+import Movement exposing (Movement(..))
 import Task
 
 
@@ -127,42 +128,6 @@ intervalsToPitchHeights intervals =
                     }
             in
             firstPitch :: go firstPitch xs
-
-
-type Movement
-    = AscendTo Degree
-    | DescendTo Degree
-    | None
-
-
-movement : Maybe Degree -> Interval -> Movement
-movement currentPitch interval =
-    case currentPitch of
-        Nothing ->
-            None
-
-        Just current ->
-            if Degree.indexOf interval.to > Degree.indexOf current then
-                AscendTo interval.to
-
-            else if Degree.indexOf interval.from < Degree.indexOf current then
-                DescendTo interval.from
-
-            else
-                None
-
-
-movementToDegree : Movement -> Maybe Degree
-movementToDegree movement_ =
-    case movement_ of
-        AscendTo degree ->
-            Just degree
-
-        DescendTo degree ->
-            Just degree
-
-        None ->
-            Nothing
 
 
 shouldHighlight : Maybe Degree -> Movement -> Interval -> Bool
@@ -469,7 +434,7 @@ viewInterval { currentPitch, proposedMovement, viewport } interval =
         ( maybeIntervalCharacter, attrs, element ) =
             let
                 movementOfThisInterval =
-                    movement currentPitch interval
+                    Movement.ofInterval currentPitch interval
 
                 movementTo degree maybeNewMovement =
                     ( viewIntervalCharacter degree
@@ -569,7 +534,7 @@ viewPitch { scale, showSpacing, currentPitch, proposedMovement, viewport } pitch
             , transition
             , classList
                 [ ( "bg-green-300", showSpacing ) -- for dev purposes only; will eventually be deleted
-                , ( "text-green-700 bg-slate-200", movementToDegree proposedMovement == degree )
+                , ( "text-green-700 bg-slate-200", Movement.toDegree proposedMovement == degree )
                 , ( "bg-red-200", isCurrentPitch )
                 , ( "hover:text-green-700 hover:bg-slate-200", not isCurrentPitch )
                 ]
