@@ -22,6 +22,11 @@ import Movement exposing (Movement(..))
 import Update exposing (Msg(..))
 
 
+debuggingLayout : Bool
+debuggingLayout =
+    False
+
+
 
 -- VIEW
 
@@ -257,27 +262,10 @@ viewControls : Model -> Html Msg
 viewControls model =
     div []
         [ spacingButton model.showSpacing
+            |> viewIf debuggingLayout
         , selectScale model
         , viewCurrentPitch model.currentPitch
-        , clearPitchButton
-        , viewProposedMovement model.proposedMovement
         , gainInput model.audioSettings
-        ]
-
-
-viewProposedMovement : Movement -> Html Msg
-viewProposedMovement movement_ =
-    div []
-        [ text <| "Proposed Movement: "
-        , case movement_ of
-            AscendTo degree ->
-                text <| "ascend to " ++ Degree.toString degree
-
-            DescendTo degree ->
-                text <| "descend to " ++ Degree.toString degree
-
-            None ->
-                text "none"
         ]
 
 
@@ -307,6 +295,7 @@ selectScale model =
             div []
                 [ input
                     [ type_ "radio"
+                    , Attr.name "scale"
                     , onClick (SetScale scale)
                     , class "cursor-pointer m-2"
                     , id <| "select" ++ scaleName
@@ -321,7 +310,7 @@ selectScale model =
                 ]
     in
     fieldset [] <|
-        legend [] [ text "Select scale" ]
+        legend [] [ text "Select scale:" ]
             :: List.map radioOption Scale.all
 
 
@@ -335,6 +324,7 @@ viewCurrentPitch pitch =
 
             Just p ->
                 Degree.text p
+        , viewIf (Maybe.isJust pitch) clearPitchButton
         ]
 
 
@@ -342,6 +332,7 @@ clearPitchButton : Html Msg
 clearPitchButton =
     button
         [ buttonClass
+        , class "mx-2"
         , onClick (SelectPitch Nothing Nothing)
         ]
         [ text "clear" ]
