@@ -2,9 +2,10 @@
 
 ByzanTone is a tool for learning the pitches and intervals of Byzantine chant.
 It provides an interactive interface to help users understand and practice the
-scales and intervals used in Byzantine music.
+scales and intervals used in Byzantine music. ByzanTone is deployed on GitHub
+Pages and is publicly available at [josh-mills.github.io/byzantone/](gh-pages).
 
-## Features
+## Features (in development)
 
 - Visualization of Byzantine scales
 - Interactive pitch and interval training
@@ -33,17 +34,17 @@ To install and run ByzanTone locally, follow these steps:
     ```sh
     npm run dev
     ```
-
-4. **Open your browser**:
-    Navigate to `http://localhost:3002` to start using ByzanTone.
+    This will run the application in development watch mode at
+    `http://localhost:3002`.
 
 ## Usage
 
 ### Starting the Application
 
-To start the application, run the following command:
+ByzanTone is publicly available at [GitHub Pages](gh-pages), but can also be run
+locally. To build and start the application, run the following command:
 ```sh
-npm run dev
+npm run build && npm run start
 ```
 
 ### Keyboard Shortcuts
@@ -55,16 +56,19 @@ npm run dev
 
 ## Acknowledgements
 
-- Daniel Garthur, for his [byzhtml][byzhtml], which provides custom web
+- Daniel Garthur, for his [byzhtml](byzhtml), which provides custom web
 components for displaying Byzantine Chant neumes in HTML, and for his
 [Standard Byzantine Music Font Layout](SBMuFL) project.
 
 - [Elm](elm), for being a delightful language for front-end development.
 
-[elm]: https://elm-lang.org/
+- John Michael Boyer, for his _[Byzantine Chant: The Received
+  Tradition](boyer)_, a monument of psaltic pedagogy unparalleled in the
+  anglophone world. 
 
-[elm-install]: https://guide.elm-lang.org/install/elm.html
-
+[boyer]: https://byzchantlessonbook.com/
 [byzhtml]: https://github.com/danielgarthur/byzhtml
-
+[elm-install]: https://guide.elm-lang.org/install/elm.html
+[elm]: https://elm-lang.org/
+[gh-pages]: https://josh-mills.github.io/byzantone/.
 [SBMuFL]: https://github.com/neanes/sbmufl
