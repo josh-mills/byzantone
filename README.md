@@ -66,9 +66,15 @@ components for displaying Byzantine Chant neumes in HTML, and for his
   Tradition](boyer)_, a monument of psaltic pedagogy unparalleled in the
   anglophone world. 
 
+
 [boyer]: https://byzchantlessonbook.com/
+
 [byzhtml]: https://github.com/danielgarthur/byzhtml
+
 [elm-install]: https://guide.elm-lang.org/install/elm.html
+
 [elm]: https://elm-lang.org/
+
 [gh-pages]: https://josh-mills.github.io/byzantone/.
+
 [SBMuFL]: https://github.com/neanes/sbmufl
