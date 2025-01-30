@@ -8,7 +8,7 @@ import Byzantine.IntervalCharacter exposing (..)
 import Byzantine.Martyria as Martyria
 import Byzantine.Pitch as Pitch exposing (Interval)
 import Byzantine.Scale as Scale exposing (Scale(..))
-import Html exposing (Html, button, div, fieldset, h1, input, label, legend, main_, p, span, text)
+import Html exposing (Html, button, div, fieldset, h1, h2, input, label, legend, main_, p, span, text)
 import Html.Attributes as Attr exposing (checked, class, classList, for, id, style, type_)
 import Html.Attributes.Extra as Attr
 import Html.Events exposing (onClick, onFocus, onInput, onMouseEnter, onMouseLeave)
@@ -17,7 +17,7 @@ import Icons
 import Json.Decode exposing (Decoder)
 import List.Extra as List
 import Maybe.Extra as Maybe
-import Model exposing (AudioSettings, Model)
+import Model exposing (AudioSettings, Modal(..), Model)
 import Movement exposing (Movement(..))
 import Update exposing (Msg(..))
 
@@ -34,17 +34,41 @@ debuggingLayout =
 view : Model -> Html Msg
 view model =
     div
-        [ class "lg:container m-4 lg:mx-auto" ]
+        [ class "p-4" ]
         [ audio model
-        , header
+        , backdrop model
+        , header model
+        , viewModal model
+        , viewIf model.showSpacing (div [ class "text-center" ] [ text "|" ])
+        , viewIf model.menuOpen menu
         , main_
-            [ class "flex flex-row font-serif"
+            [ class "lg:container lg:mx-auto flex flex-row flex-wrap-reverse font-serif"
             , Html.Events.on "keydown" keyDecoder
+            , Attr.attributeIf model.menuOpen (onClick ToggleMenu)
             ]
             [ pitchSpace model
             , viewControls model
             ]
         ]
+
+
+backdrop : Model -> Html Msg
+backdrop model =
+    let
+        show =
+            model.menuOpen || Model.modalOpen model.modal
+    in
+    div
+        [ class "fixed top-0 left-0 w-full h-full"
+        , transition
+        , classList
+            [ ( "-z-10", not show )
+            , ( "bg-slate-400 opacity-40 z-10", show )
+            ]
+        , Attr.attributeIf model.menuOpen (onClick ToggleMenu)
+        , Attr.attributeIf (Model.modalOpen model.modal) (onClick (SelectModal NoModal))
+        ]
+        []
 
 
 audio : Model -> Html msg
@@ -65,14 +89,83 @@ audio model =
         []
 
 
-header : Html Msg
-header =
-    div [ class "flex flex-col mb-4" ]
-        [ h1 [ class "font-heading text-4xl text-center" ]
-            [ text "ByzanTone" ]
-        , p [ class "font-serif text-center" ]
-            [ text "A tool for learning the pitches and intervals of Byzantine chant." ]
+header : Model -> Html Msg
+header model =
+    Html.header
+        [ class "flex flex-row justify-center"
         ]
+        [ div [ class "w-7" ] []
+        , div [ class "flex-1 flex flex-col mb-4 mx-4" ]
+            [ h1 [ class "font-heading text-4xl text-center" ]
+                [ text "ByzanTone" ]
+            , p [ class "font-serif text-center" ]
+                [ text "A tool for learning the pitches and intervals of Byzantine chant." ]
+            , viewIf model.showSpacing (p [ class "text-center" ] [ text "|" ])
+            ]
+        , button
+            [ class "w-7 mt-2 self-start"
+            , onClick ToggleMenu
+            ]
+            [ Icons.bars ]
+        ]
+
+
+{-| TODO: give this a drawer effect
+-}
+menu : Html Msg
+menu =
+    let
+        menuItem modal =
+            Html.li []
+                [ button
+                    [ class "p-2 hover:bg-gray-200 w-full"
+                    , transition
+                    , onClick (SelectModal modal)
+                    ]
+                    [ text (Model.modalToString modal) ]
+                ]
+    in
+    Html.ul
+        [ class "fixed top-0 right-0 z-50 bg-white border border-gray-300 rounded-md shadow-md"
+        , class "font-serif"
+        , id "menu"
+        , Html.Events.on "keydown" keyDecoder
+        ]
+        [ menuItem AboutModal
+        , menuItem SettingsModal
+        ]
+
+
+{-| TODO: positioning still needs work.
+-}
+viewModal : Model -> Html Msg
+viewModal model =
+    case model.modal of
+        NoModal ->
+            Html.Extra.nothing
+
+        _ ->
+            Html.node "dialog"
+                [ class "fixed inset-1/4 top-24 w-3/4 md:w-1/2 z-10"
+                , class "flex flex-col"
+                , class "bg-white"
+                , class "border border-gray-300 rounded-md shadow-md"
+                , id "modal"
+                ]
+                [ h2 [ class "flex flex-row justify-between" ]
+                    [ span [ class "font-heading text-2xl" ]
+                        [ text (Model.modalToString model.modal) ]
+                    , button
+                        [ class "w-8 p-2"
+                        , onClick (SelectModal NoModal)
+                        ]
+                        [ Icons.xmark ]
+                    ]
+                ]
+
+
+
+-- PITCH SPACE
 
 
 pitchSpace : Model -> Html Msg
@@ -435,6 +528,9 @@ keyDecoder =
 
 
 {-| These are fundamentally view concerns, not domain types.
+
+TODO: move to own module?
+
 -}
 type alias PitchHeight =
     { degree : Degree
@@ -445,34 +541,6 @@ type alias PitchHeight =
 
 intervalsToPitchHeights : List Interval -> List PitchHeight
 intervalsToPitchHeights intervals =
-    let
-        go : PitchHeight -> List Interval -> List PitchHeight
-        go prev rest =
-            case rest of
-                [] ->
-                    []
-
-                x :: [] ->
-                    [ { degree = x.from
-                      , belowCenter = prev.aboveCenter
-                      , aboveCenter = x.moria // 2
-                      }
-                    , { degree = x.to
-                      , belowCenter = x.moria // 2
-                      , aboveCenter = x.moria // 2
-                      }
-                    ]
-
-                x :: xs ->
-                    let
-                        next =
-                            { degree = x.from
-                            , belowCenter = prev.aboveCenter
-                            , aboveCenter = x.moria // 2
-                            }
-                    in
-                    next :: go next xs
-    in
     case intervals of
         [] ->
             []
@@ -485,4 +553,32 @@ intervalsToPitchHeights intervals =
                     , aboveCenter = x.moria // 2
                     }
             in
-            firstPitch :: go firstPitch xs
+            firstPitch :: intervalsToPitchHeightsHelper firstPitch xs
+
+
+intervalsToPitchHeightsHelper : PitchHeight -> List Interval -> List PitchHeight
+intervalsToPitchHeightsHelper prev rest =
+    case rest of
+        [] ->
+            []
+
+        x :: [] ->
+            [ { degree = x.from
+              , belowCenter = prev.aboveCenter
+              , aboveCenter = x.moria // 2
+              }
+            , { degree = x.to
+              , belowCenter = x.moria // 2
+              , aboveCenter = x.moria // 2
+              }
+            ]
+
+        x :: xs ->
+            let
+                next =
+                    { degree = x.from
+                    , belowCenter = prev.aboveCenter
+                    , aboveCenter = x.moria // 2
+                    }
+            in
+            next :: intervalsToPitchHeightsHelper next xs

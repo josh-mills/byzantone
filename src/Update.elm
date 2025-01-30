@@ -4,20 +4,24 @@ import Browser.Dom as Dom
 import Byzantine.Degree as Degree exposing (Degree(..))
 import Byzantine.Scale exposing (Scale)
 import Maybe.Extra as Maybe
-import Model exposing (Model)
+import Model exposing (Modal, Model)
 import Movement exposing (Movement)
+import Platform.Cmd as Cmd
 import Task
 
 
 type Msg
-    = GotViewport Dom.Viewport
+    = DomResult (Result Dom.Error ())
+    | GotViewport Dom.Viewport
     | ViewportResize Int Int
     | Keydown String
     | NoOp
+    | SelectModal Modal
     | SelectPitch (Maybe Degree) (Maybe Movement)
     | SelectProposedMovement Movement
     | SetGain Float
     | SetScale Scale
+    | ToggleMenu
     | ToggleSpacing
 
 
@@ -27,6 +31,10 @@ update msg model =
         NoOp ->
             ( model, Task.perform GotViewport Dom.getViewport )
 
+        DomResult _ ->
+            -- just for dev purposes
+            ( model, Cmd.none )
+
         GotViewport viewport ->
             ( { model | viewport = viewport }
             , Cmd.none
@@ -35,6 +43,15 @@ update msg model =
         ViewportResize _ _ ->
             ( model
             , Task.perform GotViewport Dom.getViewport
+            )
+
+        SelectModal modal ->
+            ( { model | modal = modal, menuOpen = False }
+            , if Model.modalOpen modal then
+                focus "modal"
+
+              else
+                Cmd.none
             )
 
         SelectPitch pitch maybeMovement ->
@@ -68,6 +85,15 @@ update msg model =
             , Cmd.none
             )
 
+        ToggleMenu ->
+            ( { model | menuOpen = not model.menuOpen }
+            , if not model.menuOpen then
+                focus "menu"
+
+              else
+                Cmd.none
+            )
+
         ToggleSpacing ->
             ( { model | showSpacing = not model.showSpacing }
             , Cmd.none
@@ -82,13 +108,13 @@ update msg model =
                     in
                     ( { model | currentPitch = degree }
                     , Maybe.unwrap Cmd.none
-                        (Degree.toString >> (++) "p_" >> Dom.focus >> Task.attempt (always NoOp))
+                        (Degree.toString >> (++) "p_" >> Dom.focus >> Task.attempt DomResult)
                         degree
                     )
 
                 setAndFocus d =
                     ( { model | currentPitch = Just d }
-                    , Degree.toString d |> (++) "p_" |> Dom.focus |> Task.attempt (always NoOp)
+                    , Degree.toString d |> (++) "p_" |> Dom.focus |> Task.attempt DomResult
                     )
             in
             case key of
@@ -99,9 +125,15 @@ update msg model =
                     moveAndFocus -1
 
                 "Escape" ->
-                    ( { model | currentPitch = Nothing }
-                    , Cmd.none
-                    )
+                    if model.menuOpen then
+                        ( { model | menuOpen = False }
+                        , Task.attempt DomResult (Dom.blur "menu")
+                        )
+
+                    else
+                        ( { model | currentPitch = Nothing }
+                        , Cmd.none
+                        )
 
                 "1" ->
                     moveAndFocus 1
@@ -183,3 +215,8 @@ update msg model =
 
                 _ ->
                     ( model, Cmd.none )
+
+
+focus : String -> Cmd Msg
+focus id =
+    Task.attempt DomResult (Dom.focus id)
