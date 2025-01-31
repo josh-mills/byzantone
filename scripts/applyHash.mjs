@@ -29,7 +29,7 @@ function rename(file) {
   const newPath = fullPath.replace(`.${ext}`, `.${hash}.${ext}`);
   
   fs.renameSync(fullPath, newPath);
-  console.log(`renamed ${file} to ${newPath}`);
+  console.log(`renamed ${fullPath} to ${newPath}`);
 
   // update references
 
