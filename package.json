@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "build": "rm -rf public/dist && tsc && npx tailwindcss -o public/dist/main.css --minify && npx elm-watch make --optimize",
+    "build": "rm -rf public/dist && tsc && npx tailwindcss -o public/dist/main.css --minify && npx elm-watch make --optimize && node scripts/applyHash.mjs",
     "codegen": "node codegen/run.js",
     "dev": "concurrently \"npm run tailwind\" \"npm run start\" \"npx elm-watch hot\" \"npm run watch\"",
     "start": "node server.js",
