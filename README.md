@@ -2,9 +2,11 @@
 
 ByzanTone is a tool for learning the pitches and intervals of Byzantine chant.
 It provides an interactive interface to help users understand and practice the
-scales and intervals used in Byzantine music.
+scales and intervals used in Byzantine music. ByzanTone is deployed on GitHub
+Pages and is publicly available at
+[josh-mills.github.io/byzantone/](https://josh-mills.github.io/byzantone/).
 
-## Features
+## Features (in development)
 
 - Visualization of Byzantine scales
 - Interactive pitch and interval training
@@ -22,7 +24,7 @@ To install and run ByzanTone locally, follow these steps:
     ```
 
 2. **Install dependencies**: Install the Elm compiler following the instructions
-   [here](elm-install), and Node.js if not
+   [here](https://guide.elm-lang.org/install/elm.html), and Node.js if not
    already installed. Then install the Node dependencies:
 
     ```sh
@@ -33,17 +35,18 @@ To install and run ByzanTone locally, follow these steps:
     ```sh
     npm run dev
     ```
-
-4. **Open your browser**:
-    Navigate to `http://localhost:3002` to start using ByzanTone.
+    This will run the application in development watch mode at
+    `http://localhost:3002`.
 
 ## Usage
 
 ### Starting the Application
 
-To start the application, run the following command:
+ByzanTone is publicly available at [GitHub
+Pages](https://josh-mills.github.io/byzantone/), but can also be run locally. To
+build and start the application, run the following command:
 ```sh
-npm run dev
+npm run build && npm run start
 ```
 
 ### Keyboard Shortcuts
@@ -55,16 +58,14 @@ npm run dev
 
 ## Acknowledgements
 
-- Daniel Garthur, for his [byzhtml][byzhtml], which provides custom web
-components for displaying Byzantine Chant neumes in HTML, and for his
-[Standard Byzantine Music Font Layout](SBMuFL) project.
+- Daniel Garthur, for his [byzhtml](https://github.com/danielgarthur/byzhtml),
+  which provides custom web components for displaying Byzantine Chant neumes in
+  HTML, and for his [Standard Byzantine Music Font
+  Layout](https://github.com/neanes/sbmufl) project.
 
-- [Elm](elm), for being a delightful language for front-end development.
+- [Elm](https://elm-lang.org/), for being a delightful language for front-end
+  development.
 
-[elm]: https://elm-lang.org/
-
-[elm-install]: https://guide.elm-lang.org/install/elm.html
-
-[byzhtml]: https://github.com/danielgarthur/byzhtml
-
-[SBMuFL]: https://github.com/neanes/sbmufl
+- John Michael Boyer, for his _[Byzantine Chant: The Received
+  Tradition](https://byzchantlessonbook.com/)_, a monument of psaltic pedagogy
+  unparalleled in the anglophone world.

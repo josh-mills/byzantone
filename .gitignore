@@ -3,5 +3,5 @@
 codegen/Gen
 elm-stuff
 node_modules
-public/dist
+public
 resources
