@@ -8,6 +8,7 @@ import Byzantine.IntervalCharacter exposing (..)
 import Byzantine.Martyria as Martyria
 import Byzantine.Pitch as Pitch exposing (Interval)
 import Byzantine.Scale as Scale exposing (Scale(..))
+import Copy
 import Html exposing (Html, button, div, fieldset, h1, h2, input, label, legend, main_, p, span, text)
 import Html.Attributes as Attr exposing (checked, class, classList, for, id, style, type_)
 import Html.Attributes.Extra as Attr
@@ -149,10 +150,10 @@ viewModal model =
                 [ class "fixed inset-1/4 top-24 w-3/4 md:w-1/2 z-10"
                 , class "flex flex-col"
                 , class "bg-white"
-                , class "border border-gray-300 rounded-md shadow-md"
+                , class "border border-gray-300 rounded-md shadow-md font-serif"
                 , id "modal"
                 ]
-                [ h2 [ class "flex flex-row justify-between" ]
+                [ h2 [ class "flex flex-row justify-between mb-1" ]
                     [ span [ class "font-heading text-2xl" ]
                         [ text (Model.modalToString model.modal) ]
                     , button
@@ -161,7 +162,21 @@ viewModal model =
                         ]
                         [ Icons.xmark ]
                     ]
+                , modalContent model.modal
                 ]
+
+
+modalContent : Modal -> Html Msg
+modalContent modal =
+    case modal of
+        NoModal ->
+            Html.Extra.nothing
+
+        AboutModal ->
+            Copy.about
+
+        SettingsModal ->
+            div [] [ text "settings..." ]
 
 
 
