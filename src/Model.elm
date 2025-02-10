@@ -1,4 +1,4 @@
-module Model exposing (AudioSettings, Model, initialModel)
+module Model exposing (AudioSettings, Modal(..), Model, Register(..), adjustPitch, initialModel, modalOpen, modalToString)
 
 import Browser.Dom as Dom
 import Byzantine.Degree exposing (Degree)
@@ -10,6 +10,8 @@ type alias Model =
     { audioSettings : AudioSettings
     , scale : Scale
     , showSpacing : Bool
+    , modal : Modal
+    , menuOpen : Bool
     , currentPitch : Maybe Degree
     , proposedMovement : Movement
     , viewport : Dom.Viewport
@@ -17,15 +19,36 @@ type alias Model =
 
 
 type alias AudioSettings =
-    { gain : Float }
+    { gain : Float
+    , register : Register
+    }
+
+
+type Register
+    = Treble
+    | Bass
+
+
+adjustPitch : Register -> Float -> Float
+adjustPitch register pitch =
+    case register of
+        Treble ->
+            pitch
+
+        Bass ->
+            pitch / 2
 
 
 initialModel : Model
 initialModel =
     { audioSettings =
-        { gain = 0.3 }
+        { gain = 0.3
+        , register = Treble
+        }
     , scale = Diatonic
     , showSpacing = False
+    , modal = NoModal
+    , menuOpen = False
     , currentPitch = Nothing
     , proposedMovement = None
     , viewport =
@@ -33,3 +56,36 @@ initialModel =
         , viewport = { x = 0, y = 0, width = 0, height = 0 }
         }
     }
+
+
+
+-- MODAL
+
+
+type Modal
+    = NoModal
+    | AboutModal
+    | SettingsModal
+
+
+modalToString : Modal -> String
+modalToString modal =
+    case modal of
+        NoModal ->
+            ""
+
+        AboutModal ->
+            "About"
+
+        SettingsModal ->
+            "Settings"
+
+
+modalOpen : Modal -> Bool
+modalOpen modal =
+    case modal of
+        NoModal ->
+            False
+
+        _ ->
+            True
