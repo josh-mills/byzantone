@@ -39,7 +39,11 @@ aboutTheAuthor =
         [ text """ByzanTone is written and maintained by Josh Mills, a software engineer, a conservatory-trained composer and music theorist, and a Greek Orthodox chanter living in western Massachusetts. """
         , text "This is an open-source project; code is available at "
         , externalLink "https://github.com/josh-mills/byzantone" "GitHub"
-        , text "."
+        , text ". "
+        , text """
+This is also a work-in-progress and is available as a beta release despite its minimal current feature set.
+Please check in periodically for added features and other improvements.
+"""
         ]
 
 
