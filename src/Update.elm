@@ -4,7 +4,7 @@ import Browser.Dom as Dom
 import Byzantine.Degree as Degree exposing (Degree(..))
 import Byzantine.Scale exposing (Scale)
 import Maybe.Extra as Maybe
-import Model exposing (Modal, Model)
+import Model exposing (Modal, Model, Register(..))
 import Movement exposing (Movement)
 import Platform.Cmd as Cmd
 import Task
@@ -20,6 +20,7 @@ type Msg
     | SelectPitch (Maybe Degree) (Maybe Movement)
     | SelectProposedMovement Movement
     | SetGain Float
+    | SetRegister Register
     | SetScale Scale
     | ToggleMenu
     | ToggleSpacing
@@ -73,6 +74,15 @@ update msg model =
                     model.audioSettings
             in
             ( { model | audioSettings = { audioSettings | gain = clamp 0 1 gain } }
+            , Cmd.none
+            )
+
+        SetRegister register ->
+            let
+                audioSettings =
+                    model.audioSettings
+            in
+            ( { model | audioSettings = { audioSettings | register = register } }
             , Cmd.none
             )
 

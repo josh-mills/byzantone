@@ -18,7 +18,7 @@ import Icons
 import Json.Decode exposing (Decoder)
 import List.Extra as List
 import Maybe.Extra as Maybe
-import Model exposing (AudioSettings, Modal(..), Model)
+import Model exposing (AudioSettings, Modal(..), Model, Register(..), adjustPitch)
 import Movement exposing (Movement(..))
 import Update exposing (Msg(..))
 
@@ -84,6 +84,7 @@ audio model =
 
             Just pitch ->
                 Pitch.frequency model.scale pitch
+                    |> adjustPitch model.audioSettings.register
                     |> String.fromFloat
                     |> Attr.attribute "ison"
         ]
@@ -162,13 +163,13 @@ viewModal model =
                         ]
                         [ Icons.xmark ]
                     ]
-                , modalContent model.modal
+                , modalContent model
                 ]
 
 
-modalContent : Modal -> Html Msg
-modalContent modal =
-    case modal of
+modalContent : Model -> Html Msg
+modalContent model =
+    case model.modal of
         NoModal ->
             Html.Extra.nothing
 
@@ -176,7 +177,51 @@ modalContent modal =
             Copy.about
 
         SettingsModal ->
-            div [] [ text "settings..." ]
+            settings model
+
+
+{-| TODO: create a radio input helper if this pattern comes up in more places.
+-}
+settings : Model -> Html Msg
+settings model =
+    let
+        radioOption register =
+            let
+                registerName =
+                    case register of
+                        Treble ->
+                            "Treble"
+
+                        Bass ->
+                            "Bass"
+            in
+            div []
+                [ input
+                    [ type_ "radio"
+                    , Attr.name "register"
+                    , onClick (SetRegister register)
+                    , class "cursor-pointer m-2"
+                    , id <| "select" ++ registerName
+                    , checked (model.audioSettings.register == register)
+                    ]
+                    []
+                , label
+                    [ for <| "select" ++ registerName
+                    , class "cursor-pointer"
+                    ]
+                    [ text registerName ]
+                ]
+    in
+    div []
+        [ spacingButton model.showSpacing
+            |> viewIf debuggingLayout
+        , fieldset []
+            [ legend [] [ text "Register" ]
+            , radioOption Treble
+            , radioOption Bass
+            ]
+        , gainInput model.audioSettings
+        ]
 
 
 
@@ -369,9 +414,7 @@ viewPitch { scale, showSpacing, currentPitch, proposedMovement, viewport } pitch
 viewControls : Model -> Html Msg
 viewControls model =
     div []
-        [ spacingButton model.showSpacing
-            |> viewIf debuggingLayout
-        , selectScale model
+        [ selectScale model
         , viewCurrentPitch model.currentPitch
         , gainInput model.audioSettings
         ]
