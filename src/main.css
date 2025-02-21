@@ -1,0 +1,14 @@
+@import "tailwindcss";
+
+
+.font-greek {
+    font-family: 'Gentium Plus', serif;
+}
+
+.font-heading {
+    font-family: 'IM Fell Double Pica';
+}
+
+.font-serif {
+    font-family: 'Lora', serif;
+}
