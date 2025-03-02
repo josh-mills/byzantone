@@ -1,13 +1,13 @@
 module View exposing (view)
 
-import AudioSettings exposing (AudioSettings, Register(..), adjustPitch)
+import AudioSettings exposing (AudioSettings)
 import Browser.Dom as Dom
 import Byzantine.ByzHtml.Interval as Interval
 import Byzantine.ByzHtml.Martyria as Martyria
 import Byzantine.Degree as Degree exposing (Degree(..))
 import Byzantine.IntervalCharacter exposing (..)
 import Byzantine.Martyria as Martyria
-import Byzantine.Pitch as Pitch exposing (Interval)
+import Byzantine.Pitch as Pitch exposing (Interval, PitchStandard(..), Register(..))
 import Byzantine.Scale as Scale exposing (Scale(..))
 import Copy
 import Html exposing (Html, button, div, h1, h2, input, main_, p, span, text)
@@ -85,8 +85,7 @@ audio model =
                 Attr.empty
 
             Just pitch ->
-                Pitch.frequency model.scale pitch
-                    |> adjustPitch model.audioSettings.register
+                Pitch.frequency model.audioSettings.pitchStandard model.audioSettings.register model.scale pitch
                     |> String.fromFloat
                     |> Attr.attribute "ison"
         ]
@@ -200,6 +199,20 @@ settings model =
             , onSelect = SetRegister
             , options = [ Treble, Bass ]
             , selected = model.audioSettings.register
+            }
+        , RadioFieldset.view
+            { itemToString =
+                \pitchStandard ->
+                    case pitchStandard of
+                        Ni256 ->
+                            "Ni256"
+
+                        Ke440 ->
+                            "Ke440"
+            , legendText = "Pitch Standard"
+            , onSelect = SetPitchStandard
+            , options = [ Ni256, Ke440 ]
+            , selected = model.audioSettings.pitchStandard
             }
         , gainInput model.audioSettings
         ]

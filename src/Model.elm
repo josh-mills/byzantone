@@ -1,6 +1,6 @@
 module Model exposing (Modal(..), Model, initialModel, modalOpen, modalToString)
 
-import AudioSettings exposing (AudioSettings, Register(..))
+import AudioSettings exposing (AudioSettings)
 import Browser.Dom as Dom
 import Byzantine.Degree exposing (Degree)
 import Byzantine.Scale exposing (Scale(..))
@@ -21,10 +21,7 @@ type alias Model =
 
 initialModel : Model
 initialModel =
-    { audioSettings =
-        { gain = 0.3
-        , register = Treble
-        }
+    { audioSettings = AudioSettings.defaultAudioSettings
     , scale = Diatonic
     , showSpacing = False
     , modal = NoModal

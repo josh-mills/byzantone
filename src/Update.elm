@@ -1,8 +1,8 @@
 module Update exposing (Msg(..), update)
 
-import AudioSettings exposing (Register)
 import Browser.Dom as Dom
 import Byzantine.Degree as Degree exposing (Degree(..))
+import Byzantine.Pitch exposing (PitchStandard, Register)
 import Byzantine.Scale exposing (Scale)
 import Maybe.Extra as Maybe
 import Model exposing (Modal, Model)
@@ -21,6 +21,7 @@ type Msg
     | SelectPitch (Maybe Degree) (Maybe Movement)
     | SelectProposedMovement Movement
     | SetGain Float
+    | SetPitchStandard PitchStandard
     | SetRegister Register
     | SetScale Scale
     | ToggleMenu
@@ -75,6 +76,15 @@ update msg model =
                     model.audioSettings
             in
             ( { model | audioSettings = { audioSettings | gain = clamp 0 1 gain } }
+            , Cmd.none
+            )
+
+        SetPitchStandard pitchStandard ->
+            let
+                audioSettings =
+                    model.audioSettings
+            in
+            ( { model | audioSettings = { audioSettings | pitchStandard = pitchStandard } }
             , Cmd.none
             )
 

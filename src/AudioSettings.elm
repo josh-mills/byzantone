@@ -1,22 +1,19 @@
-module AudioSettings exposing (AudioSettings, Register(..), adjustPitch)
+module AudioSettings exposing (AudioSettings, defaultAudioSettings)
+
+import Byzantine.Degree exposing (Degree(..))
+import Byzantine.Pitch exposing (PitchStandard(..), Register(..))
 
 
 type alias AudioSettings =
     { gain : Float
+    , pitchStandard : PitchStandard
     , register : Register
     }
 
 
-type Register
-    = Treble
-    | Bass
-
-
-adjustPitch : Register -> Float -> Float
-adjustPitch register pitch =
-    case register of
-        Treble ->
-            pitch
-
-        Bass ->
-            pitch / 2
+defaultAudioSettings : AudioSettings
+defaultAudioSettings =
+    { gain = 0.3
+    , pitchStandard = Ni256
+    , register = Treble
+    }
