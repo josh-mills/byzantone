@@ -1,5 +1,6 @@
 module View exposing (view)
 
+import AudioSettings exposing (AudioSettings, Register(..), adjustPitch)
 import Browser.Dom as Dom
 import Byzantine.ByzHtml.Interval as Interval
 import Byzantine.ByzHtml.Martyria as Martyria
@@ -18,7 +19,7 @@ import Icons
 import Json.Decode exposing (Decoder)
 import List.Extra as List
 import Maybe.Extra as Maybe
-import Model exposing (AudioSettings, Modal(..), Model, Register(..), adjustPitch)
+import Model exposing (Modal(..), Model)
 import Movement exposing (Movement(..))
 import RadioFieldset
 import Update exposing (Msg(..))

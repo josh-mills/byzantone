@@ -1,10 +1,11 @@
 module Update exposing (Msg(..), update)
 
+import AudioSettings exposing (Register)
 import Browser.Dom as Dom
 import Byzantine.Degree as Degree exposing (Degree(..))
 import Byzantine.Scale exposing (Scale)
 import Maybe.Extra as Maybe
-import Model exposing (Modal, Model, Register(..))
+import Model exposing (Modal, Model)
 import Movement exposing (Movement)
 import Platform.Cmd as Cmd
 import Task
