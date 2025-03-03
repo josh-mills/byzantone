@@ -13,6 +13,7 @@ type alias Config a msg =
     , onSelect : a -> msg
     , options : List a
     , selected : a
+    , viewItem : Maybe (a -> Html msg)
     }
 
 
@@ -22,7 +23,7 @@ view config =
         (\config_ ->
             List.map (radioOption config_) config_.options
                 |> (::) (legend [ class "px-1" ] [ text config_.legendText ])
-                |> fieldset [ class "border border-gray-300 rounded-sm px-2 pb-1" ]
+                |> fieldset [ class "border border-gray-300 rounded-sm px-2 pb-1 mb-2" ]
         )
         config
 
@@ -48,5 +49,11 @@ radioOption config option =
             []
         , label
             [ Attr.for id, class "cursor-pointer" ]
-            [ text (config.itemToString option) ]
+            [ case config.viewItem of
+                Just viewItem ->
+                    viewItem option
+
+                Nothing ->
+                    text (config.itemToString option)
+            ]
         ]

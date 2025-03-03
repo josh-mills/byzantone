@@ -199,6 +199,7 @@ settings model =
             , onSelect = SetRegister
             , options = [ Treble, Bass ]
             , selected = model.audioSettings.register
+            , viewItem = Nothing
             }
         , RadioFieldset.view
             { itemToString =
@@ -213,8 +214,30 @@ settings model =
             , onSelect = SetPitchStandard
             , options = [ Ni256, Ke440 ]
             , selected = model.audioSettings.pitchStandard
+            , viewItem = Just viewPitchStandard
             }
         , gainInput model.audioSettings
+        ]
+
+
+viewPitchStandard : PitchStandard -> Html msg
+viewPitchStandard pitchStandard =
+    let
+        ( martyria, frequency ) =
+            case pitchStandard of
+                Ni256 ->
+                    ( Martyria.view (Martyria.for Diatonic Ni)
+                    , " = 256 Hz"
+                    )
+
+                Ke440 ->
+                    ( Martyria.for Diatonic Ke |> Martyria.view
+                    , " = 440 Hz"
+                    )
+    in
+    span [ class "mb-1" ]
+        [ span [ class "text-xl relative bottom-1.5" ] [ martyria ]
+        , text frequency
         ]
 
 
@@ -437,6 +460,7 @@ selectScale model =
         , onSelect = SetScale
         , options = Scale.all
         , selected = model.scale
+        , viewItem = Nothing
         }
 
 
