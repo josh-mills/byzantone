@@ -37,7 +37,7 @@ radioOption config option =
         id =
             "radio-option-" ++ dasherize itemName
     in
-    div []
+    div [ class "flex flex-row items-center" ]
         [ input
             [ type_ "radio"
             , Attr.name ("radio-" ++ dasherize config.legendText)

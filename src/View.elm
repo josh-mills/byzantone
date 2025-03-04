@@ -183,7 +183,7 @@ modalContent model =
 
 settings : Model -> Html Msg
 settings model =
-    div []
+    div [ class "flex flex-col gap-2" ]
         [ spacingButton model.showSpacing
             |> viewIf debuggingLayout
         , RadioFieldset.view
@@ -235,7 +235,7 @@ viewPitchStandard pitchStandard =
                     , " = 440 Hz"
                     )
     in
-    span [ class "mb-1" ]
+    div [ class "mb-1" ]
         [ span [ class "text-xl relative bottom-1.5" ] [ martyria ]
         , text frequency
         ]
