@@ -1,6 +1,6 @@
 module Byzantine.Pitch exposing
     ( pitchPosition, pitchPositions
-    , frequency
+    , PitchStandard(..), Register(..), frequency
     , Interval, intervalsFrom
     )
 
@@ -19,7 +19,7 @@ attractions and inflections.
 
 # Frequency
 
-@docs frequency
+@docs PitchStandard, Register, frequency
 
 
 # Intervals
@@ -91,15 +91,46 @@ hardChromaticPitchPositions =
 -- FREQUENCY
 
 
-{-| Frequency relative to a fixed pitch of 384 Hz for Di.
+{-| Pitch standard for frequency. Ni = 256 Hz is the default standard, but the
+slightly higher Ke = 440 Hz is available to align with the A440 western
+classical standard.
 -}
-frequency : Scale -> Degree -> Float
-frequency scale degree =
+type PitchStandard
+    = Ni256
+    | Ke440
+
+
+type Register
+    = Treble
+    | Bass
+
+
+{-| Frequency relative to a fixed pitch for Di, according to the given pitch
+standard and register.
+-}
+frequency : PitchStandard -> Register -> Scale -> Degree -> Float
+frequency pitchStandard register scale degree =
     let
         position =
             pitchPosition scale degree - 84 |> toFloat
+
+        di =
+            case pitchStandard of
+                Ni256 ->
+                    384.0
+
+                Ke440 ->
+                    391.995
+
+        registerFactor =
+            case register of
+                Treble ->
+                    1.0
+
+                Bass ->
+                    0.5
     in
-    2 ^ (position / 72) * 384
+    2 ^ (position / 72) * di * registerFactor
 
 
 

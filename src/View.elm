@@ -1,16 +1,17 @@
 module View exposing (view)
 
+import AudioSettings exposing (AudioSettings)
 import Browser.Dom as Dom
 import Byzantine.ByzHtml.Interval as Interval
 import Byzantine.ByzHtml.Martyria as Martyria
 import Byzantine.Degree as Degree exposing (Degree(..))
 import Byzantine.IntervalCharacter exposing (..)
 import Byzantine.Martyria as Martyria
-import Byzantine.Pitch as Pitch exposing (Interval)
+import Byzantine.Pitch as Pitch exposing (Interval, PitchStandard(..), Register(..))
 import Byzantine.Scale as Scale exposing (Scale(..))
 import Copy
-import Html exposing (Html, button, div, fieldset, h1, h2, input, label, legend, main_, p, span, text)
-import Html.Attributes as Attr exposing (checked, class, classList, for, id, style, type_)
+import Html exposing (Html, button, div, h1, h2, input, main_, p, span, text)
+import Html.Attributes as Attr exposing (class, classList, id, style, type_)
 import Html.Attributes.Extra as Attr
 import Html.Events exposing (onClick, onFocus, onInput, onMouseEnter, onMouseLeave)
 import Html.Extra exposing (viewIf, viewMaybe)
@@ -18,8 +19,9 @@ import Icons
 import Json.Decode exposing (Decoder)
 import List.Extra as List
 import Maybe.Extra as Maybe
-import Model exposing (AudioSettings, Modal(..), Model, Register(..), adjustPitch)
+import Model exposing (Modal(..), Model)
 import Movement exposing (Movement(..))
+import RadioFieldset
 import Update exposing (Msg(..))
 
 
@@ -83,8 +85,7 @@ audio model =
                 Attr.empty
 
             Just pitch ->
-                Pitch.frequency model.scale pitch
-                    |> adjustPitch model.audioSettings.register
+                Pitch.frequency model.audioSettings.pitchStandard model.audioSettings.register model.scale pitch
                     |> String.fromFloat
                     |> Attr.attribute "ison"
         ]
@@ -150,7 +151,7 @@ viewModal model =
             Html.node "dialog"
                 [ class "fixed inset-1/4 top-24 w-3/4 md:w-1/2 z-10"
                 , class "flex flex-col"
-                , class "bg-white"
+                , class "p-6 bg-white"
                 , class "border border-gray-300 rounded-md shadow-md font-serif"
                 , id "modal"
                 ]
@@ -180,47 +181,63 @@ modalContent model =
             settings model
 
 
-{-| TODO: create a radio input helper if this pattern comes up in more places.
--}
 settings : Model -> Html Msg
 settings model =
-    let
-        radioOption register =
-            let
-                registerName =
+    div [ class "flex flex-col gap-2" ]
+        [ spacingButton model.showSpacing
+            |> viewIf debuggingLayout
+        , RadioFieldset.view
+            { itemToString =
+                \register ->
                     case register of
                         Treble ->
                             "Treble"
 
                         Bass ->
                             "Bass"
-            in
-            div []
-                [ input
-                    [ type_ "radio"
-                    , Attr.name "register"
-                    , onClick (SetRegister register)
-                    , class "cursor-pointer m-2"
-                    , id <| "select" ++ registerName
-                    , checked (model.audioSettings.register == register)
-                    ]
-                    []
-                , label
-                    [ for <| "select" ++ registerName
-                    , class "cursor-pointer"
-                    ]
-                    [ text registerName ]
-                ]
-    in
-    div []
-        [ spacingButton model.showSpacing
-            |> viewIf debuggingLayout
-        , fieldset []
-            [ legend [] [ text "Register" ]
-            , radioOption Treble
-            , radioOption Bass
-            ]
+            , legendText = "Register"
+            , onSelect = SetRegister
+            , options = [ Treble, Bass ]
+            , selected = model.audioSettings.register
+            , viewItem = Nothing
+            }
+        , RadioFieldset.view
+            { itemToString =
+                \pitchStandard ->
+                    case pitchStandard of
+                        Ni256 ->
+                            "Ni256"
+
+                        Ke440 ->
+                            "Ke440"
+            , legendText = "Pitch Standard"
+            , onSelect = SetPitchStandard
+            , options = [ Ni256, Ke440 ]
+            , selected = model.audioSettings.pitchStandard
+            , viewItem = Just viewPitchStandard
+            }
         , gainInput model.audioSettings
+        ]
+
+
+viewPitchStandard : PitchStandard -> Html msg
+viewPitchStandard pitchStandard =
+    let
+        ( martyria, frequency ) =
+            case pitchStandard of
+                Ni256 ->
+                    ( Martyria.for Diatonic Ni |> Martyria.view
+                    , " = 256 Hz"
+                    )
+
+                Ke440 ->
+                    ( Martyria.for Diatonic Ke |> Martyria.view
+                    , " = 440 Hz"
+                    )
+    in
+    div [ class "mb-1" ]
+        [ span [ class "text-xl relative bottom-1.5" ] [ martyria ]
+        , text frequency
         ]
 
 
@@ -437,32 +454,14 @@ spacingButton showSpacing =
 
 selectScale : Model -> Html Msg
 selectScale model =
-    let
-        radioOption scale =
-            let
-                scaleName =
-                    Scale.name scale
-            in
-            div []
-                [ input
-                    [ type_ "radio"
-                    , Attr.name "scale"
-                    , onClick (SetScale scale)
-                    , class "cursor-pointer m-2"
-                    , id <| "select" ++ scaleName
-                    , checked (model.scale == scale)
-                    ]
-                    []
-                , label
-                    [ for <| "select" ++ scaleName
-                    , class "cursor-pointer"
-                    ]
-                    [ text scaleName ]
-                ]
-    in
-    fieldset [] <|
-        legend [] [ text "Select scale:" ]
-            :: List.map radioOption Scale.all
+    RadioFieldset.view
+        { itemToString = Scale.name
+        , legendText = "Select Scale"
+        , onSelect = SetScale
+        , options = Scale.all
+        , selected = model.scale
+        , viewItem = Nothing
+        }
 
 
 viewCurrentPitch : Maybe Degree -> Html Msg
