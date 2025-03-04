@@ -226,7 +226,7 @@ viewPitchStandard pitchStandard =
         ( martyria, frequency ) =
             case pitchStandard of
                 Ni256 ->
-                    ( Martyria.view (Martyria.for Diatonic Ni)
+                    ( Martyria.for Diatonic Ni |> Martyria.view
                     , " = 256 Hz"
                     )
 
