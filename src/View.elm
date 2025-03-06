@@ -19,7 +19,7 @@ import Icons
 import Json.Decode exposing (Decoder)
 import List.Extra as List
 import Maybe.Extra as Maybe
-import Model exposing (Modal(..), Model)
+import Model exposing (Layout(..), LayoutSelection(..), Modal(..), Model, layoutString)
 import Movement exposing (Movement(..))
 import RadioFieldset
 import Update exposing (Msg(..))
@@ -186,6 +186,14 @@ settings model =
     div [ class "flex flex-col gap-2" ]
         [ spacingButton model.showSpacing
             |> viewIf debuggingLayout
+        , RadioFieldset.view
+            { itemToString = layoutString
+            , legendText = "Layout"
+            , onSelect = SetLayout
+            , options = [ Auto, Manual Portrait, Manual Landscape ]
+            , selected = model.layoutSelection
+            , viewItem = Nothing
+            }
         , RadioFieldset.view
             { itemToString =
                 \register ->
