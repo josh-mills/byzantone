@@ -1,7 +1,8 @@
 module Styles exposing
     ( height, width
     , flexRow, flexRowCentered, flexCol
-    , buttonClass, transition
+    , border, buttonClass, transition
+    , borderRounded
     )
 
 {-| Style attribute helpers and common Tailwind class combinations
@@ -22,7 +23,7 @@ module Styles exposing
 
 ## Misc
 
-@docs buttonClass, transition
+@docs border, buttonClass, transition
 
 -}
 
@@ -108,6 +109,20 @@ flexCol =
 
 
 -- TAILWIND CLASSES: MISC
+
+
+{-| `class "border border-gray-300"`
+-}
+border : Html.Attribute msg
+border =
+    class "border border-gray-300"
+
+
+{-| `class "border border-gray-300 rounded-md"`
+-}
+borderRounded : Html.Attribute msg
+borderRounded =
+    class "border border-gray-300 rounded-md"
 
 
 {-| `class "bg-gray-200 my-2 py-1 px-3 rounded-md"`

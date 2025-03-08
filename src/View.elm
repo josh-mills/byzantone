@@ -103,7 +103,7 @@ header : Model -> Html Msg
 header model =
     Html.header [ Styles.flexRowCentered ]
         [ div [ class "w-7" ] []
-        , div [ class "flex-1 flex flex-col mb-4 mx-4" ]
+        , div [ Styles.flexCol, class "flex-1 mb-4 mx-4" ]
             [ h1 [ class "font-heading text-4xl text-center" ]
                 [ text "ByzanTone" ]
             , p [ class "font-serif text-center" ]
@@ -134,7 +134,8 @@ menu =
                 ]
     in
     Html.ul
-        [ class "fixed top-0 right-0 z-50 bg-white border border-gray-300 rounded-md shadow-md"
+        [ class "fixed top-0 right-0 z-50 bg-white shadow-md"
+        , Styles.borderRounded
         , class "font-serif"
         , id "menu"
         , Html.Events.on "keydown" keyDecoder
@@ -155,12 +156,13 @@ viewModal model =
         _ ->
             Html.node "dialog"
                 [ class "fixed inset-1/4 top-24 w-3/4 md:w-1/2 z-10"
-                , class "flex flex-col"
+                , Styles.flexCol
                 , class "p-6 bg-white"
-                , class "border border-gray-300 rounded-md shadow-md font-serif"
+                , Styles.borderRounded
+                , class "shadow-md font-serif"
                 , id "modal"
                 ]
-                [ h2 [ class "flex flex-row justify-between mb-1" ]
+                [ h2 [ Styles.flexRow, class "justify-between mb-1" ]
                     [ span [ class "font-heading text-2xl" ]
                         [ text (Model.modalToString model.modal) ]
                     , button
@@ -188,7 +190,7 @@ modalContent model =
 
 settings : Model -> Html Msg
 settings model =
-    div [ class "flex flex-col gap-2" ]
+    div [ Styles.flexCol, class "gap-2" ]
         [ spacingButton model.showSpacing
             |> viewIf debuggingLayout
         , RadioFieldset.view
@@ -272,7 +274,7 @@ pitchSpace model =
                 class "flex flex-row min-w-[360px]"
 
             Landscape ->
-                class "flex flex-col"
+                Styles.flexCol
         ]
         [ intervalCol model intervals
         , pitchCol model intervals
@@ -371,7 +373,7 @@ viewInterval ({ currentPitch, proposedMovement, viewport } as model) interval =
                     )
     in
     element
-        ([ class "border border-gray-300"
+        ([ Styles.border
          , Styles.transition
          , classList
             [ ( "bg-slate-200"
@@ -438,11 +440,13 @@ viewPitch ({ scale, showSpacing, currentPitch, proposedMovement, viewport } as m
             case layout of
                 Portrait ->
                     [ style "padding-top" <| String.fromInt (pitchHeight.aboveCenter * (heightFactor viewport - 2)) ++ "px"
-                    , class "flex flex-row gap-2 absolute"
+                    , Styles.flexRow
+                    , class "gap-2 absolute"
                     ]
 
                 Landscape ->
-                    [ class "flex flex-col gap-4"
+                    [ Styles.flexCol
+                    , class "gap-4"
                     , style "padding-left" <| String.fromInt (pitchHeight.belowCenter * (widthFactor viewport - 6)) ++ "px"
                     ]
 

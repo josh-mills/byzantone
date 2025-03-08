@@ -5,6 +5,7 @@ import Html.Attributes as Attr exposing (checked, class, type_)
 import Html.Events exposing (onClick)
 import Html.Lazy
 import String.Extra exposing (dasherize)
+import Styles
 
 
 type alias Config a msg =
@@ -23,7 +24,7 @@ view config =
         (\config_ ->
             List.map (radioOption config_) config_.options
                 |> (::) (legend [ class "px-1" ] [ text config_.legendText ])
-                |> fieldset [ class "border border-gray-300 rounded-sm px-2 pb-1 mb-2" ]
+                |> fieldset [ Styles.borderRounded, class "px-2 pb-1 mb-2" ]
         )
         config
 
@@ -37,7 +38,7 @@ radioOption config option =
         id =
             "radio-option-" ++ dasherize itemName
     in
-    div [ class "flex flex-row items-center" ]
+    div [ Styles.flexRow, class "items-center" ]
         [ input
             [ type_ "radio"
             , Attr.name ("radio-" ++ dasherize config.legendText)
