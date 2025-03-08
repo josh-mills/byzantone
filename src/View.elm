@@ -47,7 +47,7 @@ view model =
         , viewIf model.menuOpen menu
         , main_
             [ class "lg:container lg:mx-auto font-serif"
-            , case layoutFor model of
+            , case layoutFor model.layout of
                 Portrait ->
                     class "flex flex-row flex-wrap-reverse"
 
@@ -198,7 +198,7 @@ settings model =
             , legendText = "Layout"
             , onSelect = SetLayout
             , options = [ Auto, Manual Portrait, Manual Landscape ]
-            , selected = model.layoutSelection
+            , selected = model.layout.layoutSelection
             , viewItem = Nothing
             }
         , RadioFieldset.view
@@ -267,9 +267,10 @@ pitchSpace model =
             Pitch.intervalsFrom model.scale Ni Pa_
     in
     div
-        [ class "flex-nowrap"
+        [ id "pitch-space"
+        , class "flex-nowrap"
         , Styles.transition
-        , case layoutFor model of
+        , case layoutFor model.layout of
             Portrait ->
                 class "flex flex-row min-w-[360px]"
 
@@ -297,7 +298,7 @@ intervalCol model intervals =
                 |> List.singleton
     in
     div
-        [ case layoutFor model of
+        [ case layoutFor model.layout of
             Portrait ->
                 class "flex flex-col-reverse w-36"
 
@@ -309,7 +310,7 @@ intervalCol model intervals =
 
 
 viewInterval : Model -> Interval -> Html Msg
-viewInterval ({ currentPitch, proposedMovement, viewport } as model) interval =
+viewInterval ({ currentPitch, proposedMovement } as model) interval =
     let
         viewIntervalCharacter degree =
             currentPitch
@@ -355,11 +356,11 @@ viewInterval ({ currentPitch, proposedMovement, viewport } as model) interval =
                     ( Html.Extra.nothing, [], div )
 
         ( elementLayoutAttrs, spanLayoutAttrs ) =
-            case layoutFor model of
+            case layoutFor model.layout of
                 Portrait ->
                     ( [ Styles.flexRowCentered
                       , class "w-full"
-                      , Styles.height (interval.moria * heightFactor viewport)
+                      , Styles.height (interval.moria * heightFactor model.layout.viewport)
                       ]
                     , [ Styles.flexRow, class "my-auto" ]
                     )
@@ -367,7 +368,7 @@ viewInterval ({ currentPitch, proposedMovement, viewport } as model) interval =
                 Landscape ->
                     ( [ Styles.flexRowCentered
                       , class "h-full"
-                      , Styles.width (interval.moria * widthFactor viewport)
+                      , Styles.width (interval.moria * widthFactor model.layout.viewport)
                       ]
                     , [ class "flex flex-col self-center" ]
                     )
@@ -393,14 +394,14 @@ viewInterval ({ currentPitch, proposedMovement, viewport } as model) interval =
 
 
 spacerInterval : Model -> Interval -> Html Msg
-spacerInterval ({ viewport, showSpacing } as model) { moria } =
+spacerInterval ({ showSpacing } as model) { moria } =
     div
-        [ case layoutFor model of
+        [ case layoutFor model.layout of
             Portrait ->
-                Styles.height (moria * heightFactor viewport // 2)
+                Styles.height (moria * heightFactor model.layout.viewport // 2)
 
             Landscape ->
-                Styles.width (moria * widthFactor viewport // 2)
+                Styles.width (moria * widthFactor model.layout.viewport // 2)
         , Styles.transition
         , classList
             [ ( "text-center bg-slate-300", showSpacing )
@@ -415,7 +416,7 @@ pitchCol model intervals =
     intervalsToPitchHeights intervals
         |> List.map (viewPitch model)
         |> div
-            [ case layoutFor model of
+            [ case layoutFor model.layout of
                 Portrait ->
                     class "flex flex-col-reverse w-16"
 
@@ -425,7 +426,7 @@ pitchCol model intervals =
 
 
 viewPitch : Model -> PitchHeight -> Html Msg
-viewPitch ({ scale, showSpacing, currentPitch, proposedMovement, viewport } as model) pitchHeight =
+viewPitch ({ scale, showSpacing, currentPitch, proposedMovement } as model) pitchHeight =
     let
         degree =
             Just pitchHeight.degree
@@ -434,12 +435,12 @@ viewPitch ({ scale, showSpacing, currentPitch, proposedMovement, viewport } as m
             degree == currentPitch
 
         layout =
-            layoutFor model
+            layoutFor model.layout
 
         spanAttrs =
             case layout of
                 Portrait ->
-                    [ style "padding-top" <| String.fromInt (pitchHeight.aboveCenter * (heightFactor viewport - 2)) ++ "px"
+                    [ style "padding-top" <| String.fromInt (pitchHeight.aboveCenter * (heightFactor model.layout.viewport - 2)) ++ "px"
                     , Styles.flexRow
                     , class "gap-2 absolute"
                     ]
@@ -447,7 +448,7 @@ viewPitch ({ scale, showSpacing, currentPitch, proposedMovement, viewport } as m
                 Landscape ->
                     [ Styles.flexCol
                     , class "gap-4"
-                    , style "padding-left" <| String.fromInt (pitchHeight.belowCenter * (widthFactor viewport - 6)) ++ "px"
+                    , style "padding-left" <| String.fromInt (pitchHeight.belowCenter * (widthFactor model.layout.viewport - 6)) ++ "px"
                     ]
 
         --     -- for dev purposes only; will eventually be deleted
@@ -462,10 +463,10 @@ viewPitch ({ scale, showSpacing, currentPitch, proposedMovement, viewport } as m
         , Styles.flexRowCentered
         , case layout of
             Portrait ->
-                Styles.height <| (pitchHeight.belowCenter + pitchHeight.aboveCenter) * heightFactor viewport
+                Styles.height <| (pitchHeight.belowCenter + pitchHeight.aboveCenter) * heightFactor model.layout.viewport
 
             Landscape ->
-                Styles.width <| (pitchHeight.belowCenter + pitchHeight.aboveCenter) * widthFactor viewport
+                Styles.width <| (pitchHeight.belowCenter + pitchHeight.aboveCenter) * widthFactor model.layout.viewport
         ]
         [ button
             [ class "flex px-4 w-full rounded-full"
@@ -514,7 +515,7 @@ viewPitch ({ scale, showSpacing, currentPitch, proposedMovement, viewport } as m
 
 viewControls : Model -> Html Msg
 viewControls model =
-    div [ classList [ ( "mt-8", debuggingLayout ) ] ]
+    div [ class "w-max", classList [ ( "mt-8", debuggingLayout ) ] ]
         [ selectScale model
         , viewCurrentPitch model.currentPitch
         , gainInput model.audioSettings

@@ -1,6 +1,6 @@
 module Model exposing
     ( Model, initialModel
-    , LayoutSelection(..), Layout(..), layoutFor, layoutString
+    , LayoutData, LayoutSelection(..), Layout(..), layoutFor, layoutString
     , Modal(..), modalOpen, modalToString
     )
 
@@ -14,7 +14,7 @@ module Model exposing
 
 # Layout
 
-@docs LayoutSelection, Layout, layoutFor, layoutString
+@docs LayoutData, LayoutSelection, Layout, layoutFor, layoutString
 
 
 # Modal
@@ -33,13 +33,12 @@ import Movement exposing (Movement(..))
 type alias Model =
     { audioSettings : AudioSettings
     , currentPitch : Maybe Degree
-    , layoutSelection : LayoutSelection
+    , layout : LayoutData
     , menuOpen : Bool
     , modal : Modal
     , proposedMovement : Movement
     , scale : Scale
     , showSpacing : Bool
-    , viewport : Dom.Viewport
     }
 
 
@@ -47,21 +46,35 @@ initialModel : Model
 initialModel =
     { audioSettings = AudioSettings.defaultAudioSettings
     , currentPitch = Nothing
-    , layoutSelection = Auto
+    , layout =
+        { layoutSelection = Auto
+        , viewport = emptyViewport
+        , viewportOfPitchSpace = emptyViewport
+        }
     , menuOpen = False
     , modal = NoModal
     , proposedMovement = None
     , scale = Diatonic
     , showSpacing = False
-    , viewport =
-        { scene = { width = 0, height = 0 }
-        , viewport = { x = 0, y = 0, width = 0, height = 0 }
-        }
+    }
+
+
+emptyViewport : Dom.Viewport
+emptyViewport =
+    { scene = { width = 0, height = 0 }
+    , viewport = { x = 0, y = 0, width = 0, height = 0 }
     }
 
 
 
 -- LAYOUT
+
+
+type alias LayoutData =
+    { layoutSelection : LayoutSelection
+    , viewport : Dom.Viewport
+    , viewportOfPitchSpace : Dom.Viewport
+    }
 
 
 type LayoutSelection
@@ -78,7 +91,7 @@ type Layout
 should only kick into landscape if the height is sufficiently small, or perhaps
 if the ratio is beneath some threshold.
 -}
-layoutFor : Model -> Layout
+layoutFor : LayoutData -> Layout
 layoutFor { layoutSelection, viewport } =
     case layoutSelection of
         Auto ->

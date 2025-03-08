@@ -5,7 +5,7 @@ import Byzantine.Degree as Degree exposing (Degree(..))
 import Byzantine.Pitch exposing (PitchStandard, Register)
 import Byzantine.Scale exposing (Scale)
 import Maybe.Extra as Maybe
-import Model exposing (LayoutSelection, Modal, Model)
+import Model exposing (LayoutData, LayoutSelection, Modal, Model)
 import Movement exposing (Movement)
 import Platform.Cmd as Cmd
 import Task
@@ -14,6 +14,7 @@ import Task
 type Msg
     = DomResult (Result Dom.Error ())
     | GotViewport Dom.Viewport
+    | GotViewportOfPitchSpace (Result Dom.Error Dom.Viewport)
     | ViewportResize Int Int
     | Keydown String
     | NoOp
@@ -40,13 +41,30 @@ update msg model =
             ( model, Cmd.none )
 
         GotViewport viewport ->
-            ( { model | viewport = viewport }
+            ( updateLayout
+                (\layout -> { layout | viewport = viewport })
+                model
+            , Cmd.none
+            )
+
+        GotViewportOfPitchSpace viewportResult ->
+            ( case viewportResult of
+                Ok viewport ->
+                    updateLayout
+                        (\layout -> { layout | viewportOfPitchSpace = viewport })
+                        model
+
+                Err _ ->
+                    model
             , Cmd.none
             )
 
         ViewportResize _ _ ->
             ( model
-            , Task.perform GotViewport Dom.getViewport
+            , Cmd.batch
+                [ Task.perform GotViewport Dom.getViewport
+                , Task.attempt GotViewportOfPitchSpace (Dom.getViewportOf "pitch-space")
+                ]
             )
 
         SelectModal modal ->
@@ -81,8 +99,10 @@ update msg model =
             )
 
         SetLayout layoutSelection ->
-            ( { model | layoutSelection = layoutSelection }
-            , Cmd.none
+            ( updateLayout
+                (\layout -> { layout | layoutSelection = layoutSelection })
+                model
+            , Task.attempt GotViewportOfPitchSpace (Dom.getViewportOf "pitch-space")
             )
 
         SetPitchStandard pitchStandard ->
@@ -242,6 +262,11 @@ update msg model =
 
                 _ ->
                     ( model, Cmd.none )
+
+
+updateLayout : (LayoutData -> LayoutData) -> Model -> Model
+updateLayout f model =
+    { model | layout = f model.layout }
 
 
 focus : String -> Cmd Msg
