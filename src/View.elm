@@ -22,6 +22,7 @@ import Maybe.Extra as Maybe
 import Model exposing (Layout(..), LayoutSelection(..), Modal(..), Model, layoutFor, layoutString)
 import Movement exposing (Movement(..))
 import RadioFieldset
+import Styles
 import Update exposing (Msg(..))
 
 
@@ -51,7 +52,7 @@ view model =
                     class "flex flex-row flex-wrap-reverse"
 
                 Landscape ->
-                    class "flex flex-col"
+                    Styles.flexCol
             , Html.Events.on "keydown" keyDecoder
             , Attr.attributeIf model.menuOpen (onClick ToggleMenu)
             ]
@@ -69,7 +70,7 @@ backdrop model =
     in
     div
         [ class "fixed top-0 left-0 w-full h-full"
-        , transition
+        , Styles.transition
         , classList
             [ ( "-z-10", not show )
             , ( "bg-slate-400 opacity-40 z-10", show )
@@ -100,9 +101,7 @@ audio model =
 
 header : Model -> Html Msg
 header model =
-    Html.header
-        [ class "flex flex-row justify-center"
-        ]
+    Html.header [ Styles.flexRowCentered ]
         [ div [ class "w-7" ] []
         , div [ class "flex-1 flex flex-col mb-4 mx-4" ]
             [ h1 [ class "font-heading text-4xl text-center" ]
@@ -128,7 +127,7 @@ menu =
             Html.li []
                 [ button
                     [ class "p-2 hover:bg-gray-200 w-full"
-                    , transition
+                    , Styles.transition
                     , onClick (SelectModal modal)
                     ]
                     [ text (Model.modalToString modal) ]
@@ -266,7 +265,8 @@ pitchSpace model =
             Pitch.intervalsFrom model.scale Ni Pa_
     in
     div
-        [ class "flex-nowrap transition-all duration-500"
+        [ class "flex-nowrap"
+        , Styles.transition
         , case layoutFor model of
             Portrait ->
                 class "flex flex-row min-w-[360px]"
@@ -355,22 +355,24 @@ viewInterval ({ currentPitch, proposedMovement, viewport } as model) interval =
         ( elementLayoutAttrs, spanLayoutAttrs ) =
             case layoutFor model of
                 Portrait ->
-                    ( [ class "flex flex-row justify-center w-full"
-                      , height (interval.moria * heightFactor viewport)
+                    ( [ Styles.flexRowCentered
+                      , class "w-full"
+                      , Styles.height (interval.moria * heightFactor viewport)
                       ]
-                    , [ class "flex flex-row my-auto" ]
+                    , [ Styles.flexRow, class "my-auto" ]
                     )
 
                 Landscape ->
-                    ( [ class "flex flex-row justify-center h-full"
-                      , width (interval.moria * widthFactor viewport)
+                    ( [ Styles.flexRowCentered
+                      , class "h-full"
+                      , Styles.width (interval.moria * widthFactor viewport)
                       ]
                     , [ class "flex flex-col self-center" ]
                     )
     in
     element
         ([ class "border border-gray-300"
-         , transition
+         , Styles.transition
          , classList
             [ ( "bg-slate-200"
               , shouldHighlight currentPitch proposedMovement interval
@@ -393,11 +395,11 @@ spacerInterval ({ viewport, showSpacing } as model) { moria } =
     div
         [ case layoutFor model of
             Portrait ->
-                height (moria * heightFactor viewport // 2)
+                Styles.height (moria * heightFactor viewport // 2)
 
             Landscape ->
-                width (moria * widthFactor viewport // 2)
-        , transition
+                Styles.width (moria * widthFactor viewport // 2)
+        , Styles.transition
         , classList
             [ ( "text-center bg-slate-300", showSpacing )
             , ( "pt-9", True )
@@ -452,19 +454,19 @@ viewPitch ({ scale, showSpacing, currentPitch, proposedMovement, viewport } as m
     in
     div
         [ classList [ ( "border border-gray-500 bg-slate-200", showSpacing ) ]
-        , transition
-        , class "flex flex-row justify-center"
+        , Styles.transition
+        , Styles.flexRowCentered
         , case layout of
             Portrait ->
-                height <| (pitchHeight.belowCenter + pitchHeight.aboveCenter) * heightFactor viewport
+                Styles.height <| (pitchHeight.belowCenter + pitchHeight.aboveCenter) * heightFactor viewport
 
             Landscape ->
-                width <| (pitchHeight.belowCenter + pitchHeight.aboveCenter) * widthFactor viewport
+                Styles.width <| (pitchHeight.belowCenter + pitchHeight.aboveCenter) * widthFactor viewport
         ]
         [ button
             [ class "flex px-4 w-full rounded-full"
             , id <| "p_" ++ Degree.toString pitchHeight.degree
-            , transition
+            , Styles.transition
             , classList
                 [ ( "bg-green-300", showSpacing ) -- for dev purposes only; will eventually be deleted
                 , ( "text-green-700 bg-slate-200", Movement.toDegree proposedMovement == degree )
@@ -478,7 +480,11 @@ viewPitch ({ scale, showSpacing, currentPitch, proposedMovement, viewport } as m
                 else
                     SelectPitch degree Nothing
             ]
-            [ span (transition :: classList [ ( "text-red-600", isCurrentPitch ) ] :: spanAttrs)
+            [ span
+                (Styles.transition
+                    :: classList [ ( "text-red-600", isCurrentPitch ) ]
+                    :: spanAttrs
+                )
                 [ div
                     [ class "text-xl sm:text-3xl relative"
                     , case layout of
@@ -514,7 +520,7 @@ viewControls model =
 spacingButton : Bool -> Html Msg
 spacingButton showSpacing =
     button
-        [ buttonClass
+        [ Styles.buttonClass
         , onClick ToggleSpacing
         ]
         [ text <|
@@ -555,7 +561,7 @@ viewCurrentPitch pitch =
 clearPitchButton : Html Msg
 clearPitchButton =
     button
-        [ buttonClass
+        [ Styles.buttonClass
         , class "mx-2"
         , onClick (SelectPitch Nothing Nothing)
         ]
@@ -574,7 +580,7 @@ gainInput { gain } =
     in
     div []
         [ button
-            [ buttonClass
+            [ Styles.buttonClass
             , class "w-24 mr-4"
             , onClick msg
             ]
@@ -595,18 +601,6 @@ gainInput { gain } =
 -- HELPERS
 
 
-buttonClass : Html.Attribute Msg
-buttonClass =
-    class "bg-gray-200 my-2 py-1 px-3 rounded-md"
-
-
-{-| in px: `style=height: ${h}px;`
--}
-height : Int -> Html.Attribute Msg
-height h =
-    style "height" (String.fromInt h ++ "px")
-
-
 heightFactor : Dom.Viewport -> Int
 heightFactor viewport =
     (viewport.viewport.height / 100)
@@ -614,23 +608,11 @@ heightFactor viewport =
         |> clamp 6 12
 
 
-{-| in px: `style=width: ${w}px;`
--}
-width : Int -> Html.Attribute Msg
-width w =
-    style "width" (String.fromInt w ++ "px")
-
-
 widthFactor : Dom.Viewport -> Int
 widthFactor viewport =
     (viewport.viewport.width / 100)
         |> truncate
         |> clamp 6 18
-
-
-transition : Html.Attribute Msg
-transition =
-    class "transition-all duration-500"
 
 
 shouldHighlight : Maybe Degree -> Movement -> Interval -> Bool
