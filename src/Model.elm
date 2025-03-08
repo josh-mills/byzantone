@@ -1,6 +1,6 @@
 module Model exposing
     ( Model, initialModel
-    , LayoutSelection(..), Layout(..), layout, layoutString
+    , LayoutSelection(..), Layout(..), layoutFor, layoutString
     , Modal(..), modalOpen, modalToString
     )
 
@@ -14,7 +14,7 @@ module Model exposing
 
 # Layout
 
-@docs LayoutSelection, Layout, layout, layoutString
+@docs LayoutSelection, Layout, layoutFor, layoutString
 
 
 # Modal
@@ -78,15 +78,12 @@ type Layout
 should only kick into landscape if the height is sufficiently small, or perhaps
 if the ratio is beneath some threshold.
 -}
-layout : Dom.Viewport -> LayoutSelection -> Layout
-layout viewport layoutSelection =
+layoutFor : Model -> Layout
+layoutFor { layoutSelection, viewport } =
     case layoutSelection of
         Auto ->
-            if viewport.scene.width > viewport.scene.height then
-                Landscape
-
-            else
-                Portrait
+            -- TODO: implement.
+            Portrait
 
         Manual layout_ ->
             layout_

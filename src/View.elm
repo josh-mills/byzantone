@@ -19,7 +19,7 @@ import Icons
 import Json.Decode exposing (Decoder)
 import List.Extra as List
 import Maybe.Extra as Maybe
-import Model exposing (Layout(..), LayoutSelection(..), Modal(..), Model, layoutString)
+import Model exposing (Layout(..), LayoutSelection(..), Modal(..), Model, layoutFor, layoutString)
 import Movement exposing (Movement(..))
 import RadioFieldset
 import Update exposing (Msg(..))
@@ -45,7 +45,13 @@ view model =
         , viewIf model.showSpacing (div [ class "text-center" ] [ text "|" ])
         , viewIf model.menuOpen menu
         , main_
-            [ class "lg:container lg:mx-auto flex flex-row flex-wrap-reverse font-serif"
+            [ class "lg:container lg:mx-auto font-serif"
+            , case layoutFor model of
+                Portrait ->
+                    class "flex flex-row flex-wrap-reverse"
+
+                Landscape ->
+                    class "flex flex-col"
             , Html.Events.on "keydown" keyDecoder
             , Attr.attributeIf model.menuOpen (onClick ToggleMenu)
             ]
@@ -260,8 +266,13 @@ pitchSpace model =
             Pitch.intervalsFrom model.scale Ni Pa_
     in
     div
-        [ class "flex flex-row flex-nowrap transition-all duration-500"
-        , class "min-w-[360px]"
+        [ class "flex-nowrap transition-all duration-500"
+        , case layoutFor model of
+            Portrait ->
+                class "flex flex-row min-w-[360px]"
+
+            Landscape ->
+                class "flex flex-col"
         ]
         [ intervalCol model intervals
         , pitchCol model intervals
@@ -269,31 +280,34 @@ pitchSpace model =
 
 
 intervalCol : Model -> List Interval -> Html Msg
-intervalCol ({ showSpacing, viewport } as model) intervals =
+intervalCol model intervals =
     let
         definedIntervals =
-            intervals
-                |> List.reverse
-                |> List.map (viewInterval model)
+            List.map (viewInterval model) intervals
 
         spacerTop =
             List.last intervals
-                |> viewMaybe (spacerInterval viewport showSpacing)
+                |> viewMaybe (spacerInterval model)
 
         spacerBottom =
             List.head intervals
-                |> viewMaybe (spacerInterval viewport showSpacing)
+                |> viewMaybe (spacerInterval model)
                 |> List.singleton
     in
     div
-        [ class "w-36"
+        [ case layoutFor model of
+            Portrait ->
+                class "flex flex-col-reverse w-36"
+
+            Landscape ->
+                class "flex flex-row h-24"
         , onMouseLeave (SelectProposedMovement None)
         ]
         (spacerTop :: definedIntervals ++ spacerBottom)
 
 
 viewInterval : Model -> Interval -> Html Msg
-viewInterval { currentPitch, proposedMovement, viewport } interval =
+viewInterval ({ currentPitch, proposedMovement, viewport } as model) interval =
     let
         viewIntervalCharacter degree =
             currentPitch
@@ -302,7 +316,7 @@ viewInterval { currentPitch, proposedMovement, viewport } interval =
                 |> Html.Extra.viewMaybe
                     (Interval.view >> List.singleton >> span [ class "me-2" ])
 
-        ( maybeIntervalCharacter, attrs, element ) =
+        ( maybeIntervalCharacter, movementAttrs, element ) =
             let
                 movementOfThisInterval =
                     Movement.ofInterval currentPitch interval
@@ -337,11 +351,25 @@ viewInterval { currentPitch, proposedMovement, viewport } interval =
 
                 None ->
                     ( Html.Extra.nothing, [], div )
+
+        ( elementLayoutAttrs, spanLayoutAttrs ) =
+            case layoutFor model of
+                Portrait ->
+                    ( [ class "flex flex-row justify-center w-full"
+                      , height (interval.moria * heightFactor viewport)
+                      ]
+                    , [ class "flex flex-row my-auto" ]
+                    )
+
+                Landscape ->
+                    ( [ class "flex flex-row justify-center h-full"
+                      , width (interval.moria * widthFactor viewport)
+                      ]
+                    , [ class "flex flex-col self-center" ]
+                    )
     in
     element
         ([ class "border border-gray-300"
-         , class "flex flex-row justify-center w-full"
-         , height (interval.moria * heightFactor viewport)
          , transition
          , classList
             [ ( "bg-slate-200"
@@ -350,21 +378,30 @@ viewInterval { currentPitch, proposedMovement, viewport } interval =
             , ( "hover:bg-slate-200", Maybe.isJust currentPitch )
             ]
          ]
-            ++ attrs
+            ++ elementLayoutAttrs
+            ++ movementAttrs
         )
-        [ span [ class "my-auto" ]
+        [ span spanLayoutAttrs
             [ maybeIntervalCharacter
-            , text (String.fromInt interval.moria)
+            , span [ class "text-gray-600" ] [ text (String.fromInt interval.moria) ]
             ]
         ]
 
 
-spacerInterval : Dom.Viewport -> Bool -> Interval -> Html Msg
-spacerInterval viewport showSpacing { moria } =
+spacerInterval : Model -> Interval -> Html Msg
+spacerInterval ({ viewport, showSpacing } as model) { moria } =
     div
-        [ height (moria * heightFactor viewport // 2)
+        [ case layoutFor model of
+            Portrait ->
+                height (moria * heightFactor viewport // 2)
+
+            Landscape ->
+                width (moria * widthFactor viewport // 2)
         , transition
-        , classList [ ( "text-center bg-slate-300", showSpacing ) ]
+        , classList
+            [ ( "text-center bg-slate-300", showSpacing )
+            , ( "pt-9", True )
+            ]
         ]
         [ viewIf showSpacing <| text <| "(" ++ String.fromInt (moria // 2) ++ ")" ]
 
@@ -373,12 +410,18 @@ pitchCol : Model -> List Interval -> Html Msg
 pitchCol model intervals =
     intervalsToPitchHeights intervals
         |> List.map (viewPitch model)
-        |> List.reverse
-        |> div [ class "w-16" ]
+        |> div
+            [ case layoutFor model of
+                Portrait ->
+                    class "flex flex-col-reverse w-16"
+
+                Landscape ->
+                    class "flex flex-row h-16"
+            ]
 
 
 viewPitch : Model -> PitchHeight -> Html Msg
-viewPitch { scale, showSpacing, currentPitch, proposedMovement, viewport } pitchHeight =
+viewPitch ({ scale, showSpacing, currentPitch, proposedMovement, viewport } as model) pitchHeight =
     let
         degree =
             Just pitchHeight.degree
@@ -386,18 +429,37 @@ viewPitch { scale, showSpacing, currentPitch, proposedMovement, viewport } pitch
         isCurrentPitch =
             degree == currentPitch
 
-        totalHeight =
-            pitchHeight.aboveCenter + pitchHeight.belowCenter |> String.fromInt
+        layout =
+            layoutFor model
 
-        spacingText =
-            -- for dev purposes only; will eventually be deleted
-            "(" ++ totalHeight ++ " = " ++ String.fromInt pitchHeight.belowCenter ++ " + " ++ String.fromInt pitchHeight.aboveCenter ++ ")"
+        spanAttrs =
+            case layout of
+                Portrait ->
+                    [ style "padding-top" <| String.fromInt (pitchHeight.aboveCenter * (heightFactor viewport - 2)) ++ "px"
+                    , class "flex flex-row gap-2 absolute"
+                    ]
+
+                Landscape ->
+                    [ class "flex flex-col gap-4"
+                    , style "padding-left" <| String.fromInt (pitchHeight.belowCenter * (widthFactor viewport - 6)) ++ "px"
+                    ]
+
+        --     -- for dev purposes only; will eventually be deleted
+        -- totalHeight =
+        --     pitchHeight.aboveCenter + pitchHeight.belowCenter |> String.fromInt
+        -- spacingText =
+        --     "(" ++ totalHeight ++ " = " ++ String.fromInt pitchHeight.belowCenter ++ " + " ++ String.fromInt pitchHeight.aboveCenter ++ ")"
     in
     div
         [ classList [ ( "border border-gray-500 bg-slate-200", showSpacing ) ]
-        , class "flex flex-row justify-center"
-        , height <| (pitchHeight.belowCenter + pitchHeight.aboveCenter) * heightFactor viewport
         , transition
+        , class "flex flex-row justify-center"
+        , case layout of
+            Portrait ->
+                height <| (pitchHeight.belowCenter + pitchHeight.aboveCenter) * heightFactor viewport
+
+            Landscape ->
+                width <| (pitchHeight.belowCenter + pitchHeight.aboveCenter) * widthFactor viewport
         ]
         [ button
             [ class "flex px-4 w-full rounded-full"
@@ -416,17 +478,21 @@ viewPitch { scale, showSpacing, currentPitch, proposedMovement, viewport } pitch
                 else
                     SelectPitch degree Nothing
             ]
-            [ span
-                [ style "padding-top" <| String.fromInt (pitchHeight.aboveCenter * (heightFactor viewport - 2)) ++ "px"
-                , transition
-                , class "flex flex-row gap-2 absolute"
-                , classList [ ( "text-red-600", isCurrentPitch ) ]
-                ]
-                [ div [ class "text-xl sm:text-3xl relative -top-5" ]
+            [ span (transition :: classList [ ( "text-red-600", isCurrentPitch ) ] :: spanAttrs)
+                [ div
+                    [ class "text-xl sm:text-3xl relative"
+                    , case layout of
+                        Portrait ->
+                            class "-top-5"
+
+                        Landscape ->
+                            class "-top-2"
+                    ]
                     [ viewMaybe (Martyria.view << Martyria.for scale) degree ]
                 , viewIf isCurrentPitch <|
                     div [ class "w-4 ms-2" ] [ Icons.xmark ]
-                , viewIf showSpacing <| span [ class "ms-2" ] [ text spacingText ]
+
+                -- , viewIf showSpacing <| span [ class "ms-2" ] [ text spacingText ]
                 ]
             ]
         ]
@@ -438,7 +504,7 @@ viewPitch { scale, showSpacing, currentPitch, proposedMovement, viewport } pitch
 
 viewControls : Model -> Html Msg
 viewControls model =
-    div []
+    div [ classList [ ( "mt-8", debuggingLayout ) ] ]
         [ selectScale model
         , viewCurrentPitch model.currentPitch
         , gainInput model.audioSettings
@@ -534,7 +600,7 @@ buttonClass =
     class "bg-gray-200 my-2 py-1 px-3 rounded-md"
 
 
-{-| in px
+{-| in px: `style=height: ${h}px;`
 -}
 height : Int -> Html.Attribute Msg
 height h =
@@ -546,6 +612,20 @@ heightFactor viewport =
     (viewport.viewport.height / 100)
         |> truncate
         |> clamp 6 12
+
+
+{-| in px: `style=width: ${w}px;`
+-}
+width : Int -> Html.Attribute Msg
+width w =
+    style "width" (String.fromInt w ++ "px")
+
+
+widthFactor : Dom.Viewport -> Int
+widthFactor viewport =
+    (viewport.viewport.width / 100)
+        |> truncate
+        |> clamp 6 18
 
 
 transition : Html.Attribute Msg
