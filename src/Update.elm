@@ -1,5 +1,6 @@
 module Update exposing (Msg(..), update)
 
+import Array
 import Browser.Dom as Dom
 import Byzantine.Degree as Degree exposing (Degree(..))
 import Byzantine.Pitch exposing (PitchStandard, Register)
@@ -24,6 +25,8 @@ type Msg
     | SetGain Float
     | SetLayout LayoutSelection
     | SetPitchStandard PitchStandard
+    | SetRangeStart String
+    | SetRangeEnd String
     | SetRegister Register
     | SetScale Scale
     | ToggleMenu
@@ -111,6 +114,26 @@ update msg model =
                     model.audioSettings
             in
             ( { model | audioSettings = { audioSettings | pitchStandard = pitchStandard } }
+            , Cmd.none
+            )
+
+        SetRangeStart start ->
+            ( { model
+                | rangeStart =
+                    String.toInt start
+                        |> Maybe.andThen (\i -> Array.get i Degree.gamut)
+                        |> Maybe.withDefault model.rangeStart
+              }
+            , Cmd.none
+            )
+
+        SetRangeEnd end ->
+            ( { model
+                | rangeEnd =
+                    String.toInt end
+                        |> Maybe.andThen (\i -> Array.get i Degree.gamut)
+                        |> Maybe.withDefault model.rangeEnd
+              }
             , Cmd.none
             )
 
