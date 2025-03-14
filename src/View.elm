@@ -264,7 +264,7 @@ pitchSpace : Model -> Html Msg
 pitchSpace model =
     let
         intervals =
-            Pitch.intervalsFrom model.scale Ni Pa_
+            Pitch.intervalsFrom model.scale model.rangeStart model.rangeEnd
     in
     div
         [ id "pitch-space"

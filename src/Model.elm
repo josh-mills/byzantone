@@ -25,7 +25,7 @@ module Model exposing
 
 import AudioSettings exposing (AudioSettings)
 import Browser.Dom as Dom
-import Byzantine.Degree exposing (Degree)
+import Byzantine.Degree exposing (Degree(..))
 import Byzantine.Scale exposing (Scale(..))
 import Movement exposing (Movement(..))
 
@@ -37,6 +37,8 @@ type alias Model =
     , menuOpen : Bool
     , modal : Modal
     , proposedMovement : Movement
+    , rangeStart : Degree
+    , rangeEnd : Degree
     , scale : Scale
     , showSpacing : Bool
     }
@@ -53,6 +55,8 @@ initialModel =
         }
     , menuOpen = False
     , modal = NoModal
+    , rangeStart = Ni
+    , rangeEnd = Ni_
     , proposedMovement = None
     , scale = Diatonic
     , showSpacing = False
