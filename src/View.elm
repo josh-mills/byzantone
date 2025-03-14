@@ -10,7 +10,7 @@ import Byzantine.Martyria as Martyria
 import Byzantine.Pitch as Pitch exposing (Interval, PitchStandard(..), Register(..))
 import Byzantine.Scale as Scale exposing (Scale(..))
 import Copy
-import Html exposing (Html, button, div, h1, h2, input, main_, p, span, text)
+import Html exposing (Html, button, datalist, div, h1, h2, input, main_, p, span, text)
 import Html.Attributes as Attr exposing (class, classList, id, style, type_)
 import Html.Attributes.Extra as Attr
 import Html.Events exposing (onClick, onFocus, onInput, onMouseEnter, onMouseLeave)
@@ -232,6 +232,69 @@ settings model =
             , viewItem = Just viewPitchStandard
             }
         , gainInput model.audioSettings
+        , rangeFieldset model.rangeStart model.rangeEnd
+        ]
+
+
+{-| Set the visible range of the pitch space. A minimum of a tetrachord is
+required. Data validation is handled through the input options rather than
+through the update logic; we may need to consider additional validation
+depending on how dynamic we want to be, and on how well we should reflect
+specific modal constraints.
+-}
+rangeFieldset : Degree -> Degree -> Html Msg
+rangeFieldset currentLowerBound currentUpperBound =
+    let
+        maxLowerBound =
+            Degree.step currentUpperBound -3 |> Maybe.withDefault currentLowerBound
+
+        minUpperBound =
+            Degree.step currentLowerBound 3 |> Maybe.withDefault currentUpperBound
+
+        intString degree =
+            Degree.indexOf degree |> String.fromInt
+
+        row label id_ min max value msg =
+            div [ Styles.flexRow, class "align-center" ]
+                [ Html.label
+                    [ Attr.for id_
+                    , class "w-14 mt-1"
+                    ]
+                    [ text label ]
+                , div [ Styles.flexCol ]
+                    [ Html.input
+                        [ type_ "range"
+                        , id id_
+                        , class "w-80"
+                        , onInput msg
+                        , Attr.list (id_ ++ "-datalist")
+                        , Attr.min (intString min)
+                        , Attr.max (intString max)
+                        , Attr.value (intString value)
+                        ]
+                        []
+                    , datalist
+                        [ id (id_ ++ "-datalist")
+                        , Styles.flexRow
+                        , class "justify-between w-80"
+                        ]
+                        (Degree.range min max |> List.map (makeOption msg))
+                    ]
+                ]
+
+        makeOption msg degree =
+            Html.option
+                [ Attr.value (intString degree)
+                , Attr.attribute "label" (Degree.toStringGreek degree)
+                , onClick (msg (intString degree))
+                , class "cursor-pointer font-greek"
+                ]
+                []
+    in
+    Html.fieldset [ Styles.borderRounded, class "px-2 pb-1 mb-2" ]
+        [ Html.legend [ class "px-1" ] [ Html.text "Range" ]
+        , row "From:" "range-start" GA maxLowerBound currentLowerBound SetRangeStart
+        , row "To:" "range-end" minUpperBound Ga_ currentUpperBound SetRangeEnd
         ]
 
 
