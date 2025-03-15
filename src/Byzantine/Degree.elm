@@ -1,4 +1,4 @@
-module Byzantine.Degree exposing (Degree(..), baseOctave, gamut, getInterval, indexOf, range, step, text, toString, toStringGreek)
+module Byzantine.Degree exposing (Degree(..), baseOctave, gamut, gamutList, getInterval, indexOf, range, step, text, toString, toStringGreek)
 
 import Array exposing (Array)
 import Byzantine.Scale exposing (Scale(..))
@@ -146,7 +146,12 @@ text degree =
 
 gamut : Array Degree
 gamut =
-    Array.fromList [ GA, DI, KE, Zo, Ni, Pa, Bou, Ga, Di, Ke, Zo_, Ni_, Pa_, Bou_, Ga_ ]
+    Array.fromList gamutList
+
+
+gamutList : List Degree
+gamutList =
+    [ GA, DI, KE, Zo, Ni, Pa, Bou, Ga, Di, Ke, Zo_, Ni_, Pa_, Bou_, Ga_ ]
 
 
 {-| List of steps from `from` to `to`, inclusive.
