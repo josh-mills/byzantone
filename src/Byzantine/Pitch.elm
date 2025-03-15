@@ -1,7 +1,7 @@
 module Byzantine.Pitch exposing
     ( pitchPosition, pitchPositions
     , PitchStandard(..), Register(..), frequency
-    , Interval, intervalsFrom
+    , Interval, intervals, intervalsFrom
     )
 
 {-| Pitch positions and derived intervals. Di is fixed at 84.
@@ -24,7 +24,7 @@ attractions and inflections.
 
 # Intervals
 
-@docs Interval, intervalsFrom
+@docs Interval, intervals, intervalsFrom
 
 -}
 
@@ -152,16 +152,21 @@ getInterval scale from to =
     }
 
 
+intervals : Scale -> List Interval
+intervals scale =
+    intervalsHelper scale Degree.gamutList
+
+
 intervalsFrom : Scale -> Degree -> Degree -> List Interval
 intervalsFrom scale lower upper =
-    let
-        go degrees =
-            case degrees of
-                a :: b :: rest ->
-                    getInterval scale a b :: go (b :: rest)
+    intervalsHelper scale (Degree.range lower upper)
 
-                _ ->
-                    []
-    in
-    Degree.range lower upper
-        |> go
+
+intervalsHelper : Scale -> List Degree -> List Interval
+intervalsHelper scale degrees =
+    case degrees of
+        a :: b :: rest ->
+            getInterval scale a b :: intervalsHelper scale (b :: rest)
+
+        _ ->
+            []
