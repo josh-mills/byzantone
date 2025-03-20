@@ -1,5 +1,6 @@
 module Styles exposing
-    ( bottom, height, width
+    ( height, width
+    , bottom, left
     , flexRow, flexRowCentered, flexCol
     , border, borderRounded, buttonClass, transition
     )
@@ -9,7 +10,15 @@ module Styles exposing
 
 # Styles
 
-@docs bottom, height, width
+
+## Sizing
+
+@docs height, width
+
+
+## Positioning
+
+@docs bottom, left
 
 
 # Tailwind Classes
@@ -31,14 +40,7 @@ import Html.Attributes exposing (class, style)
 
 
 
--- STYLE ATTRIBUTES
-
-
-{-| in px: `style="bottom: ${b}px;"`
--}
-bottom : Int -> Html.Attribute msg
-bottom b =
-    style "bottom" (String.fromInt b ++ "px")
+-- STYLE ATTRIBUTES: SIZING
 
 
 {-| in px: `style="height: ${h}px;"`
@@ -53,6 +55,24 @@ height h =
 width : Int -> Html.Attribute msg
 width w =
     style "width" (String.fromInt w ++ "px")
+
+
+
+-- STYLE ATTRIBUTES: POSITIONING
+
+
+{-| in px: `style="bottom: ${b}px;"`
+-}
+bottom : Int -> Html.Attribute msg
+bottom b =
+    style "bottom" (String.fromInt b ++ "px")
+
+
+{-| in px: `style="left: ${l}px;"`
+-}
+left : Int -> Html.Attribute msg
+left l =
+    style "left" (String.fromInt l ++ "px")
 
 
 
