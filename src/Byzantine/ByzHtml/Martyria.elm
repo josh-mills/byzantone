@@ -1,4 +1,4 @@
-module Byzantine.ByzHtml.Martyria exposing (view)
+module Byzantine.ByzHtml.Martyria exposing (view, viewWithAttributes)
 
 import Byzantine.Degree exposing (Degree(..))
 import Byzantine.Martyria as Martyria exposing (Martyria, ModalSignature(..))
@@ -8,15 +8,20 @@ import Html exposing (Html)
 
 view : Martyria -> Html msg
 view martyria =
+    viewWithAttributes [] martyria
+
+
+viewWithAttributes : List (Html.Attribute msg) -> Martyria -> Html msg
+viewWithAttributes attributes martyria =
     let
         ( degree, signature ) =
             Martyria.unwrap martyria
     in
     if positionDegreeBelow degree then
-        Html.node "x-martyria" [] [ viewSignature False signature, viewDegree degree ]
+        Html.node "x-martyria" attributes [ viewSignature False signature, viewDegree degree ]
 
     else
-        Html.node "x-martyria" [] [ viewDegree degree, viewSignature True signature ]
+        Html.node "x-martyria" attributes [ viewDegree degree, viewSignature True signature ]
 
 
 positionDegreeBelow : Degree -> Bool
