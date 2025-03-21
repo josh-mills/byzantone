@@ -158,8 +158,8 @@ buttonClass =
     class "bg-gray-200 my-2 py-1 px-3 rounded-md"
 
 
-{-| `class "transition-all duration-500"`
+{-| `class "transition-all duration-800"`
 -}
 transition : Html.Attribute msg
 transition =
-    class "transition-all duration-500"
+    class "transition-all duration-800"
