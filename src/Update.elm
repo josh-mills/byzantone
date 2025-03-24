@@ -206,7 +206,10 @@ update msg model =
                         )
 
                     else
-                        ( { model | currentPitch = Nothing }
+                        ( { model
+                            | currentPitch = Nothing
+                            , proposedMovement = Movement.None
+                          }
                         , Cmd.none
                         )
 
