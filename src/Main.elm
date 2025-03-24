@@ -26,8 +26,5 @@ main =
 init : () -> ( Model, Cmd Msg )
 init _ =
     ( Model.initialModel
-    , Cmd.batch
-        [ Task.perform GotViewport Dom.getViewport
-        , Task.attempt GotViewportOfPitchSpace (Dom.getViewportOf "pitch-space")
-        ]
+    , Task.perform GotViewport Dom.getViewport
     )

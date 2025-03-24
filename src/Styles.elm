@@ -1,11 +1,13 @@
 module Styles exposing
     ( height, width
-    , bottom, left
+    , left, top
     , flexRow, flexRowCentered, flexCol
     , border, borderRounded, buttonClass, transition
     )
 
 {-| Style attribute helpers and common Tailwind class combinations
+
+TODO: shoud the positioning and size helpers take floats instead?
 
 
 # Styles
@@ -18,7 +20,7 @@ module Styles exposing
 
 ## Positioning
 
-@docs bottom, left
+@docs left, top
 
 
 # Tailwind Classes
@@ -61,18 +63,18 @@ width w =
 -- STYLE ATTRIBUTES: POSITIONING
 
 
-{-| in px: `style="bottom: ${b}px;"`
--}
-bottom : Int -> Html.Attribute msg
-bottom b =
-    style "bottom" (String.fromInt b ++ "px")
-
-
 {-| in px: `style="left: ${l}px;"`
 -}
 left : Int -> Html.Attribute msg
 left l =
     style "left" (String.fromInt l ++ "px")
+
+
+{-| in px: `style="top: ${l}px;"`
+-}
+top : Int -> Html.Attribute msg
+top l =
+    style "top" (String.fromInt l ++ "px")
 
 
 

@@ -1,20 +1,18 @@
 module View exposing (view)
 
 import AudioSettings exposing (AudioSettings)
-import Browser.Dom as Dom
-import Byzantine.ByzHtml.Interval as Interval
 import Byzantine.ByzHtml.Martyria as Martyria
 import Byzantine.Degree as Degree exposing (Degree(..))
 import Byzantine.IntervalCharacter exposing (..)
 import Byzantine.Martyria as Martyria
-import Byzantine.Pitch as Pitch exposing (Interval, PitchStandard(..), Register(..))
+import Byzantine.Pitch as Pitch exposing (PitchStandard(..), Register(..))
 import Byzantine.Scale as Scale exposing (Scale(..))
 import Copy
 import Html exposing (Html, button, datalist, div, h1, h2, input, main_, p, span, text)
-import Html.Attributes as Attr exposing (class, classList, id, style, type_)
+import Html.Attributes as Attr exposing (class, classList, id, type_)
 import Html.Attributes.Extra as Attr
-import Html.Events exposing (onClick, onFocus, onInput, onMouseEnter, onMouseLeave)
-import Html.Extra exposing (viewIf, viewMaybe)
+import Html.Events exposing (onClick, onInput)
+import Html.Extra exposing (viewIf)
 import Icons
 import Json.Decode exposing (Decoder)
 import List.Extra as List
@@ -24,6 +22,7 @@ import Movement exposing (Movement(..))
 import RadioFieldset
 import Styles
 import Update exposing (Msg(..))
+import View.PitchSpace as PitchSpace
 
 
 debuggingLayout : Bool
@@ -43,7 +42,8 @@ view model =
         , backdrop model
         , header model
         , viewModal model
-        , viewIf model.showSpacing (div [ class "text-center" ] [ text "|" ])
+
+        -- , viewIf model.showSpacing (div [ class "text-center" ] [ text "|" ])
         , viewIf model.menuOpen menu
         , main_
             [ class "lg:container lg:mx-auto font-serif"
@@ -56,7 +56,7 @@ view model =
             , Html.Events.on "keydown" keyDecoder
             , Attr.attributeIf model.menuOpen (onClick ToggleMenu)
             ]
-            [ pitchSpace model
+            [ PitchSpace.view model
             , viewControls model
             ]
         ]
@@ -100,7 +100,7 @@ audio model =
 
 
 header : Model -> Html Msg
-header model =
+header _ =
     Html.header [ Styles.flexRowCentered ]
         [ div [ class "w-7" ] []
         , div [ Styles.flexCol, class "flex-1 mb-4 mx-4" ]
@@ -108,7 +108,8 @@ header model =
                 [ text "ByzanTone" ]
             , p [ class "font-serif text-center" ]
                 [ text "A tool for learning the pitches and intervals of Byzantine chant." ]
-            , viewIf model.showSpacing (p [ class "text-center" ] [ text "|" ])
+
+            -- , viewIf model.showSpacing (p [ class "text-center" ] [ text "|" ])
             ]
         , button
             [ class "w-7 mt-2 self-start"
@@ -320,259 +321,6 @@ viewPitchStandard pitchStandard =
 
 
 
--- PITCH SPACE
-
-
-pitchSpace : Model -> Html Msg
-pitchSpace model =
-    let
-        intervals =
-            Pitch.intervalsFrom model.scale model.rangeStart model.rangeEnd
-    in
-    div
-        [ id "pitch-space"
-        , class "flex-nowrap"
-        , Styles.transition
-        , case layoutFor model.layout of
-            Portrait ->
-                class "flex flex-row min-w-[360px]"
-
-            Landscape ->
-                Styles.flexCol
-        ]
-        [ intervalCol model intervals
-        , pitchCol model intervals
-        ]
-
-
-intervalCol : Model -> List Interval -> Html Msg
-intervalCol model intervals =
-    let
-        definedIntervals =
-            List.map (viewInterval model) intervals
-
-        spacerTop =
-            List.last intervals
-                |> viewMaybe (spacerInterval model)
-
-        spacerBottom =
-            List.head intervals
-                |> viewMaybe (spacerInterval model)
-                |> List.singleton
-    in
-    div
-        [ case layoutFor model.layout of
-            Portrait ->
-                class "flex flex-col-reverse w-36"
-
-            Landscape ->
-                class "flex flex-row h-24"
-        , onMouseLeave (SelectProposedMovement None)
-        ]
-        (spacerTop :: definedIntervals ++ spacerBottom)
-
-
-viewInterval : Model -> Interval -> Html Msg
-viewInterval ({ currentPitch, proposedMovement } as model) interval =
-    let
-        viewIntervalCharacter degree =
-            currentPitch
-                |> Maybe.map (\current -> Degree.getInterval current degree)
-                |> Maybe.andThen basicInterval
-                |> Html.Extra.viewMaybe
-                    (Interval.view >> List.singleton >> span [ class "me-2" ])
-
-        ( maybeIntervalCharacter, movementAttrs, element ) =
-            let
-                movementOfThisInterval =
-                    Movement.ofInterval currentPitch interval
-
-                movementTo degree maybeNewMovement =
-                    ( viewIntervalCharacter degree
-                    , [ onClick (SelectPitch (Just degree) maybeNewMovement)
-
-                      -- TODO: onBlur or onMouseLeave? how to handle this?
-                      , onFocus (SelectProposedMovement movementOfThisInterval)
-                      , onMouseEnter (SelectProposedMovement movementOfThisInterval)
-                      ]
-                    , button
-                    )
-            in
-            case movementOfThisInterval of
-                AscendTo degree ->
-                    let
-                        newMovement : Maybe Movement
-                        newMovement =
-                            Maybe.map DescendTo (Degree.step degree -1)
-                    in
-                    movementTo degree newMovement
-
-                DescendTo degree ->
-                    let
-                        newMovement : Maybe Movement
-                        newMovement =
-                            Maybe.map AscendTo (Degree.step degree 1)
-                    in
-                    movementTo degree newMovement
-
-                None ->
-                    ( Html.Extra.nothing, [], div )
-
-        ( elementLayoutAttrs, spanLayoutAttrs ) =
-            case layoutFor model.layout of
-                Portrait ->
-                    ( [ Styles.flexRowCentered
-                      , class "w-full"
-                      , Styles.height (interval.moria * heightFactor model.layout.viewport)
-                      ]
-                    , [ Styles.flexRow, class "my-auto" ]
-                    )
-
-                Landscape ->
-                    ( [ Styles.flexRowCentered
-                      , class "h-full"
-                      , Styles.width (interval.moria * widthFactor model.layout.viewport)
-                      ]
-                    , [ class "flex flex-col self-center" ]
-                    )
-    in
-    element
-        ([ Styles.border
-         , Styles.transition
-         , classList
-            [ ( "bg-slate-200"
-              , shouldHighlight currentPitch proposedMovement interval
-              )
-            , ( "hover:bg-slate-200", Maybe.isJust currentPitch )
-            ]
-         ]
-            ++ elementLayoutAttrs
-            ++ movementAttrs
-        )
-        [ span spanLayoutAttrs
-            [ maybeIntervalCharacter
-            , span [ class "text-gray-600" ] [ text (String.fromInt interval.moria) ]
-            ]
-        ]
-
-
-spacerInterval : Model -> Interval -> Html Msg
-spacerInterval ({ showSpacing } as model) { moria } =
-    div
-        [ case layoutFor model.layout of
-            Portrait ->
-                Styles.height (moria * heightFactor model.layout.viewport // 2)
-
-            Landscape ->
-                Styles.width (moria * widthFactor model.layout.viewport // 2)
-        , Styles.transition
-        , classList
-            [ ( "text-center bg-slate-300", showSpacing )
-            , ( "pt-9", True )
-            ]
-        ]
-        [ viewIf showSpacing <| text <| "(" ++ String.fromInt (moria // 2) ++ ")" ]
-
-
-pitchCol : Model -> List Interval -> Html Msg
-pitchCol model intervals =
-    intervalsToPitchHeights intervals
-        |> List.map (viewPitch model)
-        |> div
-            [ case layoutFor model.layout of
-                Portrait ->
-                    class "flex flex-col-reverse w-16"
-
-                Landscape ->
-                    class "flex flex-row h-16"
-            ]
-
-
-viewPitch : Model -> PitchHeight -> Html Msg
-viewPitch ({ scale, showSpacing, currentPitch, proposedMovement } as model) pitchHeight =
-    let
-        degree =
-            Just pitchHeight.degree
-
-        isCurrentPitch =
-            degree == currentPitch
-
-        layout =
-            layoutFor model.layout
-
-        spanAttrs =
-            case layout of
-                Portrait ->
-                    [ style "padding-top" <| String.fromInt (pitchHeight.aboveCenter * (heightFactor model.layout.viewport - 2)) ++ "px"
-                    , Styles.flexRow
-                    , class "gap-2 absolute"
-                    ]
-
-                Landscape ->
-                    [ Styles.flexCol
-                    , class "gap-4"
-                    , style "padding-left" <| String.fromInt (pitchHeight.belowCenter * (widthFactor model.layout.viewport - 6)) ++ "px"
-                    ]
-
-        --     -- for dev purposes only; will eventually be deleted
-        -- totalHeight =
-        --     pitchHeight.aboveCenter + pitchHeight.belowCenter |> String.fromInt
-        -- spacingText =
-        --     "(" ++ totalHeight ++ " = " ++ String.fromInt pitchHeight.belowCenter ++ " + " ++ String.fromInt pitchHeight.aboveCenter ++ ")"
-    in
-    div
-        [ classList [ ( "border border-gray-500 bg-slate-200", showSpacing ) ]
-        , Styles.transition
-        , Styles.flexRowCentered
-        , case layout of
-            Portrait ->
-                Styles.height <| (pitchHeight.belowCenter + pitchHeight.aboveCenter) * heightFactor model.layout.viewport
-
-            Landscape ->
-                Styles.width <| (pitchHeight.belowCenter + pitchHeight.aboveCenter) * widthFactor model.layout.viewport
-        ]
-        [ button
-            [ class "flex px-4 w-full rounded-full"
-            , id <| "p_" ++ Degree.toString pitchHeight.degree
-            , Styles.transition
-            , classList
-                [ ( "bg-green-300", showSpacing ) -- for dev purposes only; will eventually be deleted
-                , ( "text-green-700 bg-slate-200", Movement.toDegree proposedMovement == degree )
-                , ( "bg-red-200", isCurrentPitch )
-                , ( "hover:text-green-700 hover:bg-slate-200", not isCurrentPitch )
-                ]
-            , onClick <|
-                if isCurrentPitch then
-                    SelectPitch Nothing Nothing
-
-                else
-                    SelectPitch degree Nothing
-            ]
-            [ span
-                (Styles.transition
-                    :: classList [ ( "text-red-600", isCurrentPitch ) ]
-                    :: spanAttrs
-                )
-                [ div
-                    [ class "text-xl sm:text-3xl relative"
-                    , case layout of
-                        Portrait ->
-                            class "-top-5"
-
-                        Landscape ->
-                            class "-top-2"
-                    ]
-                    [ viewMaybe (Martyria.view << Martyria.for scale) degree ]
-                , viewIf isCurrentPitch <|
-                    div [ class "w-4 ms-2" ] [ Icons.xmark ]
-
-                -- , viewIf showSpacing <| span [ class "ms-2" ] [ text spacingText ]
-                ]
-            ]
-        ]
-
-
-
 -- CONTROLS
 
 
@@ -580,6 +328,15 @@ viewControls : Model -> Html Msg
 viewControls model =
     div [ class "w-max", classList [ ( "mt-8", debuggingLayout ) ] ]
         [ selectScale model
+
+        -- , RadioFieldset.view
+        --     { itemToString = layoutString
+        --     , legendText = "Layout"
+        --     , onSelect = SetLayout
+        --     , options = [ Auto, Manual Portrait, Manual Landscape ]
+        --     , selected = model.layout.layoutSelection
+        --     , viewItem = Nothing
+        --     }
         , viewCurrentPitch model.currentPitch
         , gainInput model.audioSettings
         ]
@@ -669,111 +426,7 @@ gainInput { gain } =
 -- HELPERS
 
 
-heightFactor : Dom.Viewport -> Int
-heightFactor viewport =
-    (viewport.viewport.height / 100)
-        |> truncate
-        |> clamp 6 12
-
-
-widthFactor : Dom.Viewport -> Int
-widthFactor viewport =
-    (viewport.viewport.width / 100)
-        |> truncate
-        |> clamp 6 18
-
-
-shouldHighlight : Maybe Degree -> Movement -> Interval -> Bool
-shouldHighlight currentPitch proposedMovement interval =
-    Maybe.unwrap False
-        (\current ->
-            let
-                currentPitchIndex =
-                    Degree.indexOf current
-
-                fromIndex =
-                    Degree.indexOf interval.from
-
-                toIndex =
-                    Degree.indexOf interval.to
-            in
-            case proposedMovement of
-                AscendTo degree ->
-                    (currentPitchIndex < toIndex)
-                        && (toIndex <= Degree.indexOf degree)
-
-                DescendTo degree ->
-                    (currentPitchIndex > fromIndex)
-                        && (fromIndex >= Degree.indexOf degree)
-
-                None ->
-                    False
-        )
-        currentPitch
-
-
 keyDecoder : Decoder Msg
 keyDecoder =
     Json.Decode.field "key" Json.Decode.string
         |> Json.Decode.map Keydown
-
-
-
--- TYPES
-
-
-{-| These are fundamentally view concerns, not domain types.
-
-TODO: move to own module?
-
--}
-type alias PitchHeight =
-    { degree : Degree
-    , belowCenter : Int
-    , aboveCenter : Int
-    }
-
-
-intervalsToPitchHeights : List Interval -> List PitchHeight
-intervalsToPitchHeights intervals =
-    case intervals of
-        [] ->
-            []
-
-        x :: xs ->
-            let
-                firstPitch =
-                    { degree = x.from
-                    , belowCenter = x.moria // 2
-                    , aboveCenter = x.moria // 2
-                    }
-            in
-            firstPitch :: intervalsToPitchHeightsHelper firstPitch xs
-
-
-intervalsToPitchHeightsHelper : PitchHeight -> List Interval -> List PitchHeight
-intervalsToPitchHeightsHelper prev rest =
-    case rest of
-        [] ->
-            []
-
-        x :: [] ->
-            [ { degree = x.from
-              , belowCenter = prev.aboveCenter
-              , aboveCenter = x.moria // 2
-              }
-            , { degree = x.to
-              , belowCenter = x.moria // 2
-              , aboveCenter = x.moria // 2
-              }
-            ]
-
-        x :: xs ->
-            let
-                next =
-                    { degree = x.from
-                    , belowCenter = prev.aboveCenter
-                    , aboveCenter = x.moria // 2
-                    }
-            in
-            next :: intervalsToPitchHeightsHelper next xs

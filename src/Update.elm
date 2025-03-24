@@ -14,8 +14,8 @@ import Task
 
 type Msg
     = DomResult (Result Dom.Error ())
+    | GotPitchSpaceElement (Result Dom.Error Dom.Element)
     | GotViewport Dom.Viewport
-    | GotViewportOfPitchSpace (Result Dom.Error Dom.Viewport)
     | ViewportResize Int Int
     | Keydown String
     | NoOp
@@ -43,18 +43,11 @@ update msg model =
             -- just for dev purposes
             ( model, Cmd.none )
 
-        GotViewport viewport ->
-            ( updateLayout
-                (\layout -> { layout | viewport = viewport })
-                model
-            , Cmd.none
-            )
-
-        GotViewportOfPitchSpace viewportResult ->
-            ( case viewportResult of
-                Ok viewport ->
+        GotPitchSpaceElement elementResult ->
+            ( case elementResult of
+                Ok element ->
                     updateLayout
-                        (\layout -> { layout | viewportOfPitchSpace = viewport })
+                        (\layout -> { layout | pitchSpace = element })
                         model
 
                 Err _ ->
@@ -62,11 +55,18 @@ update msg model =
             , Cmd.none
             )
 
+        GotViewport viewport ->
+            ( updateLayout
+                (\layout -> { layout | viewport = viewport })
+                model
+            , Task.attempt GotPitchSpaceElement (Dom.getElement "pitch-space")
+            )
+
         ViewportResize _ _ ->
             ( model
             , Cmd.batch
                 [ Task.perform GotViewport Dom.getViewport
-                , Task.attempt GotViewportOfPitchSpace (Dom.getViewportOf "pitch-space")
+                , Task.perform GotViewport Dom.getViewport
                 ]
             )
 
@@ -82,7 +82,12 @@ update msg model =
         SelectPitch pitch maybeMovement ->
             ( { model
                 | currentPitch = pitch
-                , proposedMovement = Maybe.withDefault model.proposedMovement maybeMovement
+                , proposedMovement =
+                    if Maybe.isJust pitch then
+                        Maybe.withDefault model.proposedMovement maybeMovement
+
+                    else
+                        Movement.None
               }
             , Cmd.none
             )
@@ -105,7 +110,7 @@ update msg model =
             ( updateLayout
                 (\layout -> { layout | layoutSelection = layoutSelection })
                 model
-            , Task.attempt GotViewportOfPitchSpace (Dom.getViewportOf "pitch-space")
+            , Task.perform GotViewport Dom.getViewport
             )
 
         SetPitchStandard pitchStandard ->

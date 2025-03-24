@@ -50,8 +50,8 @@ initialModel =
     , currentPitch = Nothing
     , layout =
         { layoutSelection = Auto
-        , viewport = emptyViewport
-        , viewportOfPitchSpace = emptyViewport
+        , pitchSpace = defaultElement
+        , viewport = defaultViewport
         }
     , menuOpen = False
     , modal = NoModal
@@ -63,10 +63,24 @@ initialModel =
     }
 
 
-emptyViewport : Dom.Viewport
-emptyViewport =
+{-| Initial hardcoded height 256 prevents negative width settings which
+enables a smooth css transition.
+-}
+defaultViewport : Dom.Viewport
+defaultViewport =
+    { scene = { width = 0, height = 0 }
+    , viewport = { x = 0, y = 0, width = 0, height = 256 }
+    }
+
+
+{-| Initial hardcoded element width of 64 prevents negative width settings which
+enables a smooth css transition.
+-}
+defaultElement : Dom.Element
+defaultElement =
     { scene = { width = 0, height = 0 }
     , viewport = { x = 0, y = 0, width = 0, height = 0 }
+    , element = { x = 0, y = 0, width = 64, height = 0 }
     }
 
 
@@ -76,8 +90,8 @@ emptyViewport =
 
 type alias LayoutData =
     { layoutSelection : LayoutSelection
+    , pitchSpace : Dom.Element
     , viewport : Dom.Viewport
-    , viewportOfPitchSpace : Dom.Viewport
     }
 
 
