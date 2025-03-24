@@ -48,10 +48,10 @@ view model =
         , main_
             [ class "lg:container lg:mx-auto font-serif"
             , case layoutFor model.layout of
-                Portrait ->
+                Vertical ->
                     class "flex flex-row flex-wrap-reverse"
 
-                Landscape ->
+                Horizontal ->
                     Styles.flexCol
             , Html.Events.on "keydown" keyDecoder
             , Attr.attributeIf model.menuOpen (onClick ToggleMenu)
@@ -198,7 +198,7 @@ settings model =
             { itemToString = layoutString
             , legendText = "Layout"
             , onSelect = SetLayout
-            , options = [ Auto, Manual Portrait, Manual Landscape ]
+            , options = [ Auto, Manual Vertical, Manual Horizontal ]
             , selected = model.layout.layoutSelection
             , viewItem = Nothing
             }

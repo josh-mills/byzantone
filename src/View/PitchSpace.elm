@@ -192,14 +192,14 @@ scalingFactor layoutData rangeInMoria =
             pitchButtonSize layoutData |> toFloat
     in
     case layoutFor layoutData of
-        Portrait ->
+        Vertical ->
             (layoutData.viewport.viewport.height
                 - max layoutData.pitchSpace.element.y 128
                 - marginForButton
             )
                 / toFloat rangeInMoria
 
-        Landscape ->
+        Horizontal ->
             (layoutData.pitchSpace.element.width
                 - marginForButton
             )
@@ -220,12 +220,12 @@ view model =
          , Attr.attributeIf model.showSpacing Styles.border
          ]
             ++ (case layoutFor model.layout of
-                    Portrait ->
+                    Vertical ->
                         [ Styles.flexRow
                         , class "my-8"
                         ]
 
-                    Landscape ->
+                    Horizontal ->
                         [ Styles.flexCol
                         , class "mx-8"
                         ]
@@ -247,13 +247,13 @@ the interval column. We'll have to see, though.
 listAttributes : LayoutData -> List (Html.Attribute Msg)
 listAttributes layoutData =
     case layoutFor layoutData of
-        Portrait ->
+        Vertical ->
             [ class "flex flex-col-reverse justify-end w-36 mx-4"
 
             -- , Styles.height (truncate layoutData.viewport.viewport.height - 200)
             ]
 
-        Landscape ->
+        Horizontal ->
             [ Styles.flexRowCentered
             , class "h-24 w-full my-4"
             ]
@@ -332,10 +332,10 @@ viewInterval model rangeInMoria interval =
         , class <| positionString position
         , Styles.flexRowCentered
         , case layout of
-            Portrait ->
+            Vertical ->
                 Styles.height size
 
-            Landscape ->
+            Horizontal ->
                 Styles.width size
         , Styles.transition
         , Attr.attributeIf (positionIsVisible position) Styles.border
@@ -489,10 +489,10 @@ viewPitch model rangeInMoria degree =
         , Attr.attributeIf showSpacingDetails Styles.border
         , attributeIfVisible Styles.flexCol
         , case layout of
-            Portrait ->
+            Vertical ->
                 Styles.height size
 
-            Landscape ->
+            Horizontal ->
                 Styles.width size
         ]
         [ viewIfLazy (positionIsVisible positionWithinRange)
@@ -536,7 +536,7 @@ pitchButton model { degree, pitch, pitchAbove, pitchBelow, positionWithinRange, 
                 ( _, Below ) ->
                     0
 
-                ( Portrait, LowerBoundary ) ->
+                ( Vertical, LowerBoundary ) ->
                     Maybe.map
                         (\above -> toFloat (above - pitch) / 2)
                         pitchAbove
@@ -545,10 +545,10 @@ pitchButton model { degree, pitch, pitchAbove, pitchBelow, positionWithinRange, 
                         |> round
                         |> (+) (negate pitchButtonSizeValue)
 
-                ( Landscape, LowerBoundary ) ->
+                ( Horizontal, LowerBoundary ) ->
                     negate pitchButtonSizeValue
 
-                ( Portrait, Within ) ->
+                ( Vertical, Within ) ->
                     Maybe.map
                         (\above -> toFloat (above - pitch) / 2)
                         pitchAbove
@@ -557,7 +557,7 @@ pitchButton model { degree, pitch, pitchAbove, pitchBelow, positionWithinRange, 
                         |> round
                         |> (+) (negate pitchButtonSizeValue)
 
-                ( Landscape, Within ) ->
+                ( Horizontal, Within ) ->
                     Maybe.map
                         (\below -> toFloat (pitch - below) / 2)
                         pitchBelow
@@ -566,10 +566,10 @@ pitchButton model { degree, pitch, pitchAbove, pitchBelow, positionWithinRange, 
                         |> round
                         |> (+) (negate pitchButtonSizeValue)
 
-                ( Portrait, UpperBoundary ) ->
+                ( Vertical, UpperBoundary ) ->
                     negate pitchButtonSizeValue
 
-                ( Landscape, UpperBoundary ) ->
+                ( Horizontal, UpperBoundary ) ->
                     Maybe.map
                         (\below -> toFloat (pitch - below) / 2)
                         pitchBelow
@@ -595,10 +595,10 @@ pitchButton model { degree, pitch, pitchAbove, pitchBelow, positionWithinRange, 
         , class "rounded-full hover:z-10 cursor-pointer relative pb-8"
         , Styles.transition
         , case layoutFor model.layout of
-            Portrait ->
+            Vertical ->
                 Styles.top position
 
-            Landscape ->
+            Horizontal ->
                 Styles.left position
         , classList
             [ ( "bg-red-200", isCurrentPitch )

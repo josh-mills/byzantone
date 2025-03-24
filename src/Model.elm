@@ -101,23 +101,30 @@ type LayoutSelection
 
 
 type Layout
-    = Portrait
-    | Landscape
+    = Vertical
+    | Horizontal
 
 
-{-| The specifics here will need work. Portrait should be the default, and Auto
-should only kick into landscape if the height is sufficiently small, or perhaps
-if the ratio is beneath some threshold.
+{-| For Auto layout, Vertical is the default. Only when the screen is relatively
+short _and_ significantly wider than it is tall should the layout switch to
+Horizontal.
 -}
 layoutFor : LayoutData -> Layout
 layoutFor { layoutSelection, viewport } =
     case layoutSelection of
         Auto ->
-            -- TODO: implement.
-            Portrait
+            let
+                ratio =
+                    viewport.viewport.height / viewport.viewport.width
+            in
+            if viewport.viewport.height < 800 && ratio < 2.2 then
+                Horizontal
 
-        Manual layout_ ->
-            layout_
+            else
+                Vertical
+
+        Manual layout ->
+            layout
 
 
 layoutString : LayoutSelection -> String
@@ -126,11 +133,11 @@ layoutString layoutSelection =
         Auto ->
             "Auto"
 
-        Manual Portrait ->
-            "Portrait"
+        Manual Vertical ->
+            "Vertical"
 
-        Manual Landscape ->
-            "Landscape"
+        Manual Horizontal ->
+            "Horizontal"
 
 
 
