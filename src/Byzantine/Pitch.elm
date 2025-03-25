@@ -74,7 +74,7 @@ diatonicPitchPositions =
 
 enharmonicPitchPositions : Array Int
 enharmonicPitchPositions =
-    Array.fromList [ 0, 12, 24, 30, 42, 54, 60, 72, 84, 96, 102, 114, 126, 132, 144 ]
+    Array.fromList [ 0, 12, 24, 30, 42, 54, 66, 72, 84, 96, 102, 114, 126, 138, 144 ]
 
 
 softChromaticPitchPositions : Array Int
@@ -84,7 +84,7 @@ softChromaticPitchPositions =
 
 hardChromaticPitchPositions : Array Int
 hardChromaticPitchPositions =
-    Array.fromList [ 0, 12, 18, 38, 42, 54, 60, 80, 84, 96, 102, 122, 126, 138, 150 ]
+    Array.fromList [ 0, 12, 18, 38, 42, 54, 60, 80, 84, 96, 102, 122, 126, 136, 144 ]
 
 
 
