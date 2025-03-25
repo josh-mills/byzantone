@@ -12,7 +12,7 @@ import Byzantine.Pitch as Pitch exposing (Interval)
 import Html exposing (Html, button, div, li, span, text)
 import Html.Attributes as Attr exposing (class, classList)
 import Html.Attributes.Extra as Attr
-import Html.Events exposing (onClick, onFocus, onMouseEnter)
+import Html.Events exposing (onClick, onFocus, onMouseEnter, onMouseLeave)
 import Html.Extra exposing (viewIf, viewIfLazy)
 import Maybe.Extra as Maybe
 import Model exposing (Layout(..), LayoutData, Model, layoutFor)
@@ -254,7 +254,7 @@ listAttributes layoutData =
 
 viewIntervals : Model -> Html Msg
 viewIntervals model =
-    Html.ol (listAttributes model.layout)
+    Html.ol (onMouseLeave (SelectProposedMovement None) :: listAttributes model.layout)
         (List.map
             (viewInterval model (visibleRangeInMoria model))
             (intervalsWithVisibility model)
