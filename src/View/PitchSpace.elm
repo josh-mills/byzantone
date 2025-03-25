@@ -14,7 +14,6 @@ import Html.Attributes as Attr exposing (class, classList)
 import Html.Attributes.Extra as Attr
 import Html.Events exposing (onClick, onFocus, onMouseEnter)
 import Html.Extra exposing (viewIf, viewIfLazy)
-import Html.Keyed
 import Maybe.Extra as Maybe
 import Model exposing (Layout(..), LayoutData, Model, layoutFor)
 import Movement exposing (Movement(..))
@@ -69,27 +68,6 @@ type PositionWithinVisibleRange
     | Within
     | UpperBoundary
     | Above
-
-
-{-| not actually needed; just for fun
--}
-positionString : PositionWithinVisibleRange -> String
-positionString position =
-    case position of
-        Below ->
-            "Below"
-
-        LowerBoundary ->
-            "LowerBoundary"
-
-        Within ->
-            "Within"
-
-        UpperBoundary ->
-            "UpperBoundary"
-
-        Above ->
-            "Above"
 
 
 positionIsVisible : PositionWithinVisibleRange -> Bool
@@ -223,8 +201,6 @@ scalingFactor layoutData rangeInMoria =
 -- WRAPPER
 
 
-{-| may want padding on this.
--}
 view : Model -> Html Msg
 view model =
     div
@@ -244,7 +220,6 @@ view model =
                         ]
                )
         )
-        -- , class "flex-nowrap"
         [ viewIntervals model
         , viewPitches model
         ]
@@ -256,15 +231,15 @@ view model =
 
 {-| Hypothesis is that this will work for both pitch column and
 the interval column. We'll have to see, though.
+
+TODO: we'll need a mouse-out for intervals at least.
+
 -}
 listAttributes : LayoutData -> List (Html.Attribute Msg)
 listAttributes layoutData =
     case layoutFor layoutData of
         Vertical ->
-            [ class "flex flex-col-reverse justify-end w-36 mx-4"
-
-            -- , Styles.height (truncate layoutData.viewport.viewport.height - 200)
-            ]
+            [ class "flex flex-col-reverse justify-end w-36 mx-4" ]
 
         Horizontal ->
             [ Styles.flexRowCentered
@@ -278,22 +253,19 @@ listAttributes layoutData =
 
 viewIntervals : Model -> Html Msg
 viewIntervals model =
-    Html.Keyed.ol (listAttributes model.layout)
+    Html.ol (listAttributes model.layout)
         (List.map
             (viewInterval model (visibleRangeInMoria model))
             (intervalsWithVisibility model)
         )
 
 
-viewInterval : Model -> Int -> ( Interval, PositionWithinVisibleRange ) -> ( String, Html Msg )
+{-| TODO: see if with some refactors, we could use Html.Lazy for this. But
+benchmark this before shipping.
+-}
+viewInterval : Model -> Int -> ( Interval, PositionWithinVisibleRange ) -> Html Msg
 viewInterval model rangeInMoria ( interval, position ) =
     let
-        id =
-            "interval-" ++ Degree.toString interval.from ++ "-" ++ Degree.toString interval.to
-
-        layout =
-            layoutFor model.layout
-
         size =
             case position of
                 Above ->
@@ -304,14 +276,6 @@ viewInterval model rangeInMoria ( interval, position ) =
 
                 _ ->
                     scalingFactor model.layout rangeInMoria
-                        -- (case layout of
-                        --     Portrait ->
-                        --         model.layout.viewport.viewport.height
-                        --     Landscape ->
-                        --         -- TODO: may want to consider truncating this somehow
-                        --         model.layout.viewportOfPitchSpace.viewport.width
-                        -- )
-                        --     / toFloat rangeInMoria
                         * toFloat interval.moria
                         |> round
 
@@ -337,12 +301,10 @@ viewInterval model rangeInMoria ( interval, position ) =
             , onMouseEnter (SelectProposedMovement movement)
             ]
     in
-    ( id
-    , li
-        [ Attr.id id
-        , class <| positionString position
+    li
+        [ Attr.id ("interval-" ++ Degree.toString interval.from ++ "-" ++ Degree.toString interval.to)
         , Styles.flexRowCentered
-        , case layout of
+        , case layoutFor model.layout of
             Vertical ->
                 Styles.height size
 
@@ -376,7 +338,6 @@ viewInterval model rangeInMoria ( interval, position ) =
           )
             |> viewIf (positionIsVisible position)
         ]
-    )
 
 
 viewIntervalCharacter : Maybe Degree -> Degree -> Html Msg
@@ -423,19 +384,16 @@ shouldHighlightInterval currentPitch proposedMovement interval =
 
 viewPitches : Model -> Html Msg
 viewPitches model =
-    Html.Keyed.ol (listAttributes model.layout)
+    Html.ol (listAttributes model.layout)
         (List.map
             (viewPitch model (visibleRangeInMoria model))
             (pitchesWithVisibility model)
         )
 
 
-viewPitch : Model -> Int -> ( Degree, PositionWithinVisibleRange ) -> ( String, Html Msg )
+viewPitch : Model -> Int -> ( Degree, PositionWithinVisibleRange ) -> Html Msg
 viewPitch model rangeInMoria ( degree, positionWithinRange ) =
     let
-        id =
-            "pitch-" ++ Degree.toString degree
-
         pitch =
             Pitch.pitchPosition model.scale degree
 
@@ -489,10 +447,8 @@ viewPitch model rangeInMoria ( degree, positionWithinRange ) =
         attributeIfVisible =
             Attr.attributeIf (positionIsVisible positionWithinRange)
     in
-    ( id
-    , li
-        [ Attr.id id
-        , class <| positionString positionWithinRange
+    li
+        [ Attr.id ("pitch-" ++ Degree.toString degree)
         , Styles.transition
         , Attr.attributeIf showSpacingDetails Styles.border
         , attributeIfVisible Styles.flexCol
@@ -517,7 +473,6 @@ viewPitch model rangeInMoria ( degree, positionWithinRange ) =
         , viewIf showSpacingDetails
             (text (" (" ++ String.fromInt size ++ "px)"))
         ]
-    )
 
 
 pitchButton :
