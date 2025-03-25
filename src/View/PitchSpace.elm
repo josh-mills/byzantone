@@ -111,42 +111,8 @@ positionIsVisible position =
             False
 
 
-{-| TODO: refactor to process as a list so it's not re-computing the visible
-range over and over.
--}
-pitchPositionWithinVisibleRange : Model -> Degree -> PositionWithinVisibleRange
-pitchPositionWithinVisibleRange model degree =
-    let
-        pitchIndex =
-            Degree.indexOf degree
-
-        { start, end } =
-            visibleRange model
-
-        lowerBoundIndex =
-            Degree.indexOf start
-
-        upperBoundIndex =
-            Degree.indexOf end
-    in
-    if pitchIndex < lowerBoundIndex then
-        Below
-
-    else if pitchIndex == lowerBoundIndex then
-        LowerBoundary
-
-    else if pitchIndex > upperBoundIndex then
-        Above
-
-    else if pitchIndex == upperBoundIndex then
-        UpperBoundary
-
-    else
-        Within
-
-
-intervalPositionWithinVisibleRange : Model -> Interval -> PositionWithinVisibleRange
-intervalPositionWithinVisibleRange model interval =
+pitchesWithVisibility : Model -> List ( Degree, PositionWithinVisibleRange )
+pitchesWithVisibility model =
     let
         { start, end } =
             visibleRange model
@@ -157,26 +123,73 @@ intervalPositionWithinVisibleRange model interval =
         upperBoundIndex =
             Degree.indexOf end
 
-        intervalFromIndex =
-            Degree.indexOf interval.from
+        visibility pitchIndex =
+            if pitchIndex < lowerBoundIndex then
+                Below
 
-        intervalToIndex =
-            Degree.indexOf interval.to
+            else if pitchIndex == lowerBoundIndex then
+                LowerBoundary
+
+            else if pitchIndex > upperBoundIndex then
+                Above
+
+            else if pitchIndex == upperBoundIndex then
+                UpperBoundary
+
+            else
+                Within
     in
-    if lowerBoundIndex == intervalFromIndex then
-        LowerBoundary
+    List.map
+        (\degree ->
+            ( degree
+            , visibility (Degree.indexOf degree)
+            )
+        )
+        Degree.gamutList
 
-    else if upperBoundIndex == intervalToIndex then
-        UpperBoundary
 
-    else if intervalToIndex <= lowerBoundIndex then
-        Below
+intervalsWithVisibility : Model -> List ( Interval, PositionWithinVisibleRange )
+intervalsWithVisibility model =
+    let
+        { start, end } =
+            visibleRange model
 
-    else if intervalFromIndex >= upperBoundIndex then
-        Above
+        lowerBoundIndex =
+            Degree.indexOf start
 
-    else
-        Within
+        upperBoundIndex =
+            Degree.indexOf end
+
+        visibility interval =
+            let
+                intervalFromIndex =
+                    Degree.indexOf interval.from
+
+                intervalToIndex =
+                    Degree.indexOf interval.to
+            in
+            if intervalToIndex <= lowerBoundIndex then
+                Below
+
+            else if intervalFromIndex >= upperBoundIndex then
+                Above
+
+            else if lowerBoundIndex == intervalFromIndex then
+                LowerBoundary
+
+            else if upperBoundIndex == intervalToIndex then
+                UpperBoundary
+
+            else
+                Within
+    in
+    List.map
+        (\interval ->
+            ( interval
+            , visibility interval
+            )
+        )
+        (Pitch.intervals model.scale)
 
 
 {-| This feels potentially fragile.
@@ -266,19 +279,17 @@ listAttributes layoutData =
 viewIntervals : Model -> Html Msg
 viewIntervals model =
     Html.Keyed.ol (listAttributes model.layout)
-        (List.map (viewInterval model (visibleRangeInMoria model))
-            (Pitch.intervals model.scale)
+        (List.map
+            (viewInterval model (visibleRangeInMoria model))
+            (intervalsWithVisibility model)
         )
 
 
-viewInterval : Model -> Int -> Interval -> ( String, Html Msg )
-viewInterval model rangeInMoria interval =
+viewInterval : Model -> Int -> ( Interval, PositionWithinVisibleRange ) -> ( String, Html Msg )
+viewInterval model rangeInMoria ( interval, position ) =
     let
         id =
             "interval-" ++ Degree.toString interval.from ++ "-" ++ Degree.toString interval.to
-
-        position =
-            intervalPositionWithinVisibleRange model interval
 
         layout =
             layoutFor model.layout
@@ -413,20 +424,17 @@ shouldHighlightInterval currentPitch proposedMovement interval =
 viewPitches : Model -> Html Msg
 viewPitches model =
     Html.Keyed.ol (listAttributes model.layout)
-        (List.map (viewPitch model (visibleRangeInMoria model)) Degree.gamutList)
+        (List.map
+            (viewPitch model (visibleRangeInMoria model))
+            (pitchesWithVisibility model)
+        )
 
 
-viewPitch : Model -> Int -> Degree -> ( String, Html Msg )
-viewPitch model rangeInMoria degree =
+viewPitch : Model -> Int -> ( Degree, PositionWithinVisibleRange ) -> ( String, Html Msg )
+viewPitch model rangeInMoria ( degree, positionWithinRange ) =
     let
         id =
             "pitch-" ++ Degree.toString degree
-
-        layout =
-            layoutFor model.layout
-
-        positionWithinRange =
-            pitchPositionWithinVisibleRange model degree
 
         pitch =
             Pitch.pitchPosition model.scale degree
@@ -488,7 +496,7 @@ viewPitch model rangeInMoria degree =
         , Styles.transition
         , Attr.attributeIf showSpacingDetails Styles.border
         , attributeIfVisible Styles.flexCol
-        , case layout of
+        , case layoutFor model.layout of
             Vertical ->
                 Styles.height size
 
