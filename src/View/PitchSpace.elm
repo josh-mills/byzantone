@@ -106,11 +106,11 @@ pitchesWithVisibility model =
             if pitchIndex < lowerBoundIndex then
                 Below
 
-            else if pitchIndex == lowerBoundIndex then
-                LowerBoundary
-
             else if pitchIndex > upperBoundIndex then
                 Above
+
+            else if pitchIndex == lowerBoundIndex then
+                LowerBoundary
 
             else if pitchIndex == upperBoundIndex then
                 UpperBoundary
@@ -226,16 +226,6 @@ view model =
         ]
 
 
-
--- LAYOUT HELPERS
-
-
-{-| Hypothesis is that this will work for both pitch column and
-the interval column. We'll have to see, though.
-
-TODO: we'll need a mouse-out for intervals at least.
-
--}
 listAttributes : LayoutData -> List (Html.Attribute Msg)
 listAttributes layoutData =
     case layoutFor layoutData of
@@ -276,8 +266,7 @@ viewInterval model rangeInMoria ( interval, position ) =
                     0
 
                 _ ->
-                    scalingFactor model.layout rangeInMoria
-                        * toFloat interval.moria
+                    toFloat interval.moria * scalingFactor model.layout rangeInMoria
 
         movement =
             Movement.ofInterval model.currentPitch interval
@@ -408,6 +397,9 @@ viewPitch model rangeInMoria ( degree, positionWithinRange ) =
         scalingFactor_ =
             scalingFactor model.layout rangeInMoria
 
+        scale int =
+            (toFloat int / 2) * scalingFactor_
+
         size =
             case positionWithinRange of
                 Below ->
@@ -415,25 +407,26 @@ viewPitch model rangeInMoria ( degree, positionWithinRange ) =
 
                 LowerBoundary ->
                     Maybe.map
-                        (\above -> toFloat (above - pitch) / 2)
+                        (\above -> scale (above - pitch))
                         pitchAbove
                         |> Maybe.withDefault 0
-                        |> (*) scalingFactor_
 
                 Within ->
                     Maybe.map2
-                        (\below above -> (toFloat (above - pitch) / 2) + (toFloat (pitch - below) / 2))
+                        (\below above ->
+                            (toFloat (above - pitch) / 2)
+                                |> (+) (toFloat (pitch - below) / 2)
+                                |> (*) scalingFactor_
+                        )
                         pitchBelow
                         pitchAbove
                         |> Maybe.withDefault 0
-                        |> (*) scalingFactor_
 
                 UpperBoundary ->
                     Maybe.map
-                        (\below -> toFloat (pitch - below) / 2)
+                        (\below -> scale (pitch - below))
                         pitchBelow
                         |> Maybe.withDefault 0
-                        |> (*) scalingFactor_
 
                 Above ->
                     0
@@ -491,6 +484,11 @@ pitchButton model { degree, pitch, pitchAbove, pitchBelow, positionWithinRange, 
         layout =
             layoutFor model.layout
 
+        scale int =
+            (toFloat int / 2)
+                |> (*) scalingFactor_
+                |> (+) (negate pitchButtonSizeValue)
+
         position =
             case ( layout, positionWithinRange ) of
                 ( _, Below ) ->
@@ -498,41 +496,33 @@ pitchButton model { degree, pitch, pitchAbove, pitchBelow, positionWithinRange, 
 
                 ( Vertical, LowerBoundary ) ->
                     Maybe.map
-                        (\above -> toFloat (above - pitch) / 2)
+                        (\above -> scale (above - pitch))
                         pitchAbove
                         |> Maybe.withDefault 0
-                        |> (*) scalingFactor_
-                        |> (+) (negate pitchButtonSizeValue)
 
                 ( Horizontal, LowerBoundary ) ->
                     negate pitchButtonSizeValue
 
                 ( Vertical, Within ) ->
                     Maybe.map
-                        (\above -> toFloat (above - pitch) / 2)
+                        (\above -> scale (above - pitch))
                         pitchAbove
                         |> Maybe.withDefault 0
-                        |> (*) scalingFactor_
-                        |> (+) (negate pitchButtonSizeValue)
 
                 ( Horizontal, Within ) ->
                     Maybe.map
-                        (\below -> toFloat (pitch - below) / 2)
+                        (\below -> scale (pitch - below))
                         pitchBelow
                         |> Maybe.withDefault 0
-                        |> (*) scalingFactor_
-                        |> (+) (negate pitchButtonSizeValue)
 
                 ( Vertical, UpperBoundary ) ->
                     negate pitchButtonSizeValue
 
                 ( Horizontal, UpperBoundary ) ->
                     Maybe.map
-                        (\below -> toFloat (pitch - below) / 2)
+                        (\below -> scale (pitch - below))
                         pitchBelow
                         |> Maybe.withDefault 0
-                        |> (*) scalingFactor_
-                        |> (+) (negate pitchButtonSizeValue)
 
                 ( _, Above ) ->
                     0
