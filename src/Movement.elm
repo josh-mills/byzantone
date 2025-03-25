@@ -1,5 +1,10 @@
 module Movement exposing (Movement(..), ofInterval, toDegree)
 
+{-| A representation of motion within intervallic space. This is more a
+presentational concern rather than a theoretical concept within the system, so,
+for example, there is no purpose in modeling the ison.
+-}
+
 import Byzantine.Degree as Degree exposing (Degree)
 import Byzantine.Pitch exposing (Interval)
 

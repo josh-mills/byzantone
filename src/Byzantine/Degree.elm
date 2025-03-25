@@ -1,4 +1,4 @@
-module Byzantine.Degree exposing (Degree(..), baseOctave, gamut, getInterval, indexOf, range, step, text, toString)
+module Byzantine.Degree exposing (Degree(..), baseOctave, gamut, gamutList, getInterval, indexOf, range, step, text, toString, toStringGreek)
 
 import Array exposing (Array)
 import Byzantine.Scale exposing (Scale(..))
@@ -83,63 +83,75 @@ toString degree =
             "Ga_"
 
 
+{-| Greek text representation of the degree. No differentiation for different
+octaves.
+-}
+toStringGreek : Degree -> String
+toStringGreek degree =
+    case degree of
+        GA ->
+            "Γα"
+
+        DI ->
+            "Δι"
+
+        KE ->
+            "Κε"
+
+        Zo ->
+            "Ζω"
+
+        Ni ->
+            "Νη"
+
+        Pa ->
+            "Πα"
+
+        Bou ->
+            "Βου"
+
+        Ga ->
+            "Γα"
+
+        Di ->
+            "Δι"
+
+        Ke ->
+            "Κε"
+
+        Zo_ ->
+            "Ζω"
+
+        Ni_ ->
+            "Νη"
+
+        Pa_ ->
+            "Πα"
+
+        Bou_ ->
+            "Βου"
+
+        Ga_ ->
+            "Γα"
+
+
 {-| Greek text representation of the degree, e.g., `<span
 class="font-greek">Δι</span>`. No differentiation for different octaves.
 -}
 text : Degree -> Html msg
 text degree =
     Html.span [ class "font-greek" ]
-        [ case degree of
-            GA ->
-                Html.text "Γα"
-
-            DI ->
-                Html.text "Δι"
-
-            KE ->
-                Html.text "Κε"
-
-            Zo ->
-                Html.text "Ζω"
-
-            Ni ->
-                Html.text "Νη"
-
-            Pa ->
-                Html.text "Πα"
-
-            Bou ->
-                Html.text "Βου"
-
-            Ga ->
-                Html.text "Γα"
-
-            Di ->
-                Html.text "Δι"
-
-            Ke ->
-                Html.text "Κε"
-
-            Zo_ ->
-                Html.text "Ζω"
-
-            Ni_ ->
-                Html.text "Νη"
-
-            Pa_ ->
-                Html.text "Πα"
-
-            Bou_ ->
-                Html.text "Βου"
-
-            Ga_ ->
-                Html.text "Γα"
-        ]
+        [ Html.text (toStringGreek degree) ]
 
 
 gamut : Array Degree
 gamut =
-    Array.fromList [ GA, DI, KE, Zo, Ni, Pa, Bou, Ga, Di, Ke, Zo_, Ni_, Pa_, Bou_, Ga_ ]
+    Array.fromList gamutList
+
+
+gamutList : List Degree
+gamutList =
+    [ GA, DI, KE, Zo, Ni, Pa, Bou, Ga, Di, Ke, Zo_, Ni_, Pa_, Bou_, Ga_ ]
 
 
 {-| List of steps from `from` to `to`, inclusive.

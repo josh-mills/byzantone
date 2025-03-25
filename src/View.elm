@@ -1,28 +1,28 @@
 module View exposing (view)
 
 import AudioSettings exposing (AudioSettings)
-import Browser.Dom as Dom
-import Byzantine.ByzHtml.Interval as Interval
 import Byzantine.ByzHtml.Martyria as Martyria
 import Byzantine.Degree as Degree exposing (Degree(..))
 import Byzantine.IntervalCharacter exposing (..)
 import Byzantine.Martyria as Martyria
-import Byzantine.Pitch as Pitch exposing (Interval, PitchStandard(..), Register(..))
+import Byzantine.Pitch as Pitch exposing (PitchStandard(..), Register(..))
 import Byzantine.Scale as Scale exposing (Scale(..))
 import Copy
-import Html exposing (Html, button, div, h1, h2, input, main_, p, span, text)
-import Html.Attributes as Attr exposing (class, classList, id, style, type_)
+import Html exposing (Html, button, datalist, div, h1, h2, input, main_, p, span, text)
+import Html.Attributes as Attr exposing (class, classList, id, type_)
 import Html.Attributes.Extra as Attr
-import Html.Events exposing (onClick, onFocus, onInput, onMouseEnter, onMouseLeave)
-import Html.Extra exposing (viewIf, viewMaybe)
+import Html.Events exposing (onClick, onInput)
+import Html.Extra exposing (viewIf)
 import Icons
 import Json.Decode exposing (Decoder)
 import List.Extra as List
 import Maybe.Extra as Maybe
-import Model exposing (Modal(..), Model)
+import Model exposing (Layout(..), LayoutSelection(..), Modal(..), Model, layoutFor, layoutString)
 import Movement exposing (Movement(..))
 import RadioFieldset
+import Styles
 import Update exposing (Msg(..))
+import View.PitchSpace as PitchSpace
 
 
 debuggingLayout : Bool
@@ -42,14 +42,21 @@ view model =
         , backdrop model
         , header model
         , viewModal model
-        , viewIf model.showSpacing (div [ class "text-center" ] [ text "|" ])
+
+        -- , viewIf model.showSpacing (div [ class "text-center" ] [ text "|" ])
         , viewIf model.menuOpen menu
         , main_
-            [ class "lg:container lg:mx-auto flex flex-row flex-wrap-reverse font-serif"
+            [ class "lg:container lg:mx-auto font-serif"
+            , case layoutFor model.layout of
+                Vertical ->
+                    class "flex flex-row flex-wrap-reverse"
+
+                Horizontal ->
+                    Styles.flexCol
             , Html.Events.on "keydown" keyDecoder
             , Attr.attributeIf model.menuOpen (onClick ToggleMenu)
             ]
-            [ pitchSpace model
+            [ PitchSpace.view model
             , viewControls model
             ]
         ]
@@ -63,7 +70,7 @@ backdrop model =
     in
     div
         [ class "fixed top-0 left-0 w-full h-full"
-        , transition
+        , Styles.transition
         , classList
             [ ( "-z-10", not show )
             , ( "bg-slate-400 opacity-40 z-10", show )
@@ -93,17 +100,16 @@ audio model =
 
 
 header : Model -> Html Msg
-header model =
-    Html.header
-        [ class "flex flex-row justify-center"
-        ]
+header _ =
+    Html.header [ Styles.flexRowCentered ]
         [ div [ class "w-7" ] []
-        , div [ class "flex-1 flex flex-col mb-4 mx-4" ]
+        , div [ Styles.flexCol, class "flex-1 mb-4 mx-4" ]
             [ h1 [ class "font-heading text-4xl text-center" ]
                 [ text "ByzanTone" ]
             , p [ class "font-serif text-center" ]
                 [ text "A tool for learning the pitches and intervals of Byzantine chant." ]
-            , viewIf model.showSpacing (p [ class "text-center" ] [ text "|" ])
+
+            -- , viewIf model.showSpacing (p [ class "text-center" ] [ text "|" ])
             ]
         , button
             [ class "w-7 mt-2 self-start"
@@ -122,14 +128,15 @@ menu =
             Html.li []
                 [ button
                     [ class "p-2 hover:bg-gray-200 w-full"
-                    , transition
+                    , Styles.transition
                     , onClick (SelectModal modal)
                     ]
                     [ text (Model.modalToString modal) ]
                 ]
     in
     Html.ul
-        [ class "fixed top-0 right-0 z-50 bg-white border border-gray-300 rounded-md shadow-md"
+        [ class "fixed top-0 right-0 z-50 bg-white shadow-md"
+        , Styles.borderRounded
         , class "font-serif"
         , id "menu"
         , Html.Events.on "keydown" keyDecoder
@@ -150,12 +157,13 @@ viewModal model =
         _ ->
             Html.node "dialog"
                 [ class "fixed inset-1/4 top-24 w-3/4 md:w-1/2 z-10"
-                , class "flex flex-col"
+                , Styles.flexCol
                 , class "p-6 bg-white"
-                , class "border border-gray-300 rounded-md shadow-md font-serif"
+                , Styles.borderRounded
+                , class "shadow-md font-serif"
                 , id "modal"
                 ]
-                [ h2 [ class "flex flex-row justify-between mb-1" ]
+                [ h2 [ Styles.flexRow, class "justify-between mb-1" ]
                     [ span [ class "font-heading text-2xl" ]
                         [ text (Model.modalToString model.modal) ]
                     , button
@@ -183,9 +191,17 @@ modalContent model =
 
 settings : Model -> Html Msg
 settings model =
-    div [ class "flex flex-col gap-2" ]
+    div [ Styles.flexCol, class "gap-2" ]
         [ spacingButton model.showSpacing
             |> viewIf debuggingLayout
+        , RadioFieldset.view
+            { itemToString = layoutString
+            , legendText = "Layout"
+            , onSelect = SetLayout
+            , options = [ Auto, Manual Vertical, Manual Horizontal ]
+            , selected = model.layout.layoutSelection
+            , viewItem = Nothing
+            }
         , RadioFieldset.view
             { itemToString =
                 \register ->
@@ -217,6 +233,69 @@ settings model =
             , viewItem = Just viewPitchStandard
             }
         , gainInput model.audioSettings
+        , rangeFieldset model.rangeStart model.rangeEnd
+        ]
+
+
+{-| Set the visible range of the pitch space. A minimum of a tetrachord is
+required. Data validation is handled through the input options rather than
+through the update logic; we may need to consider additional validation
+depending on how dynamic we want to be, and on how well we should reflect
+specific modal constraints.
+-}
+rangeFieldset : Degree -> Degree -> Html Msg
+rangeFieldset currentLowerBound currentUpperBound =
+    let
+        maxLowerBound =
+            Degree.step currentUpperBound -3 |> Maybe.withDefault currentLowerBound
+
+        minUpperBound =
+            Degree.step currentLowerBound 3 |> Maybe.withDefault currentUpperBound
+
+        intString degree =
+            Degree.indexOf degree |> String.fromInt
+
+        row label id_ min max value msg =
+            div [ Styles.flexRow, class "align-center" ]
+                [ Html.label
+                    [ Attr.for id_
+                    , class "w-14 mt-1"
+                    ]
+                    [ text label ]
+                , div [ Styles.flexCol ]
+                    [ Html.input
+                        [ type_ "range"
+                        , id id_
+                        , class "w-80"
+                        , onInput msg
+                        , Attr.list (id_ ++ "-datalist")
+                        , Attr.min (intString min)
+                        , Attr.max (intString max)
+                        , Attr.value (intString value)
+                        ]
+                        []
+                    , datalist
+                        [ id (id_ ++ "-datalist")
+                        , Styles.flexRow
+                        , class "justify-between w-80"
+                        ]
+                        (Degree.range min max |> List.map (makeOption msg))
+                    ]
+                ]
+
+        makeOption msg degree =
+            Html.option
+                [ Attr.value (intString degree)
+                , Attr.attribute "label" (Degree.toStringGreek degree)
+                , onClick (msg (intString degree))
+                , class "cursor-pointer font-greek"
+                ]
+                []
+    in
+    Html.fieldset [ Styles.borderRounded, class "px-2 pb-1 mb-2" ]
+        [ Html.legend [ class "px-1" ] [ Html.text "Range" ]
+        , row "From:" "range-start" GA maxLowerBound currentLowerBound SetRangeStart
+        , row "To:" "range-end" minUpperBound Ga_ currentUpperBound SetRangeEnd
         ]
 
 
@@ -242,196 +321,22 @@ viewPitchStandard pitchStandard =
 
 
 
--- PITCH SPACE
-
-
-pitchSpace : Model -> Html Msg
-pitchSpace model =
-    let
-        intervals =
-            Pitch.intervalsFrom model.scale Ni Pa_
-    in
-    div
-        [ class "flex flex-row flex-nowrap transition-all duration-500"
-        , class "min-w-[360px]"
-        ]
-        [ intervalCol model intervals
-        , pitchCol model intervals
-        ]
-
-
-intervalCol : Model -> List Interval -> Html Msg
-intervalCol ({ showSpacing, viewport } as model) intervals =
-    let
-        definedIntervals =
-            intervals
-                |> List.reverse
-                |> List.map (viewInterval model)
-
-        spacerTop =
-            List.last intervals
-                |> viewMaybe (spacerInterval viewport showSpacing)
-
-        spacerBottom =
-            List.head intervals
-                |> viewMaybe (spacerInterval viewport showSpacing)
-                |> List.singleton
-    in
-    div
-        [ class "w-36"
-        , onMouseLeave (SelectProposedMovement None)
-        ]
-        (spacerTop :: definedIntervals ++ spacerBottom)
-
-
-viewInterval : Model -> Interval -> Html Msg
-viewInterval { currentPitch, proposedMovement, viewport } interval =
-    let
-        viewIntervalCharacter degree =
-            currentPitch
-                |> Maybe.map (\current -> Degree.getInterval current degree)
-                |> Maybe.andThen basicInterval
-                |> Html.Extra.viewMaybe
-                    (Interval.view >> List.singleton >> span [ class "me-2" ])
-
-        ( maybeIntervalCharacter, attrs, element ) =
-            let
-                movementOfThisInterval =
-                    Movement.ofInterval currentPitch interval
-
-                movementTo degree maybeNewMovement =
-                    ( viewIntervalCharacter degree
-                    , [ onClick (SelectPitch (Just degree) maybeNewMovement)
-
-                      -- TODO: onBlur or onMouseLeave? how to handle this?
-                      , onFocus (SelectProposedMovement movementOfThisInterval)
-                      , onMouseEnter (SelectProposedMovement movementOfThisInterval)
-                      ]
-                    , button
-                    )
-            in
-            case movementOfThisInterval of
-                AscendTo degree ->
-                    let
-                        newMovement : Maybe Movement
-                        newMovement =
-                            Maybe.map DescendTo (Degree.step degree -1)
-                    in
-                    movementTo degree newMovement
-
-                DescendTo degree ->
-                    let
-                        newMovement : Maybe Movement
-                        newMovement =
-                            Maybe.map AscendTo (Degree.step degree 1)
-                    in
-                    movementTo degree newMovement
-
-                None ->
-                    ( Html.Extra.nothing, [], div )
-    in
-    element
-        ([ class "border border-gray-300"
-         , class "flex flex-row justify-center w-full"
-         , height (interval.moria * heightFactor viewport)
-         , transition
-         , classList
-            [ ( "bg-slate-200"
-              , shouldHighlight currentPitch proposedMovement interval
-              )
-            , ( "hover:bg-slate-200", Maybe.isJust currentPitch )
-            ]
-         ]
-            ++ attrs
-        )
-        [ span [ class "my-auto" ]
-            [ maybeIntervalCharacter
-            , text (String.fromInt interval.moria)
-            ]
-        ]
-
-
-spacerInterval : Dom.Viewport -> Bool -> Interval -> Html Msg
-spacerInterval viewport showSpacing { moria } =
-    div
-        [ height (moria * heightFactor viewport // 2)
-        , transition
-        , classList [ ( "text-center bg-slate-300", showSpacing ) ]
-        ]
-        [ viewIf showSpacing <| text <| "(" ++ String.fromInt (moria // 2) ++ ")" ]
-
-
-pitchCol : Model -> List Interval -> Html Msg
-pitchCol model intervals =
-    intervalsToPitchHeights intervals
-        |> List.map (viewPitch model)
-        |> List.reverse
-        |> div [ class "w-16" ]
-
-
-viewPitch : Model -> PitchHeight -> Html Msg
-viewPitch { scale, showSpacing, currentPitch, proposedMovement, viewport } pitchHeight =
-    let
-        degree =
-            Just pitchHeight.degree
-
-        isCurrentPitch =
-            degree == currentPitch
-
-        totalHeight =
-            pitchHeight.aboveCenter + pitchHeight.belowCenter |> String.fromInt
-
-        spacingText =
-            -- for dev purposes only; will eventually be deleted
-            "(" ++ totalHeight ++ " = " ++ String.fromInt pitchHeight.belowCenter ++ " + " ++ String.fromInt pitchHeight.aboveCenter ++ ")"
-    in
-    div
-        [ classList [ ( "border border-gray-500 bg-slate-200", showSpacing ) ]
-        , class "flex flex-row justify-center"
-        , height <| (pitchHeight.belowCenter + pitchHeight.aboveCenter) * heightFactor viewport
-        , transition
-        ]
-        [ button
-            [ class "flex px-4 w-full rounded-full"
-            , id <| "p_" ++ Degree.toString pitchHeight.degree
-            , transition
-            , classList
-                [ ( "bg-green-300", showSpacing ) -- for dev purposes only; will eventually be deleted
-                , ( "text-green-700 bg-slate-200", Movement.toDegree proposedMovement == degree )
-                , ( "bg-red-200", isCurrentPitch )
-                , ( "hover:text-green-700 hover:bg-slate-200", not isCurrentPitch )
-                ]
-            , onClick <|
-                if isCurrentPitch then
-                    SelectPitch Nothing Nothing
-
-                else
-                    SelectPitch degree Nothing
-            ]
-            [ span
-                [ style "padding-top" <| String.fromInt (pitchHeight.aboveCenter * (heightFactor viewport - 2)) ++ "px"
-                , transition
-                , class "flex flex-row gap-2 absolute"
-                , classList [ ( "text-red-600", isCurrentPitch ) ]
-                ]
-                [ div [ class "text-xl sm:text-3xl relative -top-5" ]
-                    [ viewMaybe (Martyria.view << Martyria.for scale) degree ]
-                , viewIf isCurrentPitch <|
-                    div [ class "w-4 ms-2" ] [ Icons.xmark ]
-                , viewIf showSpacing <| span [ class "ms-2" ] [ text spacingText ]
-                ]
-            ]
-        ]
-
-
-
 -- CONTROLS
 
 
 viewControls : Model -> Html Msg
 viewControls model =
-    div []
+    div [ class "w-max", classList [ ( "mt-8", debuggingLayout ) ] ]
         [ selectScale model
+
+        -- , RadioFieldset.view
+        --     { itemToString = layoutString
+        --     , legendText = "Layout"
+        --     , onSelect = SetLayout
+        --     , options = [ Auto, Manual Portrait, Manual Landscape ]
+        --     , selected = model.layout.layoutSelection
+        --     , viewItem = Nothing
+        --     }
         , viewCurrentPitch model.currentPitch
         , gainInput model.audioSettings
         ]
@@ -440,7 +345,7 @@ viewControls model =
 spacingButton : Bool -> Html Msg
 spacingButton showSpacing =
     button
-        [ buttonClass
+        [ Styles.buttonClass
         , onClick ToggleSpacing
         ]
         [ text <|
@@ -481,7 +386,7 @@ viewCurrentPitch pitch =
 clearPitchButton : Html Msg
 clearPitchButton =
     button
-        [ buttonClass
+        [ Styles.buttonClass
         , class "mx-2"
         , onClick (SelectPitch Nothing Nothing)
         ]
@@ -500,7 +405,7 @@ gainInput { gain } =
     in
     div []
         [ button
-            [ buttonClass
+            [ Styles.buttonClass
             , class "w-24 mr-4"
             , onClick msg
             ]
@@ -521,121 +426,7 @@ gainInput { gain } =
 -- HELPERS
 
 
-buttonClass : Html.Attribute Msg
-buttonClass =
-    class "bg-gray-200 my-2 py-1 px-3 rounded-md"
-
-
-{-| in px
--}
-height : Int -> Html.Attribute Msg
-height h =
-    style "height" (String.fromInt h ++ "px")
-
-
-heightFactor : Dom.Viewport -> Int
-heightFactor viewport =
-    (viewport.viewport.height / 100)
-        |> truncate
-        |> clamp 6 12
-
-
-transition : Html.Attribute Msg
-transition =
-    class "transition-all duration-500"
-
-
-shouldHighlight : Maybe Degree -> Movement -> Interval -> Bool
-shouldHighlight currentPitch proposedMovement interval =
-    Maybe.unwrap False
-        (\current ->
-            let
-                currentPitchIndex =
-                    Degree.indexOf current
-
-                fromIndex =
-                    Degree.indexOf interval.from
-
-                toIndex =
-                    Degree.indexOf interval.to
-            in
-            case proposedMovement of
-                AscendTo degree ->
-                    (currentPitchIndex < toIndex)
-                        && (toIndex <= Degree.indexOf degree)
-
-                DescendTo degree ->
-                    (currentPitchIndex > fromIndex)
-                        && (fromIndex >= Degree.indexOf degree)
-
-                None ->
-                    False
-        )
-        currentPitch
-
-
 keyDecoder : Decoder Msg
 keyDecoder =
     Json.Decode.field "key" Json.Decode.string
         |> Json.Decode.map Keydown
-
-
-
--- TYPES
-
-
-{-| These are fundamentally view concerns, not domain types.
-
-TODO: move to own module?
-
--}
-type alias PitchHeight =
-    { degree : Degree
-    , belowCenter : Int
-    , aboveCenter : Int
-    }
-
-
-intervalsToPitchHeights : List Interval -> List PitchHeight
-intervalsToPitchHeights intervals =
-    case intervals of
-        [] ->
-            []
-
-        x :: xs ->
-            let
-                firstPitch =
-                    { degree = x.from
-                    , belowCenter = x.moria // 2
-                    , aboveCenter = x.moria // 2
-                    }
-            in
-            firstPitch :: intervalsToPitchHeightsHelper firstPitch xs
-
-
-intervalsToPitchHeightsHelper : PitchHeight -> List Interval -> List PitchHeight
-intervalsToPitchHeightsHelper prev rest =
-    case rest of
-        [] ->
-            []
-
-        x :: [] ->
-            [ { degree = x.from
-              , belowCenter = prev.aboveCenter
-              , aboveCenter = x.moria // 2
-              }
-            , { degree = x.to
-              , belowCenter = x.moria // 2
-              , aboveCenter = x.moria // 2
-              }
-            ]
-
-        x :: xs ->
-            let
-                next =
-                    { degree = x.from
-                    , belowCenter = prev.aboveCenter
-                    , aboveCenter = x.moria // 2
-                    }
-            in
-            next :: intervalsToPitchHeightsHelper next xs

@@ -1,11 +1,12 @@
 module Update exposing (Msg(..), update)
 
+import Array
 import Browser.Dom as Dom
 import Byzantine.Degree as Degree exposing (Degree(..))
 import Byzantine.Pitch exposing (PitchStandard, Register)
 import Byzantine.Scale exposing (Scale)
 import Maybe.Extra as Maybe
-import Model exposing (Modal, Model)
+import Model exposing (LayoutData, LayoutSelection, Modal, Model)
 import Movement exposing (Movement)
 import Platform.Cmd as Cmd
 import Task
@@ -13,6 +14,7 @@ import Task
 
 type Msg
     = DomResult (Result Dom.Error ())
+    | GotPitchSpaceElement (Result Dom.Error Dom.Element)
     | GotViewport Dom.Viewport
     | ViewportResize Int Int
     | Keydown String
@@ -21,7 +23,10 @@ type Msg
     | SelectPitch (Maybe Degree) (Maybe Movement)
     | SelectProposedMovement Movement
     | SetGain Float
+    | SetLayout LayoutSelection
     | SetPitchStandard PitchStandard
+    | SetRangeStart String
+    | SetRangeEnd String
     | SetRegister Register
     | SetScale Scale
     | ToggleMenu
@@ -38,14 +43,31 @@ update msg model =
             -- just for dev purposes
             ( model, Cmd.none )
 
-        GotViewport viewport ->
-            ( { model | viewport = viewport }
+        GotPitchSpaceElement elementResult ->
+            ( case elementResult of
+                Ok element ->
+                    updateLayout
+                        (\layout -> { layout | pitchSpace = element })
+                        model
+
+                Err _ ->
+                    model
             , Cmd.none
+            )
+
+        GotViewport viewport ->
+            ( updateLayout
+                (\layout -> { layout | viewport = viewport })
+                model
+            , Task.attempt GotPitchSpaceElement (Dom.getElement "pitch-space")
             )
 
         ViewportResize _ _ ->
             ( model
-            , Task.perform GotViewport Dom.getViewport
+            , Cmd.batch
+                [ Task.perform GotViewport Dom.getViewport
+                , Task.perform GotViewport Dom.getViewport
+                ]
             )
 
         SelectModal modal ->
@@ -60,7 +82,12 @@ update msg model =
         SelectPitch pitch maybeMovement ->
             ( { model
                 | currentPitch = pitch
-                , proposedMovement = Maybe.withDefault model.proposedMovement maybeMovement
+                , proposedMovement =
+                    if Maybe.isJust pitch then
+                        Maybe.withDefault model.proposedMovement maybeMovement
+
+                    else
+                        Movement.None
               }
             , Cmd.none
             )
@@ -79,12 +106,39 @@ update msg model =
             , Cmd.none
             )
 
+        SetLayout layoutSelection ->
+            ( updateLayout
+                (\layout -> { layout | layoutSelection = layoutSelection })
+                model
+            , Task.perform GotViewport Dom.getViewport
+            )
+
         SetPitchStandard pitchStandard ->
             let
                 audioSettings =
                     model.audioSettings
             in
             ( { model | audioSettings = { audioSettings | pitchStandard = pitchStandard } }
+            , Cmd.none
+            )
+
+        SetRangeStart start ->
+            ( { model
+                | rangeStart =
+                    String.toInt start
+                        |> Maybe.andThen (\i -> Array.get i Degree.gamut)
+                        |> Maybe.withDefault model.rangeStart
+              }
+            , Cmd.none
+            )
+
+        SetRangeEnd end ->
+            ( { model
+                | rangeEnd =
+                    String.toInt end
+                        |> Maybe.andThen (\i -> Array.get i Degree.gamut)
+                        |> Maybe.withDefault model.rangeEnd
+              }
             , Cmd.none
             )
 
@@ -152,7 +206,10 @@ update msg model =
                         )
 
                     else
-                        ( { model | currentPitch = Nothing }
+                        ( { model
+                            | currentPitch = Nothing
+                            , proposedMovement = Movement.None
+                          }
                         , Cmd.none
                         )
 
@@ -236,6 +293,11 @@ update msg model =
 
                 _ ->
                     ( model, Cmd.none )
+
+
+updateLayout : (LayoutData -> LayoutData) -> Model -> Model
+updateLayout f model =
+    { model | layout = f model.layout }
 
 
 focus : String -> Cmd Msg
