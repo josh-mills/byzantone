@@ -7,8 +7,6 @@ module Styles exposing
 
 {-| Style attribute helpers and common Tailwind class combinations
 
-TODO: shoud the positioning and size helpers take floats instead?
-
 
 # Styles
 
@@ -39,6 +37,16 @@ TODO: shoud the positioning and size helpers take floats instead?
 
 import Html
 import Html.Attributes exposing (class, style)
+import Round
+
+
+
+-- HELPERS
+
+
+round2 : Float -> String
+round2 =
+    Round.round 2
 
 
 
@@ -47,16 +55,16 @@ import Html.Attributes exposing (class, style)
 
 {-| in px: `style="height: ${h}px;"`
 -}
-height : Int -> Html.Attribute msg
+height : Float -> Html.Attribute msg
 height h =
-    style "height" (String.fromInt h ++ "px")
+    style "height" (round2 h ++ "px")
 
 
 {-| in px: `style="width: ${w}px;"`
 -}
-width : Int -> Html.Attribute msg
+width : Float -> Html.Attribute msg
 width w =
-    style "width" (String.fromInt w ++ "px")
+    style "width" (round2 w ++ "px")
 
 
 
@@ -65,16 +73,16 @@ width w =
 
 {-| in px: `style="left: ${l}px;"`
 -}
-left : Int -> Html.Attribute msg
+left : Float -> Html.Attribute msg
 left l =
-    style "left" (String.fromInt l ++ "px")
+    style "left" (round2 l ++ "px")
 
 
 {-| in px: `style="top: ${l}px;"`
 -}
-top : Int -> Html.Attribute msg
+top : Float -> Html.Attribute msg
 top l =
-    style "top" (String.fromInt l ++ "px")
+    style "top" (round2 l ++ "px")
 
 
 

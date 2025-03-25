@@ -17,6 +17,7 @@ import Html.Extra exposing (viewIf, viewIfLazy)
 import Maybe.Extra as Maybe
 import Model exposing (Layout(..), LayoutData, Model, layoutFor)
 import Movement exposing (Movement(..))
+import Round
 import Styles
 import Update exposing (Msg(..))
 
@@ -180,7 +181,7 @@ scalingFactor : LayoutData -> Int -> Float
 scalingFactor layoutData rangeInMoria =
     let
         marginForButton =
-            pitchButtonSize layoutData |> toFloat
+            pitchButtonSize layoutData
     in
     case layoutFor layoutData of
         Vertical ->
@@ -277,7 +278,6 @@ viewInterval model rangeInMoria ( interval, position ) =
                 _ ->
                     scalingFactor model.layout rangeInMoria
                         * toFloat interval.moria
-                        |> round
 
         movement =
             Movement.ofInterval model.currentPitch interval
@@ -286,7 +286,7 @@ viewInterval model rangeInMoria ( interval, position ) =
             span [ class "text-gray-600" ]
                 [ text (String.fromInt interval.moria)
                 , viewIf model.showSpacing
-                    (text <| " (" ++ String.fromInt size ++ "px)")
+                    (text <| " (" ++ Round.round 2 size ++ "px)")
                 ]
 
         buttonAttrs =
@@ -419,7 +419,6 @@ viewPitch model rangeInMoria ( degree, positionWithinRange ) =
                         pitchAbove
                         |> Maybe.withDefault 0
                         |> (*) scalingFactor_
-                        |> round
 
                 Within ->
                     Maybe.map2
@@ -428,7 +427,6 @@ viewPitch model rangeInMoria ( degree, positionWithinRange ) =
                         pitchAbove
                         |> Maybe.withDefault 0
                         |> (*) scalingFactor_
-                        |> round
 
                 UpperBoundary ->
                     Maybe.map
@@ -436,7 +434,6 @@ viewPitch model rangeInMoria ( degree, positionWithinRange ) =
                         pitchBelow
                         |> Maybe.withDefault 0
                         |> (*) scalingFactor_
-                        |> round
 
                 Above ->
                     0
@@ -471,7 +468,7 @@ viewPitch model rangeInMoria ( degree, positionWithinRange ) =
                     }
             )
         , viewIf showSpacingDetails
-            (text (" (" ++ String.fromInt size ++ "px)"))
+            (text (" (" ++ Round.round 2 size ++ "px)"))
         ]
 
 
@@ -505,7 +502,6 @@ pitchButton model { degree, pitch, pitchAbove, pitchBelow, positionWithinRange, 
                         pitchAbove
                         |> Maybe.withDefault 0
                         |> (*) scalingFactor_
-                        |> round
                         |> (+) (negate pitchButtonSizeValue)
 
                 ( Horizontal, LowerBoundary ) ->
@@ -517,7 +513,6 @@ pitchButton model { degree, pitch, pitchAbove, pitchBelow, positionWithinRange, 
                         pitchAbove
                         |> Maybe.withDefault 0
                         |> (*) scalingFactor_
-                        |> round
                         |> (+) (negate pitchButtonSizeValue)
 
                 ( Horizontal, Within ) ->
@@ -526,7 +521,6 @@ pitchButton model { degree, pitch, pitchAbove, pitchBelow, positionWithinRange, 
                         pitchBelow
                         |> Maybe.withDefault 0
                         |> (*) scalingFactor_
-                        |> round
                         |> (+) (negate pitchButtonSizeValue)
 
                 ( Vertical, UpperBoundary ) ->
@@ -538,14 +532,13 @@ pitchButton model { degree, pitch, pitchAbove, pitchBelow, positionWithinRange, 
                         pitchBelow
                         |> Maybe.withDefault 0
                         |> (*) scalingFactor_
-                        |> round
                         |> (+) (negate pitchButtonSizeValue)
 
                 ( _, Above ) ->
                     0
 
         pitchButtonSizeValue =
-            pitchButtonSize model.layout // 2
+            pitchButtonSize model.layout / 2
     in
     button
         [ onClick <|
@@ -582,7 +575,7 @@ pitchButtonSizeClass =
     class "w-12 h-12 sm:w-16 sm:h-16 text-xl sm:text-3xl"
 
 
-pitchButtonSize : LayoutData -> Int
+pitchButtonSize : LayoutData -> Float
 pitchButtonSize layoutData =
     if layoutData.viewport.viewport.width < 640 then
         48
