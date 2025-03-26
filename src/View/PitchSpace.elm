@@ -15,7 +15,7 @@ import Html.Attributes.Extra as Attr
 import Html.Events exposing (onClick, onFocus, onMouseEnter, onMouseLeave)
 import Html.Extra exposing (viewIf, viewIfLazy)
 import Maybe.Extra as Maybe
-import Model exposing (Layout(..), LayoutData, Model, layoutFor)
+import Model exposing (Layout(..), LayoutData, ModeSettings, Model, PitchState, layoutFor)
 import Movement exposing (Movement(..))
 import Round
 import Styles
@@ -26,41 +26,48 @@ import Update exposing (Msg(..))
 -- HELPER TYPES AND FUNCTIONS
 
 
+type alias Params =
+    { layoutData : LayoutData
+    , modeSettings : ModeSettings
+    , pitchState : PitchState
+    }
+
+
 {-| What is the visible range of the pitch space? This expands the default (or
 user-set) start and stop positions to include the current pitch. (We may want to
 consider additional limits as well.)
 -}
-visibleRange : Model -> { start : Degree, end : Degree }
-visibleRange model =
-    case model.pitchState.currentPitch of
+visibleRange : Params -> { start : Degree, end : Degree }
+visibleRange { modeSettings, pitchState } =
+    case pitchState.currentPitch of
         Just currentPitch ->
             { start =
-                if Degree.indexOf currentPitch < Degree.indexOf model.modeSettings.rangeStart then
+                if Degree.indexOf currentPitch < Degree.indexOf modeSettings.rangeStart then
                     currentPitch
 
                 else
-                    model.modeSettings.rangeStart
+                    modeSettings.rangeStart
             , end =
-                if Degree.indexOf currentPitch > Degree.indexOf model.modeSettings.rangeEnd then
+                if Degree.indexOf currentPitch > Degree.indexOf modeSettings.rangeEnd then
                     currentPitch
 
                 else
-                    model.modeSettings.rangeEnd
+                    modeSettings.rangeEnd
             }
 
         Nothing ->
-            { start = model.modeSettings.rangeStart
-            , end = model.modeSettings.rangeEnd
+            { start = modeSettings.rangeStart
+            , end = modeSettings.rangeEnd
             }
 
 
-visibleRangeInMoria : Model -> Int
-visibleRangeInMoria model =
+visibleRangeInMoria : Params -> Int
+visibleRangeInMoria params =
     let
         { start, end } =
-            visibleRange model
+            visibleRange params
     in
-    Pitch.pitchPosition model.modeSettings.scale end - Pitch.pitchPosition model.modeSettings.scale start
+    Pitch.pitchPosition params.modeSettings.scale end - Pitch.pitchPosition params.modeSettings.scale start
 
 
 type PositionWithinVisibleRange
@@ -90,11 +97,11 @@ positionIsVisible position =
             False
 
 
-pitchesWithVisibility : Model -> List ( Degree, PositionWithinVisibleRange )
-pitchesWithVisibility model =
+pitchesWithVisibility : Params -> List ( Degree, PositionWithinVisibleRange )
+pitchesWithVisibility params =
     let
         { start, end } =
-            visibleRange model
+            visibleRange params
 
         lowerBoundIndex =
             Degree.indexOf start
@@ -127,11 +134,11 @@ pitchesWithVisibility model =
         Degree.gamutList
 
 
-intervalsWithVisibility : Model -> List ( Interval, PositionWithinVisibleRange )
-intervalsWithVisibility model =
+intervalsWithVisibility : Params -> List ( Interval, PositionWithinVisibleRange )
+intervalsWithVisibility params =
     let
         { start, end } =
-            visibleRange model
+            visibleRange params
 
         lowerBoundIndex =
             Degree.indexOf start
@@ -168,7 +175,7 @@ intervalsWithVisibility model =
             , visibility interval
             )
         )
-        (Pitch.intervals model.modeSettings.scale)
+        (Pitch.intervals params.modeSettings.scale)
 
 
 {-| This feels potentially fragile.
@@ -177,9 +184,12 @@ TODO: we'll need some sort of minimum for the portrait to enable scrolling on
 small viewports.
 
 -}
-scalingFactor : LayoutData -> Int -> Float
-scalingFactor layoutData rangeInMoria =
+scalingFactor : Params -> Float
+scalingFactor ({ layoutData } as params) =
     let
+        rangeInMoria =
+            visibleRangeInMoria params
+
         marginForButton =
             pitchButtonSize layoutData
     in
@@ -203,13 +213,20 @@ scalingFactor layoutData rangeInMoria =
 
 
 view : Model -> Html Msg
-view model =
+view { layoutData, modeSettings, pitchState } =
+    let
+        params =
+            { layoutData = layoutData
+            , modeSettings = modeSettings
+            , pitchState = pitchState
+            }
+    in
     div
         ([ Attr.id "pitch-space"
          , Styles.transition
-         , Attr.attributeIf model.layoutData.showSpacing Styles.border
+         , Attr.attributeIf layoutData.showSpacing Styles.border
          ]
-            ++ (case layoutFor model.layoutData of
+            ++ (case layoutFor layoutData of
                     Vertical ->
                         [ Styles.flexRow
                         , class "my-8"
@@ -221,8 +238,8 @@ view model =
                         ]
                )
         )
-        [ viewIntervals model
-        , viewPitches model
+        [ viewIntervals params
+        , viewPitches params
         ]
 
 
@@ -242,20 +259,20 @@ listAttributes layoutData =
 -- INTERVAL COLUMN
 
 
-viewIntervals : Model -> Html Msg
-viewIntervals model =
-    Html.ol (onMouseLeave (SelectProposedMovement None) :: listAttributes model.layoutData)
+viewIntervals : Params -> Html Msg
+viewIntervals params =
+    Html.ol (onMouseLeave (SelectProposedMovement None) :: listAttributes params.layoutData)
         (List.map
-            (viewInterval model (visibleRangeInMoria model))
-            (intervalsWithVisibility model)
+            (viewInterval params)
+            (intervalsWithVisibility params)
         )
 
 
 {-| TODO: see if with some refactors, we could use Html.Lazy for this. But
 benchmark this before shipping.
 -}
-viewInterval : Model -> Int -> ( Interval, PositionWithinVisibleRange ) -> Html Msg
-viewInterval model rangeInMoria ( interval, position ) =
+viewInterval : Params -> ( Interval, PositionWithinVisibleRange ) -> Html Msg
+viewInterval ({ layoutData, pitchState } as params) ( interval, position ) =
     let
         size =
             case position of
@@ -266,15 +283,15 @@ viewInterval model rangeInMoria ( interval, position ) =
                     0
 
                 _ ->
-                    toFloat interval.moria * scalingFactor model.layoutData rangeInMoria
+                    toFloat interval.moria * scalingFactor params
 
         movement =
-            Movement.ofInterval model.pitchState.currentPitch interval
+            Movement.ofInterval pitchState.currentPitch interval
 
         moria =
             span [ class "text-gray-600" ]
                 [ text (String.fromInt interval.moria)
-                , viewIf model.layoutData.showSpacing
+                , viewIf layoutData.showSpacing
                     (text <| " (" ++ Round.round 2 size ++ "px)")
                 ]
 
@@ -282,9 +299,9 @@ viewInterval model rangeInMoria ( interval, position ) =
             [ class "w-full content-center cursor-pointer"
             , classList
                 [ ( "bg-slate-200"
-                  , shouldHighlightInterval model.pitchState.currentPitch model.pitchState.proposedMovement interval
+                  , shouldHighlightInterval pitchState interval
                   )
-                , ( "hover:bg-slate-200", Maybe.isJust model.pitchState.currentPitch )
+                , ( "hover:bg-slate-200", Maybe.isJust pitchState.currentPitch )
                 ]
             , onFocus (SelectProposedMovement movement)
             , onMouseEnter (SelectProposedMovement movement)
@@ -293,7 +310,7 @@ viewInterval model rangeInMoria ( interval, position ) =
     li
         [ Attr.id ("interval-" ++ Degree.toString interval.from ++ "-" ++ Degree.toString interval.to)
         , Styles.flexRowCentered
-        , case layoutFor model.layoutData of
+        , case layoutFor layoutData of
             Vertical ->
                 Styles.height size
 
@@ -308,7 +325,7 @@ viewInterval model rangeInMoria ( interval, position ) =
                     (onClick (SelectPitch (Just degree) (Maybe.map DescendTo (Degree.step degree -1)))
                         :: buttonAttrs
                     )
-                    [ viewIntervalCharacter model.pitchState.currentPitch degree
+                    [ viewIntervalCharacter pitchState.currentPitch degree
                     , moria
                     ]
 
@@ -317,7 +334,7 @@ viewInterval model rangeInMoria ( interval, position ) =
                     (onClick (SelectPitch (Just degree) (Maybe.map AscendTo (Degree.step degree 1)))
                         :: buttonAttrs
                     )
-                    [ viewIntervalCharacter model.pitchState.currentPitch degree
+                    [ viewIntervalCharacter pitchState.currentPitch degree
                     , moria
                     ]
 
@@ -338,8 +355,8 @@ viewIntervalCharacter currentPitch degree =
             (ByzHtmlInterval.view >> List.singleton >> span [ class "me-2" ])
 
 
-shouldHighlightInterval : Maybe Degree -> Movement -> Interval -> Bool
-shouldHighlightInterval currentPitch proposedMovement interval =
+shouldHighlightInterval : PitchState -> Interval -> Bool
+shouldHighlightInterval { currentPitch, proposedMovement } interval =
     Maybe.unwrap False
         (\current ->
             let
@@ -371,31 +388,28 @@ shouldHighlightInterval currentPitch proposedMovement interval =
 -- PITCH COLUMN
 
 
-viewPitches : Model -> Html Msg
-viewPitches model =
-    Html.ol (listAttributes model.layoutData)
+viewPitches : Params -> Html Msg
+viewPitches params =
+    Html.ol (listAttributes params.layoutData)
         (List.map
-            (viewPitch model (visibleRangeInMoria model))
-            (pitchesWithVisibility model)
+            (viewPitch params (scalingFactor params))
+            (pitchesWithVisibility params)
         )
 
 
-viewPitch : Model -> Int -> ( Degree, PositionWithinVisibleRange ) -> Html Msg
-viewPitch model rangeInMoria ( degree, positionWithinRange ) =
+viewPitch : Params -> Float -> ( Degree, PositionWithinVisibleRange ) -> Html Msg
+viewPitch ({ layoutData, modeSettings } as params) scalingFactor_ ( degree, positionWithinRange ) =
     let
         pitch =
-            Pitch.pitchPosition model.modeSettings.scale degree
+            Pitch.pitchPosition modeSettings.scale degree
 
         pitchBelow =
             Degree.step degree -1
-                |> Maybe.map (Pitch.pitchPosition model.modeSettings.scale)
+                |> Maybe.map (Pitch.pitchPosition modeSettings.scale)
 
         pitchAbove =
             Degree.step degree 1
-                |> Maybe.map (Pitch.pitchPosition model.modeSettings.scale)
-
-        scalingFactor_ =
-            scalingFactor model.layoutData rangeInMoria
+                |> Maybe.map (Pitch.pitchPosition modeSettings.scale)
 
         scale int =
             (toFloat int / 2) * scalingFactor_
@@ -432,7 +446,7 @@ viewPitch model rangeInMoria ( degree, positionWithinRange ) =
                     0
 
         showSpacingDetails =
-            model.layoutData.showSpacing && positionIsVisible positionWithinRange
+            layoutData.showSpacing && positionIsVisible positionWithinRange
 
         attributeIfVisible =
             Attr.attributeIf (positionIsVisible positionWithinRange)
@@ -442,7 +456,7 @@ viewPitch model rangeInMoria ( degree, positionWithinRange ) =
         , Styles.transition
         , Attr.attributeIf showSpacingDetails Styles.border
         , attributeIfVisible Styles.flexCol
-        , case layoutFor model.layoutData of
+        , case layoutFor layoutData of
             Vertical ->
                 Styles.height size
 
@@ -451,7 +465,7 @@ viewPitch model rangeInMoria ( degree, positionWithinRange ) =
         ]
         [ viewIfLazy (positionIsVisible positionWithinRange)
             (\_ ->
-                pitchButton model
+                pitchButton params
                     { degree = degree
                     , pitch = pitch
                     , pitchAbove = pitchAbove
@@ -466,7 +480,7 @@ viewPitch model rangeInMoria ( degree, positionWithinRange ) =
 
 
 pitchButton :
-    Model
+    Params
     ->
         { degree : Degree
         , pitch : Int
@@ -476,13 +490,13 @@ pitchButton :
         , scalingFactor_ : Float
         }
     -> Html Msg
-pitchButton model { degree, pitch, pitchAbove, pitchBelow, positionWithinRange, scalingFactor_ } =
+pitchButton { layoutData, modeSettings, pitchState } { degree, pitch, pitchAbove, pitchBelow, positionWithinRange, scalingFactor_ } =
     let
         isCurrentPitch =
-            Just degree == model.pitchState.currentPitch
+            Just degree == pitchState.currentPitch
 
         layout =
-            layoutFor model.layoutData
+            layoutFor layoutData
 
         scale int =
             (toFloat int / 2)
@@ -528,7 +542,7 @@ pitchButton model { degree, pitch, pitchAbove, pitchBelow, positionWithinRange, 
                     0
 
         pitchButtonSizeValue =
-            pitchButtonSize model.layoutData / 2
+            pitchButtonSize layoutData / 2
     in
     button
         [ onClick <|
@@ -540,7 +554,7 @@ pitchButton model { degree, pitch, pitchAbove, pitchBelow, positionWithinRange, 
         , pitchButtonSizeClass
         , class "rounded-full hover:z-10 cursor-pointer relative pb-8"
         , Styles.transition
-        , case layoutFor model.layoutData of
+        , case layoutFor layoutData of
             Vertical ->
                 Styles.top position
 
@@ -549,12 +563,12 @@ pitchButton model { degree, pitch, pitchAbove, pitchBelow, positionWithinRange, 
         , classList
             [ ( "bg-red-200", isCurrentPitch )
             , ( "hover:text-green-700 bg-slate-200 hover:bg-slate-300 opacity-75 hover:opacity-100", not isCurrentPitch )
-            , ( "text-green-700 bg-slate-300 z-10", Movement.toDegree model.pitchState.proposedMovement == Just degree )
+            , ( "text-green-700 bg-slate-300 z-10", Movement.toDegree pitchState.proposedMovement == Just degree )
             ]
         ]
         [ ByzHtmlMartyria.viewWithAttributes
             [ Styles.left -3, Styles.top -3 ]
-            (Martyria.for model.modeSettings.scale degree)
+            (Martyria.for modeSettings.scale degree)
         ]
 
 
