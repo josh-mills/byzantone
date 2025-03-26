@@ -32,7 +32,7 @@ consider additional limits as well.)
 -}
 visibleRange : Model -> { start : Degree, end : Degree }
 visibleRange model =
-    case model.currentPitch of
+    case model.pitchState.currentPitch of
         Just currentPitch ->
             { start =
                 if Degree.indexOf currentPitch < Degree.indexOf model.modeSettings.rangeStart then
@@ -269,7 +269,7 @@ viewInterval model rangeInMoria ( interval, position ) =
                     toFloat interval.moria * scalingFactor model.layoutData rangeInMoria
 
         movement =
-            Movement.ofInterval model.currentPitch interval
+            Movement.ofInterval model.pitchState.currentPitch interval
 
         moria =
             span [ class "text-gray-600" ]
@@ -282,9 +282,9 @@ viewInterval model rangeInMoria ( interval, position ) =
             [ class "w-full content-center cursor-pointer"
             , classList
                 [ ( "bg-slate-200"
-                  , shouldHighlightInterval model.currentPitch model.proposedMovement interval
+                  , shouldHighlightInterval model.pitchState.currentPitch model.pitchState.proposedMovement interval
                   )
-                , ( "hover:bg-slate-200", Maybe.isJust model.currentPitch )
+                , ( "hover:bg-slate-200", Maybe.isJust model.pitchState.currentPitch )
                 ]
             , onFocus (SelectProposedMovement movement)
             , onMouseEnter (SelectProposedMovement movement)
@@ -308,7 +308,7 @@ viewInterval model rangeInMoria ( interval, position ) =
                     (onClick (SelectPitch (Just degree) (Maybe.map DescendTo (Degree.step degree -1)))
                         :: buttonAttrs
                     )
-                    [ viewIntervalCharacter model.currentPitch degree
+                    [ viewIntervalCharacter model.pitchState.currentPitch degree
                     , moria
                     ]
 
@@ -317,7 +317,7 @@ viewInterval model rangeInMoria ( interval, position ) =
                     (onClick (SelectPitch (Just degree) (Maybe.map AscendTo (Degree.step degree 1)))
                         :: buttonAttrs
                     )
-                    [ viewIntervalCharacter model.currentPitch degree
+                    [ viewIntervalCharacter model.pitchState.currentPitch degree
                     , moria
                     ]
 
@@ -479,7 +479,7 @@ pitchButton :
 pitchButton model { degree, pitch, pitchAbove, pitchBelow, positionWithinRange, scalingFactor_ } =
     let
         isCurrentPitch =
-            Just degree == model.currentPitch
+            Just degree == model.pitchState.currentPitch
 
         layout =
             layoutFor model.layoutData
@@ -549,7 +549,7 @@ pitchButton model { degree, pitch, pitchAbove, pitchBelow, positionWithinRange, 
         , classList
             [ ( "bg-red-200", isCurrentPitch )
             , ( "hover:text-green-700 bg-slate-200 hover:bg-slate-300 opacity-75 hover:opacity-100", not isCurrentPitch )
-            , ( "text-green-700 bg-slate-300 z-10", Movement.toDegree model.proposedMovement == Just degree )
+            , ( "text-green-700 bg-slate-300 z-10", Movement.toDegree model.pitchState.proposedMovement == Just degree )
             ]
         ]
         [ ByzHtmlMartyria.viewWithAttributes

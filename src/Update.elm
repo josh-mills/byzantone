@@ -6,7 +6,7 @@ import Byzantine.Degree as Degree exposing (Degree(..))
 import Byzantine.Pitch exposing (PitchStandard, Register)
 import Byzantine.Scale exposing (Scale)
 import Maybe.Extra as Maybe
-import Model exposing (LayoutData, LayoutSelection, Modal, ModeSettings, Model)
+import Model exposing (LayoutData, LayoutSelection, Modal, ModeSettings, Model, PitchState)
 import Movement exposing (Movement)
 import Platform.Cmd as Cmd
 import Task
@@ -80,20 +80,23 @@ update msg model =
             )
 
         SelectPitch pitch maybeMovement ->
-            ( { model
-                | currentPitch = pitch
+            ( setPitchState
+                { currentPitch = pitch
                 , proposedMovement =
                     if Maybe.isJust pitch then
-                        Maybe.withDefault model.proposedMovement maybeMovement
+                        Maybe.withDefault model.pitchState.proposedMovement maybeMovement
 
                     else
                         Movement.None
-              }
+                }
+                model
             , Cmd.none
             )
 
-        SelectProposedMovement movement_ ->
-            ( { model | proposedMovement = movement_ }
+        SelectProposedMovement movement ->
+            ( updatePitchState
+                (\pitchState -> { pitchState | proposedMovement = movement })
+                model
             , Cmd.none
             )
 
@@ -188,17 +191,21 @@ update msg model =
                 moveAndFocus i =
                     let
                         degree =
-                            Maybe.map (\d -> Degree.step d i |> Maybe.withDefault d) model.currentPitch
+                            Maybe.map (\d -> Degree.step d i |> Maybe.withDefault d) model.pitchState.currentPitch
                     in
-                    ( { model | currentPitch = degree }
+                    ( updatePitchState
+                        (\pitchState -> { pitchState | currentPitch = degree })
+                        model
                     , Maybe.unwrap Cmd.none
                         (Degree.toString >> (++) "p_" >> Dom.focus >> Task.attempt DomResult)
                         degree
                     )
 
-                setAndFocus d =
-                    ( { model | currentPitch = Just d }
-                    , Degree.toString d |> (++) "p_" |> Dom.focus |> Task.attempt DomResult
+                setAndFocus degree =
+                    ( updatePitchState
+                        (\pitchState -> { pitchState | currentPitch = Just degree })
+                        model
+                    , Degree.toString degree |> (++) "p_" |> Dom.focus |> Task.attempt DomResult
                     )
             in
             case key of
@@ -215,10 +222,7 @@ update msg model =
                         )
 
                     else
-                        ( { model
-                            | currentPitch = Nothing
-                            , proposedMovement = Movement.None
-                          }
+                        ( setPitchState Model.initialPitchState model
                         , Cmd.none
                         )
 
@@ -312,6 +316,16 @@ updateLayoutData f model =
 updateModeSettings : (ModeSettings -> ModeSettings) -> Model -> Model
 updateModeSettings f model =
     { model | modeSettings = f model.modeSettings }
+
+
+setPitchState : PitchState -> Model -> Model
+setPitchState pitchState model =
+    { model | pitchState = pitchState }
+
+
+updatePitchState : (PitchState -> PitchState) -> Model -> Model
+updatePitchState f model =
+    { model | pitchState = f model.pitchState }
 
 
 focus : String -> Cmd Msg

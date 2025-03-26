@@ -87,7 +87,7 @@ audio model =
         [ model.audioSettings.gain
             |> String.fromFloat
             |> Attr.attribute "gain"
-        , case model.currentPitch of
+        , case model.pitchState.currentPitch of
             Nothing ->
                 Attr.empty
 
@@ -340,7 +340,7 @@ viewControls model =
         --     , selected = model.layout.layoutSelection
         --     , viewItem = Nothing
         --     }
-        , viewCurrentPitch model.currentPitch
+        , viewCurrentPitch model.pitchState.currentPitch
         , gainInput model.audioSettings
         ]
 

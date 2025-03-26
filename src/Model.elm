@@ -1,8 +1,9 @@
 module Model exposing
     ( Model, initialModel
-    , ModeSettings
+    , ModeSettings, PitchState
     , LayoutData, LayoutSelection(..), Layout(..), layoutFor, layoutString
     , Modal(..), modalOpen, modalToString
+    , initialPitchState
     )
 
 {-|
@@ -13,17 +14,20 @@ module Model exposing
 @docs Model, initialModel
 
 
-# Mode Settings
+# Musical State and Settings
 
-@docs ModeSettings
+@docs ModeSettings, PitchState
 
 
-# Layout
+# UI State
+
+
+## Layout
 
 @docs LayoutData, LayoutSelection, Layout, layoutFor, layoutString
 
 
-# Modal
+## Modal
 
 @docs Modal, modalOpen, modalToString
 
@@ -38,24 +42,22 @@ import Movement exposing (Movement(..))
 
 type alias Model =
     { audioSettings : AudioSettings
-    , currentPitch : Maybe Degree
     , layoutData : LayoutData
     , menuOpen : Bool
     , modal : Modal
     , modeSettings : ModeSettings
-    , proposedMovement : Movement
+    , pitchState : PitchState
     }
 
 
 initialModel : Model
 initialModel =
     { audioSettings = AudioSettings.defaultAudioSettings
-    , currentPitch = Nothing
     , layoutData = initialLayoutData
     , menuOpen = False
     , modal = NoModal
     , modeSettings = initialModeSettings
-    , proposedMovement = None
+    , pitchState = initialPitchState
     }
 
 
@@ -75,6 +77,23 @@ initialModeSettings =
     { rangeStart = Ni
     , rangeEnd = Ni_
     , scale = Diatonic
+    }
+
+
+
+-- PITCH STATE
+
+
+type alias PitchState =
+    { currentPitch : Maybe Degree
+    , proposedMovement : Movement
+    }
+
+
+initialPitchState : PitchState
+initialPitchState =
+    { currentPitch = Nothing
+    , proposedMovement = None
     }
 
 
