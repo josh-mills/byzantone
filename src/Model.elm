@@ -33,7 +33,7 @@ import Movement exposing (Movement(..))
 type alias Model =
     { audioSettings : AudioSettings
     , currentPitch : Maybe Degree
-    , layout : LayoutData
+    , layoutData : LayoutData
     , menuOpen : Bool
     , modal : Modal
     , proposedMovement : Movement
@@ -47,7 +47,7 @@ initialModel : Model
 initialModel =
     { audioSettings = AudioSettings.defaultAudioSettings
     , currentPitch = Nothing
-    , layout =
+    , layoutData =
         { layoutSelection = Auto
         , pitchSpace = defaultElement
         , showSpacing = False

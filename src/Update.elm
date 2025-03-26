@@ -46,8 +46,8 @@ update msg model =
         GotPitchSpaceElement elementResult ->
             ( case elementResult of
                 Ok element ->
-                    updateLayout
-                        (\layout -> { layout | pitchSpace = element })
+                    updateLayoutData
+                        (\layoutData -> { layoutData | pitchSpace = element })
                         model
 
                 Err _ ->
@@ -56,8 +56,8 @@ update msg model =
             )
 
         GotViewport viewport ->
-            ( updateLayout
-                (\layout -> { layout | viewport = viewport })
+            ( updateLayoutData
+                (\layoutData -> { layoutData | viewport = viewport })
                 model
             , Task.attempt GotPitchSpaceElement (Dom.getElement "pitch-space")
             )
@@ -107,8 +107,8 @@ update msg model =
             )
 
         SetLayout layoutSelection ->
-            ( updateLayout
-                (\layout -> { layout | layoutSelection = layoutSelection })
+            ( updateLayoutData
+                (\layoutData -> { layoutData | layoutSelection = layoutSelection })
                 model
             , Task.perform GotViewport Dom.getViewport
             )
@@ -170,7 +170,9 @@ update msg model =
             )
 
         ToggleSpacing ->
-            ( updateLayout (\layout -> { layout | showSpacing = not layout.showSpacing }) model
+            ( updateLayoutData
+                (\layoutData -> { layoutData | showSpacing = not layoutData.showSpacing })
+                model
             , Cmd.none
             )
 
@@ -295,9 +297,9 @@ update msg model =
                     ( model, Cmd.none )
 
 
-updateLayout : (LayoutData -> LayoutData) -> Model -> Model
-updateLayout f model =
-    { model | layout = f model.layout }
+updateLayoutData : (LayoutData -> LayoutData) -> Model -> Model
+updateLayoutData f model =
+    { model | layoutData = f model.layoutData }
 
 
 focus : String -> Cmd Msg

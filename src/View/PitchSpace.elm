@@ -207,9 +207,9 @@ view model =
     div
         ([ Attr.id "pitch-space"
          , Styles.transition
-         , Attr.attributeIf model.layout.showSpacing Styles.border
+         , Attr.attributeIf model.layoutData.showSpacing Styles.border
          ]
-            ++ (case layoutFor model.layout of
+            ++ (case layoutFor model.layoutData of
                     Vertical ->
                         [ Styles.flexRow
                         , class "my-8"
@@ -244,7 +244,7 @@ listAttributes layoutData =
 
 viewIntervals : Model -> Html Msg
 viewIntervals model =
-    Html.ol (onMouseLeave (SelectProposedMovement None) :: listAttributes model.layout)
+    Html.ol (onMouseLeave (SelectProposedMovement None) :: listAttributes model.layoutData)
         (List.map
             (viewInterval model (visibleRangeInMoria model))
             (intervalsWithVisibility model)
@@ -266,7 +266,7 @@ viewInterval model rangeInMoria ( interval, position ) =
                     0
 
                 _ ->
-                    toFloat interval.moria * scalingFactor model.layout rangeInMoria
+                    toFloat interval.moria * scalingFactor model.layoutData rangeInMoria
 
         movement =
             Movement.ofInterval model.currentPitch interval
@@ -274,7 +274,7 @@ viewInterval model rangeInMoria ( interval, position ) =
         moria =
             span [ class "text-gray-600" ]
                 [ text (String.fromInt interval.moria)
-                , viewIf model.layout.showSpacing
+                , viewIf model.layoutData.showSpacing
                     (text <| " (" ++ Round.round 2 size ++ "px)")
                 ]
 
@@ -293,7 +293,7 @@ viewInterval model rangeInMoria ( interval, position ) =
     li
         [ Attr.id ("interval-" ++ Degree.toString interval.from ++ "-" ++ Degree.toString interval.to)
         , Styles.flexRowCentered
-        , case layoutFor model.layout of
+        , case layoutFor model.layoutData of
             Vertical ->
                 Styles.height size
 
@@ -373,7 +373,7 @@ shouldHighlightInterval currentPitch proposedMovement interval =
 
 viewPitches : Model -> Html Msg
 viewPitches model =
-    Html.ol (listAttributes model.layout)
+    Html.ol (listAttributes model.layoutData)
         (List.map
             (viewPitch model (visibleRangeInMoria model))
             (pitchesWithVisibility model)
@@ -395,7 +395,7 @@ viewPitch model rangeInMoria ( degree, positionWithinRange ) =
                 |> Maybe.map (Pitch.pitchPosition model.scale)
 
         scalingFactor_ =
-            scalingFactor model.layout rangeInMoria
+            scalingFactor model.layoutData rangeInMoria
 
         scale int =
             (toFloat int / 2) * scalingFactor_
@@ -432,7 +432,7 @@ viewPitch model rangeInMoria ( degree, positionWithinRange ) =
                     0
 
         showSpacingDetails =
-            model.layout.showSpacing && positionIsVisible positionWithinRange
+            model.layoutData.showSpacing && positionIsVisible positionWithinRange
 
         attributeIfVisible =
             Attr.attributeIf (positionIsVisible positionWithinRange)
@@ -442,7 +442,7 @@ viewPitch model rangeInMoria ( degree, positionWithinRange ) =
         , Styles.transition
         , Attr.attributeIf showSpacingDetails Styles.border
         , attributeIfVisible Styles.flexCol
-        , case layoutFor model.layout of
+        , case layoutFor model.layoutData of
             Vertical ->
                 Styles.height size
 
@@ -482,7 +482,7 @@ pitchButton model { degree, pitch, pitchAbove, pitchBelow, positionWithinRange, 
             Just degree == model.currentPitch
 
         layout =
-            layoutFor model.layout
+            layoutFor model.layoutData
 
         scale int =
             (toFloat int / 2)
@@ -528,7 +528,7 @@ pitchButton model { degree, pitch, pitchAbove, pitchBelow, positionWithinRange, 
                     0
 
         pitchButtonSizeValue =
-            pitchButtonSize model.layout / 2
+            pitchButtonSize model.layoutData / 2
     in
     button
         [ onClick <|
@@ -540,7 +540,7 @@ pitchButton model { degree, pitch, pitchAbove, pitchBelow, positionWithinRange, 
         , pitchButtonSizeClass
         , class "rounded-full hover:z-10 cursor-pointer relative pb-8"
         , Styles.transition
-        , case layoutFor model.layout of
+        , case layoutFor model.layoutData of
             Vertical ->
                 Styles.top position
 
