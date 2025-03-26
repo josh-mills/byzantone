@@ -35,22 +35,22 @@ visibleRange model =
     case model.currentPitch of
         Just currentPitch ->
             { start =
-                if Degree.indexOf currentPitch < Degree.indexOf model.rangeStart then
+                if Degree.indexOf currentPitch < Degree.indexOf model.modeSettings.rangeStart then
                     currentPitch
 
                 else
-                    model.rangeStart
+                    model.modeSettings.rangeStart
             , end =
-                if Degree.indexOf currentPitch > Degree.indexOf model.rangeEnd then
+                if Degree.indexOf currentPitch > Degree.indexOf model.modeSettings.rangeEnd then
                     currentPitch
 
                 else
-                    model.rangeEnd
+                    model.modeSettings.rangeEnd
             }
 
         Nothing ->
-            { start = model.rangeStart
-            , end = model.rangeEnd
+            { start = model.modeSettings.rangeStart
+            , end = model.modeSettings.rangeEnd
             }
 
 
@@ -60,7 +60,7 @@ visibleRangeInMoria model =
         { start, end } =
             visibleRange model
     in
-    Pitch.pitchPosition model.scale end - Pitch.pitchPosition model.scale start
+    Pitch.pitchPosition model.modeSettings.scale end - Pitch.pitchPosition model.modeSettings.scale start
 
 
 type PositionWithinVisibleRange
@@ -168,7 +168,7 @@ intervalsWithVisibility model =
             , visibility interval
             )
         )
-        (Pitch.intervals model.scale)
+        (Pitch.intervals model.modeSettings.scale)
 
 
 {-| This feels potentially fragile.
@@ -384,15 +384,15 @@ viewPitch : Model -> Int -> ( Degree, PositionWithinVisibleRange ) -> Html Msg
 viewPitch model rangeInMoria ( degree, positionWithinRange ) =
     let
         pitch =
-            Pitch.pitchPosition model.scale degree
+            Pitch.pitchPosition model.modeSettings.scale degree
 
         pitchBelow =
             Degree.step degree -1
-                |> Maybe.map (Pitch.pitchPosition model.scale)
+                |> Maybe.map (Pitch.pitchPosition model.modeSettings.scale)
 
         pitchAbove =
             Degree.step degree 1
-                |> Maybe.map (Pitch.pitchPosition model.scale)
+                |> Maybe.map (Pitch.pitchPosition model.modeSettings.scale)
 
         scalingFactor_ =
             scalingFactor model.layoutData rangeInMoria
@@ -554,7 +554,7 @@ pitchButton model { degree, pitch, pitchAbove, pitchBelow, positionWithinRange, 
         ]
         [ ByzHtmlMartyria.viewWithAttributes
             [ Styles.left -3, Styles.top -3 ]
-            (Martyria.for model.scale degree)
+            (Martyria.for model.modeSettings.scale degree)
         ]
 
 

@@ -1,5 +1,6 @@
 module Model exposing
     ( Model, initialModel
+    , ModeSettings
     , LayoutData, LayoutSelection(..), Layout(..), layoutFor, layoutString
     , Modal(..), modalOpen, modalToString
     )
@@ -10,6 +11,11 @@ module Model exposing
 # Model
 
 @docs Model, initialModel
+
+
+# Mode Settings
+
+@docs ModeSettings
 
 
 # Layout
@@ -36,10 +42,8 @@ type alias Model =
     , layoutData : LayoutData
     , menuOpen : Bool
     , modal : Modal
+    , modeSettings : ModeSettings
     , proposedMovement : Movement
-    , rangeStart : Degree
-    , rangeEnd : Degree
-    , scale : Scale
     }
 
 
@@ -50,9 +54,26 @@ initialModel =
     , layoutData = initialLayoutData
     , menuOpen = False
     , modal = NoModal
-    , rangeStart = Ni
-    , rangeEnd = Ni_
+    , modeSettings = initialModeSettings
     , proposedMovement = None
+    }
+
+
+
+-- MODE SETTINGS
+
+
+type alias ModeSettings =
+    { rangeStart : Degree
+    , rangeEnd : Degree
+    , scale : Scale
+    }
+
+
+initialModeSettings : ModeSettings
+initialModeSettings =
+    { rangeStart = Ni
+    , rangeEnd = Ni_
     , scale = Diatonic
     }
 

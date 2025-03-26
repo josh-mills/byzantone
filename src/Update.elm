@@ -6,7 +6,7 @@ import Byzantine.Degree as Degree exposing (Degree(..))
 import Byzantine.Pitch exposing (PitchStandard, Register)
 import Byzantine.Scale exposing (Scale)
 import Maybe.Extra as Maybe
-import Model exposing (LayoutData, LayoutSelection, Modal, Model)
+import Model exposing (LayoutData, LayoutSelection, Modal, ModeSettings, Model)
 import Movement exposing (Movement)
 import Platform.Cmd as Cmd
 import Task
@@ -123,22 +123,30 @@ update msg model =
             )
 
         SetRangeStart start ->
-            ( { model
-                | rangeStart =
-                    String.toInt start
-                        |> Maybe.andThen (\i -> Array.get i Degree.gamut)
-                        |> Maybe.withDefault model.rangeStart
-              }
+            ( updateModeSettings
+                (\modeSettings ->
+                    { modeSettings
+                        | rangeStart =
+                            String.toInt start
+                                |> Maybe.andThen (\i -> Array.get i Degree.gamut)
+                                |> Maybe.withDefault modeSettings.rangeStart
+                    }
+                )
+                model
             , Cmd.none
             )
 
         SetRangeEnd end ->
-            ( { model
-                | rangeEnd =
-                    String.toInt end
-                        |> Maybe.andThen (\i -> Array.get i Degree.gamut)
-                        |> Maybe.withDefault model.rangeEnd
-              }
+            ( updateModeSettings
+                (\modeSettings ->
+                    { modeSettings
+                        | rangeEnd =
+                            String.toInt end
+                                |> Maybe.andThen (\i -> Array.get i Degree.gamut)
+                                |> Maybe.withDefault modeSettings.rangeEnd
+                    }
+                )
+                model
             , Cmd.none
             )
 
@@ -152,11 +160,10 @@ update msg model =
             )
 
         SetScale scale ->
-            ( { model
-                | scale = scale
-
+            ( updateModeSettings
+                (\modeSettings -> { modeSettings | scale = scale })
                 -- , currentPitch = Nothing -- consider this.
-              }
+                model
             , Cmd.none
             )
 
@@ -300,6 +307,11 @@ update msg model =
 updateLayoutData : (LayoutData -> LayoutData) -> Model -> Model
 updateLayoutData f model =
     { model | layoutData = f model.layoutData }
+
+
+updateModeSettings : (ModeSettings -> ModeSettings) -> Model -> Model
+updateModeSettings f model =
+    { model | modeSettings = f model.modeSettings }
 
 
 focus : String -> Cmd Msg

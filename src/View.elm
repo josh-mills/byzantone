@@ -17,7 +17,7 @@ import Icons
 import Json.Decode exposing (Decoder)
 import List.Extra as List
 import Maybe.Extra as Maybe
-import Model exposing (Layout(..), LayoutSelection(..), Modal(..), Model, layoutFor, layoutString)
+import Model exposing (Layout(..), LayoutSelection(..), Modal(..), ModeSettings, Model, layoutFor, layoutString)
 import Movement exposing (Movement(..))
 import RadioFieldset
 import Styles
@@ -92,7 +92,10 @@ audio model =
                 Attr.empty
 
             Just pitch ->
-                Pitch.frequency model.audioSettings.pitchStandard model.audioSettings.register model.scale pitch
+                Pitch.frequency model.audioSettings.pitchStandard
+                    model.audioSettings.register
+                    model.modeSettings.scale
+                    pitch
                     |> String.fromFloat
                     |> Attr.attribute "ison"
         ]
@@ -233,7 +236,7 @@ settings model =
             , viewItem = Just viewPitchStandard
             }
         , gainInput model.audioSettings
-        , rangeFieldset model.rangeStart model.rangeEnd
+        , rangeFieldset model.modeSettings
         ]
 
 
@@ -243,14 +246,14 @@ through the update logic; we may need to consider additional validation
 depending on how dynamic we want to be, and on how well we should reflect
 specific modal constraints.
 -}
-rangeFieldset : Degree -> Degree -> Html Msg
-rangeFieldset currentLowerBound currentUpperBound =
+rangeFieldset : ModeSettings -> Html Msg
+rangeFieldset { rangeStart, rangeEnd } =
     let
         maxLowerBound =
-            Degree.step currentUpperBound -3 |> Maybe.withDefault currentLowerBound
+            Degree.step rangeEnd -3 |> Maybe.withDefault rangeStart
 
         minUpperBound =
-            Degree.step currentLowerBound 3 |> Maybe.withDefault currentUpperBound
+            Degree.step rangeStart 3 |> Maybe.withDefault rangeEnd
 
         intString degree =
             Degree.indexOf degree |> String.fromInt
@@ -294,8 +297,8 @@ rangeFieldset currentLowerBound currentUpperBound =
     in
     Html.fieldset [ Styles.borderRounded, class "px-2 pb-1 mb-2" ]
         [ Html.legend [ class "px-1" ] [ Html.text "Range" ]
-        , row "From:" "range-start" GA maxLowerBound currentLowerBound SetRangeStart
-        , row "To:" "range-end" minUpperBound Ga_ currentUpperBound SetRangeEnd
+        , row "From:" "range-start" GA maxLowerBound rangeStart SetRangeStart
+        , row "To:" "range-end" minUpperBound Ga_ rangeEnd SetRangeEnd
         ]
 
 
@@ -364,7 +367,7 @@ selectScale model =
         , legendText = "Select Scale"
         , onSelect = SetScale
         , options = Scale.all
-        , selected = model.scale
+        , selected = model.modeSettings.scale
         , viewItem = Nothing
         }
 
