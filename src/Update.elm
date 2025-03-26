@@ -1,6 +1,7 @@
 module Update exposing (Msg(..), update)
 
 import Array
+import AudioSettings exposing (AudioSettings)
 import Browser.Dom as Dom
 import Byzantine.Degree as Degree exposing (Degree(..))
 import Byzantine.Pitch exposing (PitchStandard, Register)
@@ -101,11 +102,9 @@ update msg model =
             )
 
         SetGain gain ->
-            let
-                audioSettings =
-                    model.audioSettings
-            in
-            ( { model | audioSettings = { audioSettings | gain = clamp 0 1 gain } }
+            ( updateAudioSettings
+                (\audioSettings -> { audioSettings | gain = clamp 0 1 gain })
+                model
             , Cmd.none
             )
 
@@ -117,11 +116,9 @@ update msg model =
             )
 
         SetPitchStandard pitchStandard ->
-            let
-                audioSettings =
-                    model.audioSettings
-            in
-            ( { model | audioSettings = { audioSettings | pitchStandard = pitchStandard } }
+            ( updateAudioSettings
+                (\audioSettings -> { audioSettings | pitchStandard = pitchStandard })
+                model
             , Cmd.none
             )
 
@@ -154,11 +151,9 @@ update msg model =
             )
 
         SetRegister register ->
-            let
-                audioSettings =
-                    model.audioSettings
-            in
-            ( { model | audioSettings = { audioSettings | register = register } }
+            ( updateAudioSettings
+                (\audioSettings -> { audioSettings | register = register })
+                model
             , Cmd.none
             )
 
@@ -306,6 +301,11 @@ update msg model =
 
                 _ ->
                     ( model, Cmd.none )
+
+
+updateAudioSettings : (AudioSettings -> AudioSettings) -> Model -> Model
+updateAudioSettings f model =
+    { model | audioSettings = f model.audioSettings }
 
 
 updateLayoutData : (LayoutData -> LayoutData) -> Model -> Model
