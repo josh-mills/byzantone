@@ -47,18 +47,34 @@ initialModel : Model
 initialModel =
     { audioSettings = AudioSettings.defaultAudioSettings
     , currentPitch = Nothing
-    , layoutData =
-        { layoutSelection = Auto
-        , pitchSpace = defaultElement
-        , showSpacing = False
-        , viewport = defaultViewport
-        }
+    , layoutData = initialLayoutData
     , menuOpen = False
     , modal = NoModal
     , rangeStart = Ni
     , rangeEnd = Ni_
     , proposedMovement = None
     , scale = Diatonic
+    }
+
+
+
+-- LAYOUT
+
+
+type alias LayoutData =
+    { layoutSelection : LayoutSelection
+    , pitchSpace : Dom.Element
+    , showSpacing : Bool
+    , viewport : Dom.Viewport
+    }
+
+
+initialLayoutData : LayoutData
+initialLayoutData =
+    { layoutSelection = Auto
+    , pitchSpace = defaultElement
+    , showSpacing = False
+    , viewport = defaultViewport
     }
 
 
@@ -80,18 +96,6 @@ defaultElement =
     { scene = { width = 0, height = 0 }
     , viewport = { x = 0, y = 0, width = 0, height = 0 }
     , element = { x = 0, y = 0, width = 64, height = 0 }
-    }
-
-
-
--- LAYOUT
-
-
-type alias LayoutData =
-    { layoutSelection : LayoutSelection
-    , pitchSpace : Dom.Element
-    , showSpacing : Bool
-    , viewport : Dom.Viewport
     }
 
 
