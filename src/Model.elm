@@ -40,7 +40,6 @@ type alias Model =
     , rangeStart : Degree
     , rangeEnd : Degree
     , scale : Scale
-    , showSpacing : Bool
     }
 
 
@@ -51,6 +50,7 @@ initialModel =
     , layout =
         { layoutSelection = Auto
         , pitchSpace = defaultElement
+        , showSpacing = False
         , viewport = defaultViewport
         }
     , menuOpen = False
@@ -59,7 +59,6 @@ initialModel =
     , rangeEnd = Ni_
     , proposedMovement = None
     , scale = Diatonic
-    , showSpacing = False
     }
 
 
@@ -91,6 +90,7 @@ defaultElement =
 type alias LayoutData =
     { layoutSelection : LayoutSelection
     , pitchSpace : Dom.Element
+    , showSpacing : Bool
     , viewport : Dom.Viewport
     }
 

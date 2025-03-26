@@ -43,7 +43,7 @@ view model =
         , header model
         , viewModal model
 
-        -- , viewIf model.showSpacing (div [ class "text-center" ] [ text "|" ])
+        -- , viewIf model.layout.showSpacing (div [ class "text-center" ] [ text "|" ])
         , viewIf model.menuOpen menu
         , main_
             [ class "lg:container lg:mx-auto font-serif"
@@ -109,7 +109,7 @@ header _ =
             , p [ class "font-serif text-center" ]
                 [ text "A tool for learning the pitches and intervals of Byzantine chant." ]
 
-            -- , viewIf model.showSpacing (p [ class "text-center" ] [ text "|" ])
+            -- , viewIf model.layout.showSpacing (p [ class "text-center" ] [ text "|" ])
             ]
         , button
             [ class "w-7 mt-2 self-start"
@@ -192,7 +192,7 @@ modalContent model =
 settings : Model -> Html Msg
 settings model =
     div [ Styles.flexCol, class "gap-2" ]
-        [ spacingButton model.showSpacing
+        [ spacingButton model.layout.showSpacing
             |> viewIf debuggingLayout
         , RadioFieldset.view
             { itemToString = layoutString

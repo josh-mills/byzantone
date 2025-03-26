@@ -207,7 +207,7 @@ view model =
     div
         ([ Attr.id "pitch-space"
          , Styles.transition
-         , Attr.attributeIf model.showSpacing Styles.border
+         , Attr.attributeIf model.layout.showSpacing Styles.border
          ]
             ++ (case layoutFor model.layout of
                     Vertical ->
@@ -274,7 +274,7 @@ viewInterval model rangeInMoria ( interval, position ) =
         moria =
             span [ class "text-gray-600" ]
                 [ text (String.fromInt interval.moria)
-                , viewIf model.showSpacing
+                , viewIf model.layout.showSpacing
                     (text <| " (" ++ Round.round 2 size ++ "px)")
                 ]
 
@@ -432,7 +432,7 @@ viewPitch model rangeInMoria ( degree, positionWithinRange ) =
                     0
 
         showSpacingDetails =
-            model.showSpacing && positionIsVisible positionWithinRange
+            model.layout.showSpacing && positionIsVisible positionWithinRange
 
         attributeIfVisible =
             Attr.attributeIf (positionIsVisible positionWithinRange)

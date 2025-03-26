@@ -170,7 +170,7 @@ update msg model =
             )
 
         ToggleSpacing ->
-            ( { model | showSpacing = not model.showSpacing }
+            ( updateLayout (\layout -> { layout | showSpacing = not layout.showSpacing }) model
             , Cmd.none
             )
 
