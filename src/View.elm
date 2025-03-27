@@ -16,8 +16,9 @@ import Icons
 import Json.Decode exposing (Decoder)
 import List.Extra as List
 import Maybe.Extra as Maybe
-import Model exposing (Layout(..), LayoutSelection(..), Modal(..), Model, layoutFor, layoutString)
+import Model exposing (Modal(..), Model)
 import Model.AudioSettings exposing (AudioSettings)
+import Model.LayoutData as LayoutData exposing (Layout(..), LayoutSelection(..), layoutFor)
 import Model.ModeSettings exposing (ModeSettings)
 import Movement exposing (Movement(..))
 import RadioFieldset
@@ -199,7 +200,7 @@ settings model =
         [ spacingButton model.layoutData.showSpacing
             |> viewIf debuggingLayout
         , RadioFieldset.view
-            { itemToString = layoutString
+            { itemToString = LayoutData.layoutString
             , legendText = "Layout"
             , onSelect = SetLayout
             , options = [ Auto, Manual Vertical, Manual Horizontal ]
