@@ -6,7 +6,11 @@ import Byzantine.Degree as Degree exposing (Degree(..))
 import Byzantine.Pitch exposing (PitchStandard, Register)
 import Byzantine.Scale exposing (Scale)
 import Maybe.Extra as Maybe
-import Model exposing (LayoutData, LayoutSelection, Modal, Model)
+import Model exposing (Modal, Model)
+import Model.AudioSettings exposing (AudioSettings)
+import Model.LayoutData exposing (LayoutData, LayoutSelection)
+import Model.ModeSettings exposing (ModeSettings)
+import Model.PitchState as PitchState exposing (PitchState)
 import Movement exposing (Movement)
 import Platform.Cmd as Cmd
 import Task
@@ -46,8 +50,8 @@ update msg model =
         GotPitchSpaceElement elementResult ->
             ( case elementResult of
                 Ok element ->
-                    updateLayout
-                        (\layout -> { layout | pitchSpace = element })
+                    updateLayoutData
+                        (\layoutData -> { layoutData | pitchSpace = element })
                         model
 
                 Err _ ->
@@ -56,8 +60,8 @@ update msg model =
             )
 
         GotViewport viewport ->
-            ( updateLayout
-                (\layout -> { layout | viewport = viewport })
+            ( updateLayoutData
+                (\layoutData -> { layoutData | viewport = viewport })
                 model
             , Task.attempt GotPitchSpaceElement (Dom.getElement "pitch-space")
             )
@@ -80,83 +84,87 @@ update msg model =
             )
 
         SelectPitch pitch maybeMovement ->
-            ( { model
-                | currentPitch = pitch
+            ( setPitchState
+                { currentPitch = pitch
                 , proposedMovement =
                     if Maybe.isJust pitch then
-                        Maybe.withDefault model.proposedMovement maybeMovement
+                        Maybe.withDefault model.pitchState.proposedMovement maybeMovement
 
                     else
                         Movement.None
-              }
+                }
+                model
             , Cmd.none
             )
 
-        SelectProposedMovement movement_ ->
-            ( { model | proposedMovement = movement_ }
+        SelectProposedMovement movement ->
+            ( updatePitchState
+                (\pitchState -> { pitchState | proposedMovement = movement })
+                model
             , Cmd.none
             )
 
         SetGain gain ->
-            let
-                audioSettings =
-                    model.audioSettings
-            in
-            ( { model | audioSettings = { audioSettings | gain = clamp 0 1 gain } }
+            ( updateAudioSettings
+                (\audioSettings -> { audioSettings | gain = clamp 0 1 gain })
+                model
             , Cmd.none
             )
 
         SetLayout layoutSelection ->
-            ( updateLayout
-                (\layout -> { layout | layoutSelection = layoutSelection })
+            ( updateLayoutData
+                (\layoutData -> { layoutData | layoutSelection = layoutSelection })
                 model
             , Task.perform GotViewport Dom.getViewport
             )
 
         SetPitchStandard pitchStandard ->
-            let
-                audioSettings =
-                    model.audioSettings
-            in
-            ( { model | audioSettings = { audioSettings | pitchStandard = pitchStandard } }
+            ( updateAudioSettings
+                (\audioSettings -> { audioSettings | pitchStandard = pitchStandard })
+                model
             , Cmd.none
             )
 
         SetRangeStart start ->
-            ( { model
-                | rangeStart =
-                    String.toInt start
-                        |> Maybe.andThen (\i -> Array.get i Degree.gamut)
-                        |> Maybe.withDefault model.rangeStart
-              }
+            ( updateModeSettings
+                (\modeSettings ->
+                    { modeSettings
+                        | rangeStart =
+                            String.toInt start
+                                |> Maybe.andThen (\i -> Array.get i Degree.gamut)
+                                |> Maybe.withDefault modeSettings.rangeStart
+                    }
+                )
+                model
             , Cmd.none
             )
 
         SetRangeEnd end ->
-            ( { model
-                | rangeEnd =
-                    String.toInt end
-                        |> Maybe.andThen (\i -> Array.get i Degree.gamut)
-                        |> Maybe.withDefault model.rangeEnd
-              }
+            ( updateModeSettings
+                (\modeSettings ->
+                    { modeSettings
+                        | rangeEnd =
+                            String.toInt end
+                                |> Maybe.andThen (\i -> Array.get i Degree.gamut)
+                                |> Maybe.withDefault modeSettings.rangeEnd
+                    }
+                )
+                model
             , Cmd.none
             )
 
         SetRegister register ->
-            let
-                audioSettings =
-                    model.audioSettings
-            in
-            ( { model | audioSettings = { audioSettings | register = register } }
+            ( updateAudioSettings
+                (\audioSettings -> { audioSettings | register = register })
+                model
             , Cmd.none
             )
 
         SetScale scale ->
-            ( { model
-                | scale = scale
-
+            ( updateModeSettings
+                (\modeSettings -> { modeSettings | scale = scale })
                 -- , currentPitch = Nothing -- consider this.
-              }
+                model
             , Cmd.none
             )
 
@@ -170,7 +178,9 @@ update msg model =
             )
 
         ToggleSpacing ->
-            ( { model | showSpacing = not model.showSpacing }
+            ( updateLayoutData
+                (\layoutData -> { layoutData | showSpacing = not layoutData.showSpacing })
+                model
             , Cmd.none
             )
 
@@ -179,17 +189,21 @@ update msg model =
                 moveAndFocus i =
                     let
                         degree =
-                            Maybe.map (\d -> Degree.step d i |> Maybe.withDefault d) model.currentPitch
+                            Maybe.map (\d -> Degree.step d i |> Maybe.withDefault d) model.pitchState.currentPitch
                     in
-                    ( { model | currentPitch = degree }
+                    ( updatePitchState
+                        (\pitchState -> { pitchState | currentPitch = degree })
+                        model
                     , Maybe.unwrap Cmd.none
                         (Degree.toString >> (++) "p_" >> Dom.focus >> Task.attempt DomResult)
                         degree
                     )
 
-                setAndFocus d =
-                    ( { model | currentPitch = Just d }
-                    , Degree.toString d |> (++) "p_" |> Dom.focus |> Task.attempt DomResult
+                setAndFocus degree =
+                    ( updatePitchState
+                        (\pitchState -> { pitchState | currentPitch = Just degree })
+                        model
+                    , Degree.toString degree |> (++) "p_" |> Dom.focus |> Task.attempt DomResult
                     )
             in
             case key of
@@ -206,10 +220,7 @@ update msg model =
                         )
 
                     else
-                        ( { model
-                            | currentPitch = Nothing
-                            , proposedMovement = Movement.None
-                          }
+                        ( setPitchState PitchState.initialPitchState model
                         , Cmd.none
                         )
 
@@ -295,9 +306,29 @@ update msg model =
                     ( model, Cmd.none )
 
 
-updateLayout : (LayoutData -> LayoutData) -> Model -> Model
-updateLayout f model =
-    { model | layout = f model.layout }
+updateAudioSettings : (AudioSettings -> AudioSettings) -> Model -> Model
+updateAudioSettings f model =
+    { model | audioSettings = f model.audioSettings }
+
+
+updateLayoutData : (LayoutData -> LayoutData) -> Model -> Model
+updateLayoutData f model =
+    { model | layoutData = f model.layoutData }
+
+
+updateModeSettings : (ModeSettings -> ModeSettings) -> Model -> Model
+updateModeSettings f model =
+    { model | modeSettings = f model.modeSettings }
+
+
+setPitchState : PitchState -> Model -> Model
+setPitchState pitchState model =
+    { model | pitchState = pitchState }
+
+
+updatePitchState : (PitchState -> PitchState) -> Model -> Model
+updatePitchState f model =
+    { model | pitchState = f model.pitchState }
 
 
 focus : String -> Cmd Msg

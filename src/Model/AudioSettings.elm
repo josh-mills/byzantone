@@ -1,4 +1,4 @@
-module AudioSettings exposing (AudioSettings, defaultAudioSettings)
+module Model.AudioSettings exposing (AudioSettings, defaultAudioSettings)
 
 import Byzantine.Degree exposing (Degree(..))
 import Byzantine.Pitch exposing (PitchStandard(..), Register(..))

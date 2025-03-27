@@ -1,6 +1,5 @@
 module View exposing (view)
 
-import AudioSettings exposing (AudioSettings)
 import Byzantine.ByzHtml.Martyria as Martyria
 import Byzantine.Degree as Degree exposing (Degree(..))
 import Byzantine.IntervalCharacter exposing (..)
@@ -17,7 +16,10 @@ import Icons
 import Json.Decode exposing (Decoder)
 import List.Extra as List
 import Maybe.Extra as Maybe
-import Model exposing (Layout(..), LayoutSelection(..), Modal(..), Model, layoutFor, layoutString)
+import Model exposing (Modal(..), Model)
+import Model.AudioSettings exposing (AudioSettings)
+import Model.LayoutData as LayoutData exposing (Layout(..), LayoutSelection(..), layoutFor)
+import Model.ModeSettings exposing (ModeSettings)
 import Movement exposing (Movement(..))
 import RadioFieldset
 import Styles
@@ -43,11 +45,11 @@ view model =
         , header model
         , viewModal model
 
-        -- , viewIf model.showSpacing (div [ class "text-center" ] [ text "|" ])
+        -- , viewIf model.layoutData.showSpacing (div [ class "text-center" ] [ text "|" ])
         , viewIf model.menuOpen menu
         , main_
             [ class "lg:container lg:mx-auto font-serif"
-            , case layoutFor model.layout of
+            , case layoutFor model.layoutData of
                 Vertical ->
                     class "flex flex-row flex-wrap-reverse"
 
@@ -87,12 +89,15 @@ audio model =
         [ model.audioSettings.gain
             |> String.fromFloat
             |> Attr.attribute "gain"
-        , case model.currentPitch of
+        , case model.pitchState.currentPitch of
             Nothing ->
                 Attr.empty
 
             Just pitch ->
-                Pitch.frequency model.audioSettings.pitchStandard model.audioSettings.register model.scale pitch
+                Pitch.frequency model.audioSettings.pitchStandard
+                    model.audioSettings.register
+                    model.modeSettings.scale
+                    pitch
                     |> String.fromFloat
                     |> Attr.attribute "ison"
         ]
@@ -109,7 +114,7 @@ header _ =
             , p [ class "font-serif text-center" ]
                 [ text "A tool for learning the pitches and intervals of Byzantine chant." ]
 
-            -- , viewIf model.showSpacing (p [ class "text-center" ] [ text "|" ])
+            -- , viewIf model.layoutData.showSpacing (p [ class "text-center" ] [ text "|" ])
             ]
         , button
             [ class "w-7 mt-2 self-start"
@@ -192,14 +197,14 @@ modalContent model =
 settings : Model -> Html Msg
 settings model =
     div [ Styles.flexCol, class "gap-2" ]
-        [ spacingButton model.showSpacing
+        [ spacingButton model.layoutData.showSpacing
             |> viewIf debuggingLayout
         , RadioFieldset.view
-            { itemToString = layoutString
+            { itemToString = LayoutData.layoutString
             , legendText = "Layout"
             , onSelect = SetLayout
             , options = [ Auto, Manual Vertical, Manual Horizontal ]
-            , selected = model.layout.layoutSelection
+            , selected = model.layoutData.layoutSelection
             , viewItem = Nothing
             }
         , RadioFieldset.view
@@ -233,7 +238,7 @@ settings model =
             , viewItem = Just viewPitchStandard
             }
         , gainInput model.audioSettings
-        , rangeFieldset model.rangeStart model.rangeEnd
+        , rangeFieldset model.modeSettings
         ]
 
 
@@ -243,14 +248,14 @@ through the update logic; we may need to consider additional validation
 depending on how dynamic we want to be, and on how well we should reflect
 specific modal constraints.
 -}
-rangeFieldset : Degree -> Degree -> Html Msg
-rangeFieldset currentLowerBound currentUpperBound =
+rangeFieldset : ModeSettings -> Html Msg
+rangeFieldset { rangeStart, rangeEnd } =
     let
         maxLowerBound =
-            Degree.step currentUpperBound -3 |> Maybe.withDefault currentLowerBound
+            Degree.step rangeEnd -3 |> Maybe.withDefault rangeStart
 
         minUpperBound =
-            Degree.step currentLowerBound 3 |> Maybe.withDefault currentUpperBound
+            Degree.step rangeStart 3 |> Maybe.withDefault rangeEnd
 
         intString degree =
             Degree.indexOf degree |> String.fromInt
@@ -294,8 +299,8 @@ rangeFieldset currentLowerBound currentUpperBound =
     in
     Html.fieldset [ Styles.borderRounded, class "px-2 pb-1 mb-2" ]
         [ Html.legend [ class "px-1" ] [ Html.text "Range" ]
-        , row "From:" "range-start" GA maxLowerBound currentLowerBound SetRangeStart
-        , row "To:" "range-end" minUpperBound Ga_ currentUpperBound SetRangeEnd
+        , row "From:" "range-start" GA maxLowerBound rangeStart SetRangeStart
+        , row "To:" "range-end" minUpperBound Ga_ rangeEnd SetRangeEnd
         ]
 
 
@@ -337,7 +342,7 @@ viewControls model =
         --     , selected = model.layout.layoutSelection
         --     , viewItem = Nothing
         --     }
-        , viewCurrentPitch model.currentPitch
+        , viewCurrentPitch model.pitchState.currentPitch
         , gainInput model.audioSettings
         ]
 
@@ -364,7 +369,7 @@ selectScale model =
         , legendText = "Select Scale"
         , onSelect = SetScale
         , options = Scale.all
-        , selected = model.scale
+        , selected = model.modeSettings.scale
         , viewItem = Nothing
         }
 
