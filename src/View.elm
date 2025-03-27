@@ -1,6 +1,5 @@
 module View exposing (view)
 
-import AudioSettings exposing (AudioSettings)
 import Byzantine.ByzHtml.Martyria as Martyria
 import Byzantine.Degree as Degree exposing (Degree(..))
 import Byzantine.IntervalCharacter exposing (..)
@@ -18,6 +17,7 @@ import Json.Decode exposing (Decoder)
 import List.Extra as List
 import Maybe.Extra as Maybe
 import Model exposing (Layout(..), LayoutSelection(..), Modal(..), ModeSettings, Model, layoutFor, layoutString)
+import Model.AudioSettings exposing (AudioSettings)
 import Movement exposing (Movement(..))
 import RadioFieldset
 import Styles
