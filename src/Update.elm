@@ -6,8 +6,9 @@ import Byzantine.Degree as Degree exposing (Degree(..))
 import Byzantine.Pitch exposing (PitchStandard, Register)
 import Byzantine.Scale exposing (Scale)
 import Maybe.Extra as Maybe
-import Model exposing (LayoutData, LayoutSelection, Modal, ModeSettings, Model, PitchState)
+import Model exposing (LayoutData, LayoutSelection, Modal, Model, PitchState)
 import Model.AudioSettings exposing (AudioSettings)
+import Model.ModeSettings exposing (ModeSettings)
 import Movement exposing (Movement)
 import Platform.Cmd as Cmd
 import Task

@@ -1,6 +1,6 @@
 module Model exposing
     ( Model, initialModel
-    , ModeSettings, PitchState, initialPitchState
+    , PitchState, initialPitchState
     , LayoutData, LayoutSelection(..), Layout(..), layoutFor, layoutString
     , Modal(..), modalOpen, modalToString
     )
@@ -15,7 +15,7 @@ module Model exposing
 
 # Musical State and Settings
 
-@docs ModeSettings, PitchState, initialPitchState
+@docs PitchState, initialPitchState
 
 
 # UI State
@@ -36,6 +36,7 @@ import Browser.Dom as Dom
 import Byzantine.Degree exposing (Degree(..))
 import Byzantine.Scale exposing (Scale(..))
 import Model.AudioSettings as AudioSettings exposing (AudioSettings)
+import Model.ModeSettings as ModeSettings exposing (ModeSettings)
 import Movement exposing (Movement(..))
 
 
@@ -55,27 +56,8 @@ initialModel =
     , layoutData = initialLayoutData
     , menuOpen = False
     , modal = NoModal
-    , modeSettings = initialModeSettings
+    , modeSettings = ModeSettings.initialModeSettings
     , pitchState = initialPitchState
-    }
-
-
-
--- MODE SETTINGS
-
-
-type alias ModeSettings =
-    { rangeStart : Degree
-    , rangeEnd : Degree
-    , scale : Scale
-    }
-
-
-initialModeSettings : ModeSettings
-initialModeSettings =
-    { rangeStart = Ni
-    , rangeEnd = Ni_
-    , scale = Diatonic
     }
 
 

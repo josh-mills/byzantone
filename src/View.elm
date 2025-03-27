@@ -16,8 +16,9 @@ import Icons
 import Json.Decode exposing (Decoder)
 import List.Extra as List
 import Maybe.Extra as Maybe
-import Model exposing (Layout(..), LayoutSelection(..), Modal(..), ModeSettings, Model, layoutFor, layoutString)
+import Model exposing (Layout(..), LayoutSelection(..), Modal(..), Model, layoutFor, layoutString)
 import Model.AudioSettings exposing (AudioSettings)
+import Model.ModeSettings exposing (ModeSettings)
 import Movement exposing (Movement(..))
 import RadioFieldset
 import Styles
