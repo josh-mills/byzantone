@@ -15,9 +15,10 @@ import Html.Attributes.Extra as Attr
 import Html.Events exposing (onClick, onFocus, onMouseEnter, onMouseLeave)
 import Html.Extra exposing (viewIf, viewIfLazy)
 import Maybe.Extra as Maybe
-import Model exposing (Model, PitchState)
+import Model exposing (Model)
 import Model.LayoutData exposing (Layout(..), LayoutData, layoutFor)
 import Model.ModeSettings exposing (ModeSettings)
+import Model.PitchState exposing (PitchState)
 import Movement exposing (Movement(..))
 import Round
 import Styles

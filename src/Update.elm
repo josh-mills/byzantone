@@ -6,10 +6,11 @@ import Byzantine.Degree as Degree exposing (Degree(..))
 import Byzantine.Pitch exposing (PitchStandard, Register)
 import Byzantine.Scale exposing (Scale)
 import Maybe.Extra as Maybe
-import Model exposing (Modal, Model, PitchState)
+import Model exposing (Modal, Model)
 import Model.AudioSettings exposing (AudioSettings)
 import Model.LayoutData exposing (LayoutData, LayoutSelection)
 import Model.ModeSettings exposing (ModeSettings)
+import Model.PitchState as PitchState exposing (PitchState)
 import Movement exposing (Movement)
 import Platform.Cmd as Cmd
 import Task
@@ -219,7 +220,7 @@ update msg model =
                         )
 
                     else
-                        ( setPitchState Model.initialPitchState model
+                        ( setPitchState PitchState.initialPitchState model
                         , Cmd.none
                         )
 

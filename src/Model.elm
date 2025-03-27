@@ -1,6 +1,5 @@
 module Model exposing
     ( Model, initialModel
-    , PitchState, initialPitchState
     , Modal(..), modalOpen, modalToString
     )
 
@@ -10,14 +9,6 @@ module Model exposing
 # Model
 
 @docs Model, initialModel
-
-
-# Musical State and Settings
-
-@docs PitchState, initialPitchState
-
-
-# UI State
 
 
 ## Modal
@@ -31,6 +22,7 @@ import Byzantine.Scale exposing (Scale(..))
 import Model.AudioSettings as AudioSettings exposing (AudioSettings)
 import Model.LayoutData as LayoutData exposing (LayoutData)
 import Model.ModeSettings as ModeSettings exposing (ModeSettings)
+import Model.PitchState as PitchState exposing (PitchState)
 import Movement exposing (Movement(..))
 
 
@@ -51,24 +43,7 @@ initialModel =
     , menuOpen = False
     , modal = NoModal
     , modeSettings = ModeSettings.initialModeSettings
-    , pitchState = initialPitchState
-    }
-
-
-
--- PITCH STATE
-
-
-type alias PitchState =
-    { currentPitch : Maybe Degree
-    , proposedMovement : Movement
-    }
-
-
-initialPitchState : PitchState
-initialPitchState =
-    { currentPitch = Nothing
-    , proposedMovement = None
+    , pitchState = PitchState.initialPitchState
     }
 
 
