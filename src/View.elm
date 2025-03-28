@@ -100,7 +100,7 @@ audio model =
                     model.modeSettings.scale
                     pitch
                     |> String.fromFloat
-                    |> Attr.attribute "ison"
+                    |> Attr.attribute "melos"
         ]
         []
 

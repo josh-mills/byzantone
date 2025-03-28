@@ -4,7 +4,7 @@ const crossFadeMilliseconds = crossFadeSeconds * 1000;
 class ChantEngine extends HTMLElement {
     private audioContext: AudioContext;
     private mainGainNode: GainNode;
-    private ison: OscillatorNode | undefined;
+    private melos: OscillatorNode | undefined;
 
     static maxFrequency: number = 18000;
     static minFrequency: number = 32;
@@ -28,7 +28,7 @@ class ChantEngine extends HTMLElement {
 
     disconnectedCallback() {
         // console.log("disconnecting...");
-        this.stopTone(this.ison);
+        this.stopTone(this.melos);
         this.audioContext.close();
     }
 
@@ -46,22 +46,22 @@ class ChantEngine extends HTMLElement {
                 this.mainGainNode.gain.value = Number(newValue);
                 break;
 
-            case "ison":
+            case "melos":
                 const oldFreq = parseFloat(oldValue);
                 const newFreq = parseFloat(newValue);
-                if (this.ison) {
+                if (this.melos) {
                     // TODO: if oldFreq == newFreq, some sort of re-articulation
                     if (newFreq) {
-                        console.log(`changing frequency to ${newFreq}`);
-                        this.ison.frequency.value = newFreq;
+                        // console.log(`changing frequency to ${newFreq}`);
+                        this.melos.frequency.value = newFreq;
                     } else {
-                        console.log("stopping tone");
-                        this.stopTone(this.ison);
-                        this.ison = undefined;
+                        // console.log("stopping tone");
+                        this.stopTone(this.melos);
+                        this.melos = undefined;
                     }
                 } else {
-                    console.log("playing tone");
-                    this.ison = this.playTone(newFreq);
+                    // console.log("playing tone");
+                    this.melos = this.playTone(newFreq);
                 }
                 break;
 
@@ -88,7 +88,7 @@ class ChantEngine extends HTMLElement {
         )
             return undefined;
 
-        console.log(`playing ${freq}`);
+        // console.log(`playing ${freq}`);
 
         const osc = this.audioContext.createOscillator();
         osc.frequency.value = freq;
