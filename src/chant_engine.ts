@@ -1,7 +1,7 @@
 const crossFadeSeconds = 0.2;
 const crossFadeMilliseconds = crossFadeSeconds * 1000;
 
-const localDev = true;
+const localDev = false;
 const debugging = false;
 function devLog(x: any) {
     if (localDev) {
@@ -15,6 +15,7 @@ function devLog(x: any) {
 class ChantEngine extends HTMLElement {
     private audioContext: AudioContext;
     private mainGainNode: GainNode;
+    private ison: OscillatorNode | undefined;
     private melos: OscillatorNode | undefined;
 
     static maxFrequency: number = 18000;
@@ -39,6 +40,7 @@ class ChantEngine extends HTMLElement {
 
     disconnectedCallback() {
         devLog("disconnecting chant engine...");
+        this.stopTone(this.ison);
         this.stopTone(this.melos);
         this.audioContext.close();
     }
@@ -57,31 +59,41 @@ class ChantEngine extends HTMLElement {
                 this.mainGainNode.gain.value = Number(newValue);
                 break;
 
-            case "melos":
-                const oldFreq = parseFloat(oldValue);
-                const newFreq = parseFloat(newValue);
-                if (this.melos) {
-                    // TODO: if oldFreq == newFreq, some sort of re-articulation
-                    if (newFreq) {
-                        devLog(`changing frequency to ${newFreq}`);
-                        this.melos.frequency.value = newFreq;
+            case "ison":
+                const oldIsonFreq = parseFloat(oldValue);
+                const newIsonFreq = parseFloat(newValue);
+                if (this.ison) {
+                    if (newIsonFreq) {
+                        devLog(`changing ison frequency to ${newIsonFreq}`);
+                        this.ison.frequency.value = newIsonFreq;
                     } else {
-                        devLog("stopping tone");
+                        devLog("stopping ison tone");
+                        this.stopTone(this.ison);
+                        this.ison = undefined;
+                    }
+                } else {
+                    devLog("playing ison tone");
+                    this.ison = this.playTone(newIsonFreq);
+                }
+                break;
+
+            case "melos":
+                const oldMelosFreq = parseFloat(oldValue);
+                const newMelosFreq = parseFloat(newValue);
+                if (this.melos) {
+                    if (newMelosFreq) {
+                        devLog(`changing melos frequency to ${newMelosFreq}`);
+                        this.melos.frequency.value = newMelosFreq;
+                    } else {
+                        devLog("stopping melos tone");
                         this.stopTone(this.melos);
                         this.melos = undefined;
                     }
                 } else {
-                    devLog("playing tone");
-                    this.melos = this.playTone(newFreq);
+                    devLog("playing melos tone");
+                    this.melos = this.playTone(newMelosFreq);
                 }
                 break;
-
-            // case "melos":
-            //     if (this.melos) {
-            //         this.melos.stop();
-            //     }
-            //     this.melos = this.playTone(newValue);
-            //     break;
         }
     }
 

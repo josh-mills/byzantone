@@ -86,21 +86,24 @@ backdrop model =
 
 audio : Model -> Html msg
 audio model =
+    let
+        frequency degree =
+            Pitch.frequency model.audioSettings.pitchStandard
+                model.audioSettings.register
+                model.modeSettings.scale
+                degree
+                |> String.fromFloat
+    in
     Html.node "chant-engine"
         [ model.audioSettings.gain
             |> String.fromFloat
             |> Attr.attribute "gain"
-        , case model.pitchState.currentPitch of
-            Nothing ->
-                Attr.empty
-
-            Just pitch ->
-                Pitch.frequency model.audioSettings.pitchStandard
-                    model.audioSettings.register
-                    model.modeSettings.scale
-                    pitch
-                    |> String.fromFloat
-                    |> Attr.attribute "melos"
+        , Maybe.unwrap Attr.empty
+            (Attr.attribute "melos" << frequency)
+            model.pitchState.currentPitch
+        , Maybe.unwrap Attr.empty
+            (Attr.attribute "ison" << frequency)
+            (PitchState.ison model.pitchState)
         ]
         []
 
