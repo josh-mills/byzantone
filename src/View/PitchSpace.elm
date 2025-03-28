@@ -18,7 +18,7 @@ import Maybe.Extra as Maybe
 import Model exposing (Model)
 import Model.LayoutData exposing (Layout(..), LayoutData, layoutFor)
 import Model.ModeSettings exposing (ModeSettings)
-import Model.PitchState exposing (PitchState)
+import Model.PitchState exposing (IsonStatus(..), PitchState)
 import Movement exposing (Movement(..))
 import Round
 import Styles
@@ -498,6 +498,15 @@ pitchButton { layoutData, modeSettings, pitchState } { degree, pitch, pitchAbove
         isCurrentPitch =
             Just degree == pitchState.currentPitch
 
+        canBeSelectedAsIson =
+            -- this should be made a bit more robust once modal logic gets built out.
+            case pitchState.ison of
+                SelectingIson _ ->
+                    True
+
+                _ ->
+                    False
+
         layout =
             layoutFor layoutData
 
@@ -549,7 +558,10 @@ pitchButton { layoutData, modeSettings, pitchState } { degree, pitch, pitchAbove
     in
     button
         [ onClick <|
-            if isCurrentPitch then
+            if canBeSelectedAsIson then
+                SetIson (Selected degree)
+
+            else if isCurrentPitch then
                 SelectPitch Nothing Nothing
 
             else
@@ -567,6 +579,8 @@ pitchButton { layoutData, modeSettings, pitchState } { degree, pitch, pitchAbove
             [ ( "bg-red-200", isCurrentPitch )
             , ( "hover:text-green-700 bg-slate-200 hover:bg-slate-300 opacity-75 hover:opacity-100", not isCurrentPitch )
             , ( "text-green-700 bg-slate-300 z-10", Movement.toDegree pitchState.proposedMovement == Just degree )
+            , ( "border-2 border-blue-700", canBeSelectedAsIson )
+            , ( "border-2 border-transparent", not canBeSelectedAsIson )
             ]
         ]
         [ ByzHtmlMartyria.viewWithAttributes
