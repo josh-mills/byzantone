@@ -1,6 +1,17 @@
 const crossFadeSeconds = 0.2;
 const crossFadeMilliseconds = crossFadeSeconds * 1000;
 
+const localDev = true;
+const debugging = false;
+function devLog(x: any) {
+    if (localDev) {
+        if (debugging) {
+            debugger;
+        }
+        console.log(x);
+    }
+}
+
 class ChantEngine extends HTMLElement {
     private audioContext: AudioContext;
     private mainGainNode: GainNode;
@@ -23,11 +34,11 @@ class ChantEngine extends HTMLElement {
     }
 
     connectedCallback() {
-        // console.log("connecting...");
+        devLog("connecting chant engine element...");
     }
 
     disconnectedCallback() {
-        // console.log("disconnecting...");
+        devLog("disconnecting chant engine...");
         this.stopTone(this.melos);
         this.audioContext.close();
     }
@@ -52,15 +63,15 @@ class ChantEngine extends HTMLElement {
                 if (this.melos) {
                     // TODO: if oldFreq == newFreq, some sort of re-articulation
                     if (newFreq) {
-                        // console.log(`changing frequency to ${newFreq}`);
+                        devLog(`changing frequency to ${newFreq}`);
                         this.melos.frequency.value = newFreq;
                     } else {
-                        // console.log("stopping tone");
+                        devLog("stopping tone");
                         this.stopTone(this.melos);
                         this.melos = undefined;
                     }
                 } else {
-                    // console.log("playing tone");
+                    devLog("playing tone");
                     this.melos = this.playTone(newFreq);
                 }
                 break;
@@ -88,7 +99,7 @@ class ChantEngine extends HTMLElement {
         )
             return undefined;
 
-        // console.log(`playing ${freq}`);
+        devLog(`playing ${freq}`);
 
         const osc = this.audioContext.createOscillator();
         osc.frequency.value = freq;
@@ -109,13 +120,13 @@ class ChantEngine extends HTMLElement {
         gain.connect(this.mainGainNode);
 
         osc.start();
-        // console.log(osc)
+        devLog(osc);
         return osc;
     }
 
     private stopTone(osc: OscillatorNode | undefined): void {
         if (osc == null) return;
-        console.log(`stopping ${osc.frequency.value}`);
+        devLog(`stopping ${osc.frequency.value}`);
 
         const now = this.audioContext.currentTime;
         // const gain = this.audioContext.createGain();
@@ -130,7 +141,7 @@ class ChantEngine extends HTMLElement {
         osc.stop(now + crossFadeSeconds);
 
         // setTimeout(() => {
-        //     console.log("stopping now?")
+        //     devLog("stopping now?")
         //     osc.stop();
         // }, crossFadeMilliseconds + 1)
         // setTimeout
