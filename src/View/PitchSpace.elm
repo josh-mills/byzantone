@@ -18,7 +18,7 @@ import Maybe.Extra as Maybe
 import Model exposing (Model)
 import Model.LayoutData exposing (Layout(..), LayoutData, layoutFor)
 import Model.ModeSettings exposing (ModeSettings)
-import Model.PitchState exposing (IsonStatus(..), PitchState)
+import Model.PitchState as PitchState exposing (IsonStatus(..), PitchState)
 import Movement exposing (Movement(..))
 import Round
 import Styles
@@ -453,22 +453,47 @@ viewPitch ({ layoutData, modeSettings } as params) scalingFactor_ ( degree, posi
 
         attributeIfVisible =
             Attr.attributeIf (positionIsVisible positionWithinRange)
+
+        layout =
+            layoutFor layoutData
+
+        isIson =
+            PitchState.ison params.pitchState == Just degree
+
+        pitchButtonSizeValue =
+            pitchButtonSize layoutData / 2
     in
     li
-        [ Attr.id ("pitch-" ++ Degree.toString degree)
-        , Styles.transition
-        , Attr.attributeIf showSpacingDetails Styles.border
-        , attributeIfVisible Styles.flexCol
-        , case layoutFor layoutData of
-            Vertical ->
-                Styles.height size
+        ([ Attr.id ("pitch-" ++ Degree.toString degree)
+         , Styles.transition
+         , Attr.attributeIf showSpacingDetails Styles.border
+         ]
+            ++ (case layout of
+                    Vertical ->
+                        [ Styles.height size
+                        , attributeIfVisible Styles.flexRow
+                        ]
 
-            Horizontal ->
-                Styles.width size
-        ]
+                    Horizontal ->
+                        [ Styles.width size
+                        , attributeIfVisible Styles.flexCol
+                        ]
+               )
+        )
         [ viewIfLazy (positionIsVisible positionWithinRange)
             (\_ ->
                 pitchButton params
+                    { degree = degree
+                    , pitch = pitch
+                    , pitchAbove = pitchAbove
+                    , pitchBelow = pitchBelow
+                    , positionWithinRange = positionWithinRange
+                    , scalingFactor_ = scalingFactor_
+                    }
+            )
+        , viewIfLazy isIson
+            (\_ ->
+                isonIndicator params
                     { degree = degree
                     , pitch = pitch
                     , pitchAbove = pitchAbove
@@ -603,3 +628,84 @@ pitchButtonSize layoutData =
 
     else
         64
+
+
+{-| Lots of duplicated logic here. This should be factored out somehow.
+-}
+isonIndicator :
+    Params
+    ->
+        { degree : Degree
+        , pitch : Int
+        , pitchAbove : Maybe Int
+        , pitchBelow : Maybe Int
+        , positionWithinRange : PositionWithinVisibleRange
+        , scalingFactor_ : Float
+        }
+    -> Html Msg
+isonIndicator { layoutData, modeSettings, pitchState } { degree, pitch, pitchAbove, pitchBelow, positionWithinRange, scalingFactor_ } =
+    let
+        scale int =
+            (toFloat int / 2)
+                |> (*) scalingFactor_
+                |> (+) (negate pitchButtonSizeValue)
+
+        pitchButtonSizeValue =
+            pitchButtonSize layoutData / 4
+
+        layout =
+            layoutFor layoutData
+
+        position =
+            case ( layout, positionWithinRange ) of
+                ( _, Below ) ->
+                    0
+
+                ( Vertical, LowerBoundary ) ->
+                    Maybe.map
+                        (\above -> scale (above - pitch))
+                        pitchAbove
+                        |> Maybe.withDefault 0
+
+                ( Horizontal, LowerBoundary ) ->
+                    negate pitchButtonSizeValue
+
+                ( Vertical, Within ) ->
+                    Maybe.map
+                        (\above -> scale (above - pitch))
+                        pitchAbove
+                        |> Maybe.withDefault 0
+
+                ( Horizontal, Within ) ->
+                    Maybe.map
+                        (\below -> scale (pitch - below))
+                        pitchBelow
+                        |> Maybe.withDefault 0
+
+                ( Vertical, UpperBoundary ) ->
+                    negate pitchButtonSizeValue
+
+                ( Horizontal, UpperBoundary ) ->
+                    Maybe.map
+                        (\below -> scale (pitch - below))
+                        pitchBelow
+                        |> Maybe.withDefault 0
+
+                ( _, Above ) ->
+                    0
+    in
+    div
+        (class "relative text-lg sm:text-2xl text-blue-700 text-greek"
+            :: (case layout of
+                    Vertical ->
+                        [ class "ml-3"
+                        , Styles.top position
+                        ]
+
+                    Horizontal ->
+                        [ class "mt-1"
+                        , Styles.left position
+                        ]
+               )
+        )
+        [ text "(", Degree.text degree, text ")" ]
