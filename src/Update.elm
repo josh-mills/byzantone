@@ -211,9 +211,16 @@ update msg model =
                     )
 
                 setAndFocus degree =
-                    ( updatePitchState
-                        (\pitchState -> { pitchState | currentPitch = Just degree })
-                        model
+                    ( case model.pitchState.ison of
+                        PitchState.SelectingIson _ ->
+                            updatePitchState
+                                (\pitchState -> { pitchState | ison = PitchState.Selected degree })
+                                model
+
+                        _ ->
+                            updatePitchState
+                                (\pitchState -> { pitchState | currentPitch = Just degree })
+                                model
                     , Degree.toString degree |> (++) "p_" |> Dom.focus |> Task.attempt DomResult
                     )
             in
@@ -312,6 +319,40 @@ update msg model =
 
                 "z" ->
                     setAndFocus Zo_
+
+                "i" ->
+                    case model.pitchState.ison of
+                        PitchState.NoIson ->
+                            ( updatePitchState
+                                (\pitchState ->
+                                    { pitchState | ison = PitchState.SelectingIson Nothing }
+                                )
+                                model
+                            , Task.attempt DomResult (Dom.focus "select-ison-button")
+                            )
+
+                        PitchState.SelectingIson (Just ison) ->
+                            ( updatePitchState
+                                (\pitchState ->
+                                    { pitchState
+                                        | ison = PitchState.Selected ison
+                                    }
+                                )
+                                model
+                            , Cmd.none
+                            )
+
+                        PitchState.SelectingIson Nothing ->
+                            ( updatePitchState
+                                (\pitchState ->
+                                    { pitchState | ison = PitchState.NoIson }
+                                )
+                                model
+                            , Task.attempt DomResult (Dom.focus "select-ison-button")
+                            )
+
+                        PitchState.Selected _ ->
+                            ( model, Cmd.none )
 
                 _ ->
                     ( model, Cmd.none )

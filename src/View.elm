@@ -348,6 +348,7 @@ isonButton : PitchState -> Html Msg
 isonButton pitchState =
     button
         [ Styles.buttonClass
+        , id "select-ison-button"
         , onClick
             (SetIson
                 (case pitchState.ison of
