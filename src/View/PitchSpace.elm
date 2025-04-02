@@ -41,6 +41,7 @@ view { layoutData, modeSettings, pitchState } =
             , layoutData = layoutData
             , modeSettings = modeSettings
             , pitchState = pitchState
+            , visibleRange = calculateVisibleRange modeSettings pitchState
             }
     in
     div
@@ -75,14 +76,11 @@ minor tweaks.
 
 -}
 calculateScalingFactor : Params -> Float
-calculateScalingFactor ({ layout, layoutData, modeSettings } as params) =
+calculateScalingFactor { layout, layoutData, modeSettings, visibleRange } =
     let
-        { start, end } =
-            visibleRange params
-
         visibleRangeInMoria =
-            Pitch.pitchPosition modeSettings.scale end
-                - Pitch.pitchPosition modeSettings.scale start
+            Pitch.pitchPosition modeSettings.scale visibleRange.end
+                - Pitch.pitchPosition modeSettings.scale visibleRange.start
 
         marginForButton =
             calculatePitchButtonSize layoutData
@@ -134,12 +132,16 @@ calculatePitchButtonSize layoutData =
 -- HELPER TYPES AND FUNCTIONS
 
 
+{-| Includes both state elements passed in from the model and also derived
+values that are calculated from the state.
+-}
 type alias Params =
     { layout : Layout
     , layoutData : LayoutData
     , modeSettings : ModeSettings
     , pitchButtonSize : Float
     , pitchState : PitchState
+    , visibleRange : { start : Degree, end : Degree }
     }
 
 
@@ -161,8 +163,8 @@ type alias PitchDisplayParams =
 user-set) start and stop positions to include the current pitch. (We may want to
 consider additional limits as well.)
 -}
-visibleRange : Params -> { start : Degree, end : Degree }
-visibleRange { modeSettings, pitchState } =
+calculateVisibleRange : ModeSettings -> PitchState -> { start : Degree, end : Degree }
+calculateVisibleRange modeSettings pitchState =
     case pitchState.currentPitch of
         Just currentPitch ->
             { start =
@@ -228,14 +230,11 @@ viewIntervals params =
 intervalsWithVisibility : Params -> List ( Interval, PositionWithinVisibleRange )
 intervalsWithVisibility params =
     let
-        { start, end } =
-            visibleRange params
-
         lowerBoundIndex =
-            Degree.indexOf start
+            Degree.indexOf params.visibleRange.start
 
         upperBoundIndex =
-            Degree.indexOf end
+            Degree.indexOf params.visibleRange.end
 
         visibility interval =
             let
@@ -401,14 +400,11 @@ viewPitches params =
 pitchesWithVisibility : Params -> List ( Degree, PositionWithinVisibleRange )
 pitchesWithVisibility params =
     let
-        { start, end } =
-            visibleRange params
-
         lowerBoundIndex =
-            Degree.indexOf start
+            Degree.indexOf params.visibleRange.start
 
         upperBoundIndex =
-            Degree.indexOf end
+            Degree.indexOf params.visibleRange.end
 
         visibility pitchIndex =
             if pitchIndex < lowerBoundIndex then
