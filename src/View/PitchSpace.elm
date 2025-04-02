@@ -71,6 +71,30 @@ view { layoutData, modeSettings, pitchState } =
         ]
 
 
+{-| Includes both state elements passed in from the model and also derived
+values that are calculated from the state.
+-}
+type alias Params =
+    { layout : Layout
+    , layoutData : LayoutData
+    , modeSettings : ModeSettings
+    , pitchButtonSize : Float
+    , pitchState : PitchState
+    , scalingFactor : Float
+    , visibleRange : { start : Degree, end : Degree }
+    }
+
+
+type alias PitchDisplayParams =
+    { degree : Degree
+    , pitch : Int
+    , pitchAbove : Maybe Int
+    , pitchBelow : Maybe Int
+    , positionWithinRange : PositionWithinVisibleRange
+    , scalingFactor : Float
+    }
+
+
 {-| This feels potentially fragile.
 
 TODO: we'll need some sort of minimum for the portrait to enable scrolling on
@@ -128,34 +152,6 @@ calculatePitchButtonSize layoutData =
 
     else
         64
-
-
-
--- HELPER TYPES AND FUNCTIONS
-
-
-{-| Includes both state elements passed in from the model and also derived
-values that are calculated from the state.
--}
-type alias Params =
-    { layout : Layout
-    , layoutData : LayoutData
-    , modeSettings : ModeSettings
-    , pitchButtonSize : Float
-    , pitchState : PitchState
-    , scalingFactor : Float
-    , visibleRange : { start : Degree, end : Degree }
-    }
-
-
-type alias PitchDisplayParams =
-    { degree : Degree
-    , pitch : Int
-    , pitchAbove : Maybe Int
-    , pitchBelow : Maybe Int
-    , positionWithinRange : PositionWithinVisibleRange
-    , scalingFactor : Float
-    }
 
 
 
