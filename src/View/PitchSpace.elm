@@ -35,13 +35,18 @@ view { layoutData, modeSettings, pitchState } =
         layout =
             LayoutData.layoutFor layoutData
 
+        visibleRange =
+            calculateVisibleRange modeSettings pitchState
+
+        params : Params
         params =
             { layout = layout
             , pitchButtonSize = calculatePitchButtonSize layoutData
             , layoutData = layoutData
             , modeSettings = modeSettings
             , pitchState = pitchState
-            , visibleRange = calculateVisibleRange modeSettings pitchState
+            , scalingFactor = calculateScalingFactor layout layoutData modeSettings visibleRange
+            , visibleRange = visibleRange
             }
     in
     div
@@ -71,12 +76,9 @@ view { layoutData, modeSettings, pitchState } =
 TODO: we'll need some sort of minimum for the portrait to enable scrolling on
 small viewports.
 
-TODO: this could be calculated just once and live on the Params. Would need only
-minor tweaks.
-
 -}
-calculateScalingFactor : Params -> Float
-calculateScalingFactor { layout, layoutData, modeSettings, visibleRange } =
+calculateScalingFactor : Layout -> LayoutData -> ModeSettings -> { start : Degree, end : Degree } -> Float
+calculateScalingFactor layout layoutData modeSettings visibleRange =
     let
         visibleRangeInMoria =
             Pitch.pitchPosition modeSettings.scale visibleRange.end
@@ -141,6 +143,7 @@ type alias Params =
     , modeSettings : ModeSettings
     , pitchButtonSize : Float
     , pitchState : PitchState
+    , scalingFactor : Float
     , visibleRange : { start : Degree, end : Degree }
     }
 
@@ -272,7 +275,7 @@ intervalsWithVisibility params =
 benchmark this before shipping.
 -}
 viewInterval : Params -> ( Interval, PositionWithinVisibleRange ) -> Html Msg
-viewInterval ({ layout, layoutData, pitchState } as params) ( interval, position ) =
+viewInterval { layout, layoutData, pitchState, scalingFactor } ( interval, position ) =
     let
         size =
             case position of
@@ -283,7 +286,7 @@ viewInterval ({ layout, layoutData, pitchState } as params) ( interval, position
                     0
 
                 _ ->
-                    toFloat interval.moria * calculateScalingFactor params
+                    toFloat interval.moria * scalingFactor
 
         movement =
             Movement.ofInterval pitchState.currentPitch interval
@@ -391,10 +394,7 @@ shouldHighlightInterval { currentPitch, proposedMovement } interval =
 viewPitches : Params -> Html Msg
 viewPitches params =
     Html.ol (listAttributes params.layout)
-        (List.map
-            (viewPitch params (calculateScalingFactor params))
-            (pitchesWithVisibility params)
-        )
+        (List.map (viewPitch params) (pitchesWithVisibility params))
 
 
 pitchesWithVisibility : Params -> List ( Degree, PositionWithinVisibleRange )
@@ -431,8 +431,8 @@ pitchesWithVisibility params =
         Degree.gamutList
 
 
-viewPitch : Params -> Float -> ( Degree, PositionWithinVisibleRange ) -> Html Msg
-viewPitch ({ layout, layoutData, modeSettings } as params) scalingFactor ( degree, positionWithinRange ) =
+viewPitch : Params -> ( Degree, PositionWithinVisibleRange ) -> Html Msg
+viewPitch ({ layout, layoutData, modeSettings, scalingFactor } as params) ( degree, positionWithinRange ) =
     let
         pitch =
             Pitch.pitchPosition modeSettings.scale degree
