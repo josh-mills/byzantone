@@ -26,6 +26,111 @@ import Update exposing (Msg(..))
 
 
 
+-- WRAPPER AND VIEW HELPERS
+
+
+view : Model -> Html Msg
+view { layoutData, modeSettings, pitchState } =
+    let
+        layout =
+            LayoutData.layoutFor layoutData
+
+        params =
+            { layout = layout
+            , pitchButtonSize = calculatePitchButtonSize layoutData
+            , layoutData = layoutData
+            , modeSettings = modeSettings
+            , pitchState = pitchState
+            }
+    in
+    div
+        ([ Attr.id "pitch-space"
+         , Styles.transition
+         , Attr.attributeIf layoutData.showSpacing Styles.border
+         ]
+            ++ (case layout of
+                    Vertical ->
+                        [ Styles.flexRow
+                        , class "my-8"
+                        ]
+
+                    Horizontal ->
+                        [ Styles.flexCol
+                        , class "mx-8"
+                        ]
+               )
+        )
+        [ viewIntervals params
+        , viewPitches params
+        ]
+
+
+{-| This feels potentially fragile.
+
+TODO: we'll need some sort of minimum for the portrait to enable scrolling on
+small viewports.
+
+TODO: this could be calculated just once and live on the Params. Would need only
+minor tweaks.
+
+-}
+calculateScalingFactor : Params -> Float
+calculateScalingFactor ({ layout, layoutData, modeSettings } as params) =
+    let
+        { start, end } =
+            visibleRange params
+
+        visibleRangeInMoria =
+            Pitch.pitchPosition modeSettings.scale end
+                - Pitch.pitchPosition modeSettings.scale start
+
+        marginForButton =
+            calculatePitchButtonSize layoutData
+    in
+    case layout of
+        Vertical ->
+            (layoutData.viewport.viewport.height
+                - max layoutData.pitchSpace.element.y 128
+                - marginForButton
+            )
+                / toFloat visibleRangeInMoria
+
+        Horizontal ->
+            (layoutData.pitchSpace.element.width
+                - marginForButton
+            )
+                / toFloat visibleRangeInMoria
+
+
+listAttributes : Layout -> List (Html.Attribute Msg)
+listAttributes layout =
+    case layout of
+        Vertical ->
+            [ class "flex flex-col-reverse justify-end w-36 mx-4" ]
+
+        Horizontal ->
+            [ Styles.flexRowCentered
+            , class "h-24 w-full my-4"
+            ]
+
+
+{-| 64px default, 48px below the sm breakpoint.
+-}
+pitchButtonSizeClass : Html.Attribute msg
+pitchButtonSizeClass =
+    class "w-12 h-12 sm:w-16 sm:h-16 text-xl sm:text-3xl"
+
+
+calculatePitchButtonSize : LayoutData -> Float
+calculatePitchButtonSize layoutData =
+    if layoutData.viewport.viewport.width < 640 then
+        48
+
+    else
+        64
+
+
+
 -- HELPER TYPES AND FUNCTIONS
 
 
@@ -46,6 +151,10 @@ type alias PitchDisplayParams =
     , positionWithinRange : PositionWithinVisibleRange
     , scalingFactor : Float
     }
+
+
+
+-- VISIBILITY
 
 
 {-| What is the visible range of the pitch space? This expands the default (or
@@ -76,15 +185,6 @@ visibleRange { modeSettings, pitchState } =
             }
 
 
-visibleRangeInMoria : Params -> Int
-visibleRangeInMoria params =
-    let
-        { start, end } =
-            visibleRange params
-    in
-    Pitch.pitchPosition params.modeSettings.scale end - Pitch.pitchPosition params.modeSettings.scale start
-
-
 type PositionWithinVisibleRange
     = Below
     | LowerBoundary
@@ -112,41 +212,17 @@ positionIsVisible position =
             False
 
 
-pitchesWithVisibility : Params -> List ( Degree, PositionWithinVisibleRange )
-pitchesWithVisibility params =
-    let
-        { start, end } =
-            visibleRange params
 
-        lowerBoundIndex =
-            Degree.indexOf start
+-- INTERVAL COLUMN
 
-        upperBoundIndex =
-            Degree.indexOf end
 
-        visibility pitchIndex =
-            if pitchIndex < lowerBoundIndex then
-                Below
-
-            else if pitchIndex > upperBoundIndex then
-                Above
-
-            else if pitchIndex == lowerBoundIndex then
-                LowerBoundary
-
-            else if pitchIndex == upperBoundIndex then
-                UpperBoundary
-
-            else
-                Within
-    in
-    List.map
-        (\degree ->
-            ( degree
-            , visibility (Degree.indexOf degree)
-            )
+viewIntervals : Params -> Html Msg
+viewIntervals params =
+    Html.ol (onMouseLeave (SelectProposedMovement None) :: listAttributes params.layout)
+        (List.map
+            (viewInterval params)
+            (intervalsWithVisibility params)
         )
-        Degree.gamutList
 
 
 intervalsWithVisibility : Params -> List ( Interval, PositionWithinVisibleRange )
@@ -191,104 +267,6 @@ intervalsWithVisibility params =
             )
         )
         (Pitch.intervals params.modeSettings.scale)
-
-
-{-| This feels potentially fragile.
-
-TODO: we'll need some sort of minimum for the portrait to enable scrolling on
-small viewports.
-
-TODO: this could be calculated just once and live on the Params. Would need only
-minor tweaks.
-
--}
-calculateScalingFactor : Params -> Float
-calculateScalingFactor ({ layout, layoutData } as params) =
-    let
-        rangeInMoria =
-            visibleRangeInMoria params
-
-        marginForButton =
-            calculatePitchButtonSize layoutData
-    in
-    case layout of
-        Vertical ->
-            (layoutData.viewport.viewport.height
-                - max layoutData.pitchSpace.element.y 128
-                - marginForButton
-            )
-                / toFloat rangeInMoria
-
-        Horizontal ->
-            (layoutData.pitchSpace.element.width
-                - marginForButton
-            )
-                / toFloat rangeInMoria
-
-
-
--- WRAPPER
-
-
-view : Model -> Html Msg
-view { layoutData, modeSettings, pitchState } =
-    let
-        layout =
-            LayoutData.layoutFor layoutData
-
-        params =
-            { layout = layout
-            , pitchButtonSize = calculatePitchButtonSize layoutData
-            , layoutData = layoutData
-            , modeSettings = modeSettings
-            , pitchState = pitchState
-            }
-    in
-    div
-        ([ Attr.id "pitch-space"
-         , Styles.transition
-         , Attr.attributeIf layoutData.showSpacing Styles.border
-         ]
-            ++ (case layout of
-                    Vertical ->
-                        [ Styles.flexRow
-                        , class "my-8"
-                        ]
-
-                    Horizontal ->
-                        [ Styles.flexCol
-                        , class "mx-8"
-                        ]
-               )
-        )
-        [ viewIntervals params
-        , viewPitches params
-        ]
-
-
-listAttributes : Layout -> List (Html.Attribute Msg)
-listAttributes layout =
-    case layout of
-        Vertical ->
-            [ class "flex flex-col-reverse justify-end w-36 mx-4" ]
-
-        Horizontal ->
-            [ Styles.flexRowCentered
-            , class "h-24 w-full my-4"
-            ]
-
-
-
--- INTERVAL COLUMN
-
-
-viewIntervals : Params -> Html Msg
-viewIntervals params =
-    Html.ol (onMouseLeave (SelectProposedMovement None) :: listAttributes params.layout)
-        (List.map
-            (viewInterval params)
-            (intervalsWithVisibility params)
-        )
 
 
 {-| TODO: see if with some refactors, we could use Html.Lazy for this. But
@@ -418,6 +396,43 @@ viewPitches params =
             (viewPitch params (calculateScalingFactor params))
             (pitchesWithVisibility params)
         )
+
+
+pitchesWithVisibility : Params -> List ( Degree, PositionWithinVisibleRange )
+pitchesWithVisibility params =
+    let
+        { start, end } =
+            visibleRange params
+
+        lowerBoundIndex =
+            Degree.indexOf start
+
+        upperBoundIndex =
+            Degree.indexOf end
+
+        visibility pitchIndex =
+            if pitchIndex < lowerBoundIndex then
+                Below
+
+            else if pitchIndex > upperBoundIndex then
+                Above
+
+            else if pitchIndex == lowerBoundIndex then
+                LowerBoundary
+
+            else if pitchIndex == upperBoundIndex then
+                UpperBoundary
+
+            else
+                Within
+    in
+    List.map
+        (\degree ->
+            ( degree
+            , visibility (Degree.indexOf degree)
+            )
+        )
+        Degree.gamutList
 
 
 viewPitch : Params -> Float -> ( Degree, PositionWithinVisibleRange ) -> Html Msg
@@ -563,24 +578,6 @@ pitchButton ({ layout, modeSettings, pitchState } as params) ({ degree } as pitc
         ]
 
 
-{-| 64px default, 48px below the sm breakpoint.
--}
-pitchButtonSizeClass : Html.Attribute msg
-pitchButtonSizeClass =
-    class "w-12 h-12 sm:w-16 sm:h-16 text-xl sm:text-3xl"
-
-
-calculatePitchButtonSize : LayoutData -> Float
-calculatePitchButtonSize layoutData =
-    if layoutData.viewport.viewport.width < 640 then
-        48
-
-    else
-        64
-
-
-{-| Lots of duplicated logic here. This should be factored out somehow.
--}
 isonIndicator : Params -> PitchDisplayParams -> Html Msg
 isonIndicator ({ layout } as params) ({ degree } as pitchDisplayParams) =
     let
@@ -630,34 +627,30 @@ pitchElementPosition { layout, pitchButtonSize } { pitch, pitchAbove, pitchBelow
             0
 
         ( Vertical, LowerBoundary ) ->
-            Maybe.map
+            Maybe.unwrap 0
                 (\above -> scale (above - pitch))
                 pitchAbove
-                |> Maybe.withDefault 0
 
         ( Horizontal, LowerBoundary ) ->
             negate pitchButtonSizeValue
 
         ( Vertical, Within ) ->
-            Maybe.map
+            Maybe.unwrap 0
                 (\above -> scale (above - pitch))
                 pitchAbove
-                |> Maybe.withDefault 0
 
         ( Horizontal, Within ) ->
-            Maybe.map
+            Maybe.unwrap 0
                 (\below -> scale (pitch - below))
                 pitchBelow
-                |> Maybe.withDefault 0
 
         ( Vertical, UpperBoundary ) ->
             negate pitchButtonSizeValue
 
         ( Horizontal, UpperBoundary ) ->
-            Maybe.map
+            Maybe.unwrap 0
                 (\below -> scale (pitch - below))
                 pitchBelow
-                |> Maybe.withDefault 0
 
         ( _, Above ) ->
             0
