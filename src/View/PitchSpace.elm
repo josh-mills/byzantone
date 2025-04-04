@@ -16,9 +16,9 @@ import Html.Events exposing (onClick, onFocus, onMouseEnter, onMouseLeave)
 import Html.Extra exposing (viewIf, viewIfLazy)
 import Maybe.Extra as Maybe
 import Model exposing (Model)
-import Model.LayoutData exposing (Layout(..), LayoutData, layoutFor)
+import Model.LayoutData as LayoutData exposing (Layout(..), LayoutData)
 import Model.ModeSettings exposing (ModeSettings)
-import Model.PitchState exposing (PitchState)
+import Model.PitchState as PitchState exposing (IsonStatus(..), PitchState)
 import Movement exposing (Movement(..))
 import Round
 import Styles
@@ -26,22 +26,144 @@ import Update exposing (Msg(..))
 
 
 
--- HELPER TYPES AND FUNCTIONS
+-- WRAPPER AND VIEW HELPERS
 
 
+view : Model -> Html Msg
+view { layoutData, modeSettings, pitchState } =
+    let
+        layout =
+            LayoutData.layoutFor layoutData
+
+        visibleRange =
+            calculateVisibleRange modeSettings pitchState
+
+        params : Params
+        params =
+            { layout = layout
+            , pitchButtonSize = calculatePitchButtonSize layoutData
+            , layoutData = layoutData
+            , modeSettings = modeSettings
+            , pitchState = pitchState
+            , scalingFactor = calculateScalingFactor layout layoutData modeSettings visibleRange
+            , visibleRange = visibleRange
+            }
+    in
+    div
+        ([ Attr.id "pitch-space"
+         , Styles.transition
+         , Attr.attributeIf layoutData.showSpacing Styles.border
+         ]
+            ++ (case layout of
+                    Vertical ->
+                        [ Styles.flexRow
+                        , class "my-8"
+                        ]
+
+                    Horizontal ->
+                        [ Styles.flexCol
+                        , class "mx-8"
+                        ]
+               )
+        )
+        [ viewIntervals params
+        , viewPitches params
+        ]
+
+
+{-| Includes both state elements passed in from the model and also derived
+values that are calculated from the state.
+-}
 type alias Params =
-    { layoutData : LayoutData
+    { layout : Layout
+    , layoutData : LayoutData
     , modeSettings : ModeSettings
+    , pitchButtonSize : Float
     , pitchState : PitchState
+    , scalingFactor : Float
+    , visibleRange : { start : Degree, end : Degree }
     }
+
+
+type alias PitchDisplayParams =
+    { degree : Degree
+    , pitch : Int
+    , pitchAbove : Maybe Int
+    , pitchBelow : Maybe Int
+    , positionWithinRange : PositionWithinVisibleRange
+    , scalingFactor : Float
+    }
+
+
+{-| This feels potentially fragile.
+
+TODO: we'll need some sort of minimum for the portrait to enable scrolling on
+small viewports.
+
+-}
+calculateScalingFactor : Layout -> LayoutData -> ModeSettings -> { start : Degree, end : Degree } -> Float
+calculateScalingFactor layout layoutData modeSettings visibleRange =
+    let
+        visibleRangeInMoria =
+            Pitch.pitchPosition modeSettings.scale visibleRange.end
+                - Pitch.pitchPosition modeSettings.scale visibleRange.start
+
+        marginForButton =
+            calculatePitchButtonSize layoutData
+    in
+    case layout of
+        Vertical ->
+            (layoutData.viewport.viewport.height
+                - max layoutData.pitchSpace.element.y 128
+                - marginForButton
+            )
+                / toFloat visibleRangeInMoria
+
+        Horizontal ->
+            (layoutData.pitchSpace.element.width
+                - marginForButton
+            )
+                / toFloat visibleRangeInMoria
+
+
+listAttributes : Layout -> List (Html.Attribute Msg)
+listAttributes layout =
+    case layout of
+        Vertical ->
+            [ class "flex flex-col-reverse justify-end w-36 mx-4" ]
+
+        Horizontal ->
+            [ Styles.flexRowCentered
+            , class "h-24 w-full my-4"
+            ]
+
+
+{-| 64px default, 48px below the sm breakpoint.
+-}
+pitchButtonSizeClass : Html.Attribute msg
+pitchButtonSizeClass =
+    class "w-12 h-12 sm:w-16 sm:h-16 text-xl sm:text-3xl"
+
+
+calculatePitchButtonSize : LayoutData -> Float
+calculatePitchButtonSize layoutData =
+    if layoutData.viewport.viewport.width < 640 then
+        48
+
+    else
+        64
+
+
+
+-- VISIBILITY
 
 
 {-| What is the visible range of the pitch space? This expands the default (or
 user-set) start and stop positions to include the current pitch. (We may want to
 consider additional limits as well.)
 -}
-visibleRange : Params -> { start : Degree, end : Degree }
-visibleRange { modeSettings, pitchState } =
+calculateVisibleRange : ModeSettings -> PitchState -> { start : Degree, end : Degree }
+calculateVisibleRange modeSettings pitchState =
     case pitchState.currentPitch of
         Just currentPitch ->
             { start =
@@ -62,15 +184,6 @@ visibleRange { modeSettings, pitchState } =
             { start = modeSettings.rangeStart
             , end = modeSettings.rangeEnd
             }
-
-
-visibleRangeInMoria : Params -> Int
-visibleRangeInMoria params =
-    let
-        { start, end } =
-            visibleRange params
-    in
-    Pitch.pitchPosition params.modeSettings.scale end - Pitch.pitchPosition params.modeSettings.scale start
 
 
 type PositionWithinVisibleRange
@@ -100,54 +213,27 @@ positionIsVisible position =
             False
 
 
-pitchesWithVisibility : Params -> List ( Degree, PositionWithinVisibleRange )
-pitchesWithVisibility params =
-    let
-        { start, end } =
-            visibleRange params
 
-        lowerBoundIndex =
-            Degree.indexOf start
+-- INTERVAL COLUMN
 
-        upperBoundIndex =
-            Degree.indexOf end
 
-        visibility pitchIndex =
-            if pitchIndex < lowerBoundIndex then
-                Below
-
-            else if pitchIndex > upperBoundIndex then
-                Above
-
-            else if pitchIndex == lowerBoundIndex then
-                LowerBoundary
-
-            else if pitchIndex == upperBoundIndex then
-                UpperBoundary
-
-            else
-                Within
-    in
-    List.map
-        (\degree ->
-            ( degree
-            , visibility (Degree.indexOf degree)
-            )
+viewIntervals : Params -> Html Msg
+viewIntervals params =
+    Html.ol (onMouseLeave (SelectProposedMovement None) :: listAttributes params.layout)
+        (List.map
+            (viewInterval params)
+            (intervalsWithVisibility params)
         )
-        Degree.gamutList
 
 
 intervalsWithVisibility : Params -> List ( Interval, PositionWithinVisibleRange )
 intervalsWithVisibility params =
     let
-        { start, end } =
-            visibleRange params
-
         lowerBoundIndex =
-            Degree.indexOf start
+            Degree.indexOf params.visibleRange.start
 
         upperBoundIndex =
-            Degree.indexOf end
+            Degree.indexOf params.visibleRange.end
 
         visibility interval =
             let
@@ -181,101 +267,11 @@ intervalsWithVisibility params =
         (Pitch.intervals params.modeSettings.scale)
 
 
-{-| This feels potentially fragile.
-
-TODO: we'll need some sort of minimum for the portrait to enable scrolling on
-small viewports.
-
--}
-scalingFactor : Params -> Float
-scalingFactor ({ layoutData } as params) =
-    let
-        rangeInMoria =
-            visibleRangeInMoria params
-
-        marginForButton =
-            pitchButtonSize layoutData
-    in
-    case layoutFor layoutData of
-        Vertical ->
-            (layoutData.viewport.viewport.height
-                - max layoutData.pitchSpace.element.y 128
-                - marginForButton
-            )
-                / toFloat rangeInMoria
-
-        Horizontal ->
-            (layoutData.pitchSpace.element.width
-                - marginForButton
-            )
-                / toFloat rangeInMoria
-
-
-
--- WRAPPER
-
-
-view : Model -> Html Msg
-view { layoutData, modeSettings, pitchState } =
-    let
-        params =
-            { layoutData = layoutData
-            , modeSettings = modeSettings
-            , pitchState = pitchState
-            }
-    in
-    div
-        ([ Attr.id "pitch-space"
-         , Styles.transition
-         , Attr.attributeIf layoutData.showSpacing Styles.border
-         ]
-            ++ (case layoutFor layoutData of
-                    Vertical ->
-                        [ Styles.flexRow
-                        , class "my-8"
-                        ]
-
-                    Horizontal ->
-                        [ Styles.flexCol
-                        , class "mx-8"
-                        ]
-               )
-        )
-        [ viewIntervals params
-        , viewPitches params
-        ]
-
-
-listAttributes : LayoutData -> List (Html.Attribute Msg)
-listAttributes layoutData =
-    case layoutFor layoutData of
-        Vertical ->
-            [ class "flex flex-col-reverse justify-end w-36 mx-4" ]
-
-        Horizontal ->
-            [ Styles.flexRowCentered
-            , class "h-24 w-full my-4"
-            ]
-
-
-
--- INTERVAL COLUMN
-
-
-viewIntervals : Params -> Html Msg
-viewIntervals params =
-    Html.ol (onMouseLeave (SelectProposedMovement None) :: listAttributes params.layoutData)
-        (List.map
-            (viewInterval params)
-            (intervalsWithVisibility params)
-        )
-
-
 {-| TODO: see if with some refactors, we could use Html.Lazy for this. But
 benchmark this before shipping.
 -}
 viewInterval : Params -> ( Interval, PositionWithinVisibleRange ) -> Html Msg
-viewInterval ({ layoutData, pitchState } as params) ( interval, position ) =
+viewInterval { layout, layoutData, pitchState, scalingFactor } ( interval, position ) =
     let
         size =
             case position of
@@ -286,7 +282,7 @@ viewInterval ({ layoutData, pitchState } as params) ( interval, position ) =
                     0
 
                 _ ->
-                    toFloat interval.moria * scalingFactor params
+                    toFloat interval.moria * scalingFactor
 
         movement =
             Movement.ofInterval pitchState.currentPitch interval
@@ -313,7 +309,7 @@ viewInterval ({ layoutData, pitchState } as params) ( interval, position ) =
     li
         [ Attr.id ("interval-" ++ Degree.toString interval.from ++ "-" ++ Degree.toString interval.to)
         , Styles.flexRowCentered
-        , case layoutFor layoutData of
+        , case layout of
             Vertical ->
                 Styles.height size
 
@@ -393,29 +389,69 @@ shouldHighlightInterval { currentPitch, proposedMovement } interval =
 
 viewPitches : Params -> Html Msg
 viewPitches params =
-    Html.ol (listAttributes params.layoutData)
-        (List.map
-            (viewPitch params (scalingFactor params))
-            (pitchesWithVisibility params)
+    Html.ol (listAttributes params.layout)
+        (List.map (viewPitch params) (pitchesWithVisibility params))
+
+
+pitchesWithVisibility : Params -> List ( Degree, PositionWithinVisibleRange )
+pitchesWithVisibility params =
+    let
+        lowerBoundIndex =
+            Degree.indexOf params.visibleRange.start
+
+        upperBoundIndex =
+            Degree.indexOf params.visibleRange.end
+
+        visibility pitchIndex =
+            if pitchIndex < lowerBoundIndex then
+                Below
+
+            else if pitchIndex > upperBoundIndex then
+                Above
+
+            else if pitchIndex == lowerBoundIndex then
+                LowerBoundary
+
+            else if pitchIndex == upperBoundIndex then
+                UpperBoundary
+
+            else
+                Within
+    in
+    List.map
+        (\degree ->
+            ( degree
+            , visibility (Degree.indexOf degree)
+            )
         )
+        Degree.gamutList
 
 
-viewPitch : Params -> Float -> ( Degree, PositionWithinVisibleRange ) -> Html Msg
-viewPitch ({ layoutData, modeSettings } as params) scalingFactor_ ( degree, positionWithinRange ) =
+viewPitch : Params -> ( Degree, PositionWithinVisibleRange ) -> Html Msg
+viewPitch ({ layout, layoutData, modeSettings, scalingFactor } as params) ( degree, positionWithinRange ) =
     let
         pitch =
             Pitch.pitchPosition modeSettings.scale degree
-
-        pitchBelow =
-            Degree.step degree -1
-                |> Maybe.map (Pitch.pitchPosition modeSettings.scale)
 
         pitchAbove =
             Degree.step degree 1
                 |> Maybe.map (Pitch.pitchPosition modeSettings.scale)
 
+        pitchBelow =
+            Degree.step degree -1
+                |> Maybe.map (Pitch.pitchPosition modeSettings.scale)
+
+        pitchDisplayParams =
+            { degree = degree
+            , pitch = pitch
+            , pitchAbove = pitchAbove
+            , pitchBelow = pitchBelow
+            , positionWithinRange = positionWithinRange
+            , scalingFactor = scalingFactor
+            }
+
         scale int =
-            (toFloat int / 2) * scalingFactor_
+            (toFloat int / 2) * scalingFactor
 
         size =
             case positionWithinRange of
@@ -433,7 +469,7 @@ viewPitch ({ layoutData, modeSettings } as params) scalingFactor_ ( degree, posi
                         (\below above ->
                             (toFloat (above - pitch) / 2)
                                 |> (+) (toFloat (pitch - below) / 2)
-                                |> (*) scalingFactor_
+                                |> (*) scalingFactor
                         )
                         pitchBelow
                         pitchAbove
@@ -453,103 +489,60 @@ viewPitch ({ layoutData, modeSettings } as params) scalingFactor_ ( degree, posi
 
         attributeIfVisible =
             Attr.attributeIf (positionIsVisible positionWithinRange)
+
+        isIson =
+            PitchState.ison params.pitchState == Just degree
     in
     li
-        [ Attr.id ("pitch-" ++ Degree.toString degree)
-        , Styles.transition
-        , Attr.attributeIf showSpacingDetails Styles.border
-        , attributeIfVisible Styles.flexCol
-        , case layoutFor layoutData of
-            Vertical ->
-                Styles.height size
+        ([ Attr.id ("pitch-" ++ Degree.toString degree)
+         , Styles.transition
+         , Attr.attributeIf showSpacingDetails Styles.border
+         ]
+            ++ (case layout of
+                    Vertical ->
+                        [ Styles.height size
+                        , attributeIfVisible Styles.flexRow
+                        ]
 
-            Horizontal ->
-                Styles.width size
-        ]
+                    Horizontal ->
+                        [ Styles.width size
+                        , attributeIfVisible Styles.flexCol
+                        ]
+               )
+        )
         [ viewIfLazy (positionIsVisible positionWithinRange)
-            (\_ ->
-                pitchButton params
-                    { degree = degree
-                    , pitch = pitch
-                    , pitchAbove = pitchAbove
-                    , pitchBelow = pitchBelow
-                    , positionWithinRange = positionWithinRange
-                    , scalingFactor_ = scalingFactor_
-                    }
-            )
+            (\_ -> pitchButton params pitchDisplayParams)
+        , viewIfLazy isIson
+            (\_ -> isonIndicator params pitchDisplayParams)
         , viewIf showSpacingDetails
             (text (" (" ++ Round.round 2 size ++ "px)"))
         ]
 
 
-pitchButton :
-    Params
-    ->
-        { degree : Degree
-        , pitch : Int
-        , pitchAbove : Maybe Int
-        , pitchBelow : Maybe Int
-        , positionWithinRange : PositionWithinVisibleRange
-        , scalingFactor_ : Float
-        }
-    -> Html Msg
-pitchButton { layoutData, modeSettings, pitchState } { degree, pitch, pitchAbove, pitchBelow, positionWithinRange, scalingFactor_ } =
+pitchButton : Params -> PitchDisplayParams -> Html Msg
+pitchButton ({ layout, modeSettings, pitchState } as params) ({ degree } as pitchDisplayParams) =
     let
         isCurrentPitch =
             Just degree == pitchState.currentPitch
 
-        layout =
-            layoutFor layoutData
+        canBeSelectedAsIson =
+            -- this should be made a bit more robust once modal logic gets built out.
+            case pitchState.ison of
+                SelectingIson _ ->
+                    True
 
-        scale int =
-            (toFloat int / 2)
-                |> (*) scalingFactor_
-                |> (+) (negate pitchButtonSizeValue)
+                _ ->
+                    False
 
         position =
-            case ( layout, positionWithinRange ) of
-                ( _, Below ) ->
-                    0
-
-                ( Vertical, LowerBoundary ) ->
-                    Maybe.map
-                        (\above -> scale (above - pitch))
-                        pitchAbove
-                        |> Maybe.withDefault 0
-
-                ( Horizontal, LowerBoundary ) ->
-                    negate pitchButtonSizeValue
-
-                ( Vertical, Within ) ->
-                    Maybe.map
-                        (\above -> scale (above - pitch))
-                        pitchAbove
-                        |> Maybe.withDefault 0
-
-                ( Horizontal, Within ) ->
-                    Maybe.map
-                        (\below -> scale (pitch - below))
-                        pitchBelow
-                        |> Maybe.withDefault 0
-
-                ( Vertical, UpperBoundary ) ->
-                    negate pitchButtonSizeValue
-
-                ( Horizontal, UpperBoundary ) ->
-                    Maybe.map
-                        (\below -> scale (pitch - below))
-                        pitchBelow
-                        |> Maybe.withDefault 0
-
-                ( _, Above ) ->
-                    0
-
-        pitchButtonSizeValue =
-            pitchButtonSize layoutData / 2
+            pitchElementPosition params pitchDisplayParams PitchButton
     in
     button
         [ onClick <|
-            if isCurrentPitch then
+            if canBeSelectedAsIson then
+                SetIson (Selected degree)
+
+            else if isCurrentPitch then
                 SelectPitch Nothing Nothing
 
             else
@@ -557,7 +550,7 @@ pitchButton { layoutData, modeSettings, pitchState } { degree, pitch, pitchAbove
         , pitchButtonSizeClass
         , class "rounded-full hover:z-10 cursor-pointer relative pb-8"
         , Styles.transition
-        , case layoutFor layoutData of
+        , case layout of
             Vertical ->
                 Styles.top position
 
@@ -567,6 +560,8 @@ pitchButton { layoutData, modeSettings, pitchState } { degree, pitch, pitchAbove
             [ ( "bg-red-200", isCurrentPitch )
             , ( "hover:text-green-700 bg-slate-200 hover:bg-slate-300 opacity-75 hover:opacity-100", not isCurrentPitch )
             , ( "text-green-700 bg-slate-300 z-10", Movement.toDegree pitchState.proposedMovement == Just degree )
+            , ( "border-2 border-blue-700", canBeSelectedAsIson )
+            , ( "border-2 border-transparent", not canBeSelectedAsIson )
             ]
         ]
         [ ByzHtmlMartyria.viewWithAttributes
@@ -575,17 +570,79 @@ pitchButton { layoutData, modeSettings, pitchState } { degree, pitch, pitchAbove
         ]
 
 
-{-| 64px default, 48px below the sm breakpoint.
--}
-pitchButtonSizeClass : Html.Attribute msg
-pitchButtonSizeClass =
-    class "w-12 h-12 sm:w-16 sm:h-16 text-xl sm:text-3xl"
+isonIndicator : Params -> PitchDisplayParams -> Html Msg
+isonIndicator ({ layout } as params) ({ degree } as pitchDisplayParams) =
+    let
+        position =
+            pitchElementPosition params pitchDisplayParams IsonIndicator
+    in
+    div
+        (class "relative text-lg sm:text-2xl text-blue-700 text-greek"
+            :: (case layout of
+                    Vertical ->
+                        [ class "ml-3"
+                        , Styles.top position
+                        ]
+
+                    Horizontal ->
+                        [ class "mt-1"
+                        , Styles.left position
+                        ]
+               )
+        )
+        [ text "(", Degree.text degree, text ")" ]
 
 
-pitchButtonSize : LayoutData -> Float
-pitchButtonSize layoutData =
-    if layoutData.viewport.viewport.width < 640 then
-        48
+type PitchElementTarget
+    = PitchButton
+    | IsonIndicator
 
-    else
-        64
+
+pitchElementPosition : Params -> PitchDisplayParams -> PitchElementTarget -> Float
+pitchElementPosition { layout, pitchButtonSize } { pitch, pitchAbove, pitchBelow, positionWithinRange, scalingFactor } target =
+    let
+        scale int =
+            (toFloat int / 2)
+                |> (*) scalingFactor
+                |> (+) (negate pitchButtonSizeValue)
+
+        pitchButtonSizeValue =
+            case target of
+                PitchButton ->
+                    pitchButtonSize / 2
+
+                IsonIndicator ->
+                    pitchButtonSize / 4
+    in
+    case ( layout, positionWithinRange ) of
+        ( _, Below ) ->
+            0
+
+        ( Vertical, LowerBoundary ) ->
+            Maybe.unwrap 0
+                (\above -> scale (above - pitch))
+                pitchAbove
+
+        ( Horizontal, LowerBoundary ) ->
+            negate pitchButtonSizeValue
+
+        ( Vertical, Within ) ->
+            Maybe.unwrap 0
+                (\above -> scale (above - pitch))
+                pitchAbove
+
+        ( Horizontal, Within ) ->
+            Maybe.unwrap 0
+                (\below -> scale (pitch - below))
+                pitchBelow
+
+        ( Vertical, UpperBoundary ) ->
+            negate pitchButtonSizeValue
+
+        ( Horizontal, UpperBoundary ) ->
+            Maybe.unwrap 0
+                (\below -> scale (pitch - below))
+                pitchBelow
+
+        ( _, Above ) ->
+            0

@@ -20,6 +20,7 @@ import Model exposing (Modal(..), Model)
 import Model.AudioSettings exposing (AudioSettings)
 import Model.LayoutData as LayoutData exposing (Layout(..), LayoutSelection(..), layoutFor)
 import Model.ModeSettings exposing (ModeSettings)
+import Model.PitchState as PitchState exposing (PitchState)
 import Movement exposing (Movement(..))
 import RadioFieldset
 import Styles
@@ -85,21 +86,24 @@ backdrop model =
 
 audio : Model -> Html msg
 audio model =
+    let
+        frequency degree =
+            Pitch.frequency model.audioSettings.pitchStandard
+                model.audioSettings.register
+                model.modeSettings.scale
+                degree
+                |> String.fromFloat
+    in
     Html.node "chant-engine"
         [ model.audioSettings.gain
             |> String.fromFloat
             |> Attr.attribute "gain"
-        , case model.pitchState.currentPitch of
-            Nothing ->
-                Attr.empty
-
-            Just pitch ->
-                Pitch.frequency model.audioSettings.pitchStandard
-                    model.audioSettings.register
-                    model.modeSettings.scale
-                    pitch
-                    |> String.fromFloat
-                    |> Attr.attribute "ison"
+        , Maybe.unwrap Attr.empty
+            (Attr.attribute "melos" << frequency)
+            model.pitchState.currentPitch
+        , Maybe.unwrap Attr.empty
+            (Attr.attribute "ison" << frequency)
+            (PitchState.ison model.pitchState)
         ]
         []
 
@@ -333,17 +337,49 @@ viewControls : Model -> Html Msg
 viewControls model =
     div [ class "w-max", classList [ ( "mt-8", debuggingLayout ) ] ]
         [ selectScale model
-
-        -- , RadioFieldset.view
-        --     { itemToString = layoutString
-        --     , legendText = "Layout"
-        --     , onSelect = SetLayout
-        --     , options = [ Auto, Manual Portrait, Manual Landscape ]
-        --     , selected = model.layout.layoutSelection
-        --     , viewItem = Nothing
-        --     }
+        , isonButton model.pitchState
+        , viewIson (PitchState.ison model.pitchState)
         , viewCurrentPitch model.pitchState.currentPitch
         , gainInput model.audioSettings
+        ]
+
+
+isonButton : PitchState -> Html Msg
+isonButton pitchState =
+    button
+        [ Styles.buttonClass
+        , id "select-ison-button"
+        , onClick
+            (SetIson
+                (case pitchState.ison of
+                    PitchState.NoIson ->
+                        PitchState.SelectingIson Nothing
+
+                    PitchState.SelectingIson (Just ison) ->
+                        PitchState.Selected ison
+
+                    PitchState.SelectingIson Nothing ->
+                        PitchState.NoIson
+
+                    PitchState.Selected _ ->
+                        PitchState.SelectingIson (PitchState.ison pitchState)
+                )
+            )
+        ]
+        [ text "Select Ison" ]
+
+
+viewIson : Maybe Degree -> Html Msg
+viewIson pitch =
+    div [ class "mt-2" ]
+        [ text <| "Current Ison: "
+        , case pitch of
+            Nothing ->
+                text "none"
+
+            Just p ->
+                Degree.text p
+        , viewIf (Maybe.isJust pitch) (clearButton (SetIson PitchState.NoIson))
         ]
 
 
@@ -384,16 +420,16 @@ viewCurrentPitch pitch =
 
             Just p ->
                 Degree.text p
-        , viewIf (Maybe.isJust pitch) clearPitchButton
+        , viewIf (Maybe.isJust pitch) (clearButton (SelectPitch Nothing Nothing))
         ]
 
 
-clearPitchButton : Html Msg
-clearPitchButton =
+clearButton : Msg -> Html Msg
+clearButton msg =
     button
         [ Styles.buttonClass
         , class "mx-2"
-        , onClick (SelectPitch Nothing Nothing)
+        , onClick msg
         ]
         [ text "clear" ]
 
