@@ -1,11 +1,22 @@
 const crossFadeSeconds = 0.2;
 const crossFadeMilliseconds = crossFadeSeconds * 1000;
 
+const localDev = false;
+const debugging = false;
+function devLog(x: any) {
+    if (localDev) {
+        if (debugging) {
+            debugger;
+        }
+        console.log(x);
+    }
+}
 
 class ChantEngine extends HTMLElement {
     private audioContext: AudioContext;
     private mainGainNode: GainNode;
     private ison: OscillatorNode | undefined;
+    private melos: OscillatorNode | undefined;
 
     static maxFrequency: number = 18000;
     static minFrequency: number = 32;
@@ -14,67 +25,75 @@ class ChantEngine extends HTMLElement {
         super();
 
         this.audioContext = new AudioContext();
-        
+
         this.mainGainNode = this.audioContext.createGain();
         this.mainGainNode.connect(this.audioContext.destination);
-        this.mainGainNode.gain.value = 0.2;
 
+        const gainAttribute = this.getAttribute("gain");
+        const gain = gainAttribute ? parseFloat(gainAttribute) : 0.3;
+        this.mainGainNode.gain.value = gain;
     }
-    
-    
+
     connectedCallback() {
-        // console.log("connecting...");
+        devLog("connecting chant engine element...");
     }
 
     disconnectedCallback() {
-        // console.log("disconnecting...");
+        devLog("disconnecting chant engine...");
         this.stopTone(this.ison);
+        this.stopTone(this.melos);
         this.audioContext.close();
     }
 
-    static get observedAttributes(): string[] { 
-        return ['gain', 'ison', 'melos'];  
+    static get observedAttributes(): string[] {
+        return ["gain", "ison", "melos"];
     }
 
     attributeChangedCallback(
-        name: string, 
-        oldValue: string, 
-        newValue: string
+        name: string,
+        oldValue: string,
+        newValue: string,
     ): void {
         switch (name) {
+            case "gain":
+                this.mainGainNode.gain.value = Number(newValue);
+                break;
+
             case "ison":
-                const oldFreq = parseFloat(oldValue);
-                const newFreq = parseFloat(newValue);
+                const oldIsonFreq = parseFloat(oldValue);
+                const newIsonFreq = parseFloat(newValue);
                 if (this.ison) {
-                    // TODO: if oldFreq == newFreq, some sort of re-articulation
-                    if (newFreq) {
-                        console.log(`changing frequency to ${newFreq}`);
-                        this.ison.frequency.value = newFreq;
+                    if (newIsonFreq) {
+                        devLog(`changing ison frequency to ${newIsonFreq}`);
+                        this.ison.frequency.value = newIsonFreq;
                     } else {
-                        console.log("stopping tone");
+                        devLog("stopping ison tone");
                         this.stopTone(this.ison);
                         this.ison = undefined;
                     }
                 } else {
-                    
-                    console.log("playing tone")
-                    this.ison = this.playTone(newFreq);
+                    devLog("playing ison tone");
+                    this.ison = this.playTone(newIsonFreq);
                 }
                 break;
 
-            // case "melos":
-            //     if (this.melos) {
-            //         this.melos.stop();
-            //     }
-            //     this.melos = this.playTone(newValue);
-            //     break;
-
-            case "gain":
-                // console.log(`gain change: ${newValue}`)
-                this.mainGainNode.gain.value = Number(newValue);
-                // console.log(this.gainNode)
+            case "melos":
+                const oldMelosFreq = parseFloat(oldValue);
+                const newMelosFreq = parseFloat(newValue);
+                if (this.melos) {
+                    if (newMelosFreq) {
+                        devLog(`changing melos frequency to ${newMelosFreq}`);
+                        this.melos.frequency.value = newMelosFreq;
+                    } else {
+                        devLog("stopping melos tone");
+                        this.stopTone(this.melos);
+                        this.melos = undefined;
+                    }
+                } else {
+                    devLog("playing melos tone");
+                    this.melos = this.playTone(newMelosFreq);
+                }
                 break;
-
         }
     }
 
@@ -86,46 +105,47 @@ class ChantEngine extends HTMLElement {
      */
     private playTone(freq: number): OscillatorNode | undefined {
         if (
-            !Number.isFinite(freq) 
-            || freq < ChantEngine.minFrequency 
-            || freq > ChantEngine.maxFrequency
-        ) return undefined;
-        
-        console.log(`playing ${freq}`)
+            !Number.isFinite(freq) ||
+            freq < ChantEngine.minFrequency ||
+            freq > ChantEngine.maxFrequency
+        )
+            return undefined;
+
+        devLog(`playing ${freq}`);
 
         const osc = this.audioContext.createOscillator();
         osc.frequency.value = freq;
-        osc.type = 'sine';
+        osc.type = "sine";
 
         const now = this.audioContext.currentTime;
         const gain = this.audioContext.createGain();
 
         // consider also exponentialRampToValueAtTime
         gain.gain.setValueAtTime(0.01, now);
-        gain.gain.exponentialRampToValueAtTime(this.mainGainNode.gain.value, now + crossFadeSeconds)
+        gain.gain.exponentialRampToValueAtTime(
+            this.mainGainNode.gain.value,
+            now + crossFadeSeconds,
+        );
 
         osc.connect(gain);
 
         gain.connect(this.mainGainNode);
-        
-
 
         osc.start();
-        // console.log(osc)
+        devLog(osc);
         return osc;
     }
 
     private stopTone(osc: OscillatorNode | undefined): void {
         if (osc == null) return;
-        console.log(`stopping ${osc.frequency.value}`)
-        
+        devLog(`stopping ${osc.frequency.value}`);
+
         const now = this.audioContext.currentTime;
         // const gain = this.audioContext.createGain();
-        
-        
+
         // gain.gain.setValueAtTime(this.mainGainNode.gain.value, now);
         // gain.gain.linearRampToValueAtTime(0.01, now + crossFadeSeconds);
-        
+
         // osc.connect(gain);
         // osc.connect(this.audioContext.destination);
         // gain.connect(this.mainGainNode);
@@ -133,19 +153,16 @@ class ChantEngine extends HTMLElement {
         osc.stop(now + crossFadeSeconds);
 
         // setTimeout(() => {
-            //     console.log("stopping now?")
-            //     osc.stop();
-            // }, crossFadeMilliseconds + 1)
-            // setTimeout
-        osc.disconnect()
+        //     devLog("stopping now?")
+        //     osc.stop();
+        // }, crossFadeMilliseconds + 1)
+        // setTimeout
+        osc.disconnect();
         // gain.disconnect();
         osc.connect(this.mainGainNode);
-        
 
         // consider also an equal-power crossfade technique for when a tone changes rather than just stops
     }
-
 }
 
 window.customElements.define("chant-engine", ChantEngine);
-
