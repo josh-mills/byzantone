@@ -1,0 +1,136 @@
+<!doctype html>
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <title>Web Audio API Test</title>
+    </head>
+    <body>
+        <h1>Audio Delay Test</h1>
+
+        <button id="startButton">Start</button>
+        <button id="stopButton">Stop</button>
+        <p>
+            <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.01"
+                id="volumeSlider"
+                value="0.5"
+            />
+            <span>gain: </span>
+            <span id="volumeLabel">0.5</span>
+        </p>
+
+        <canvas id="canvas" width="500" height="500"></canvas>
+
+        <script>
+            const context = new AudioContext();
+            let mediaStream;
+            let source;
+            let delayNode;
+            let gainNode;
+            const startButton = document.getElementById("startButton");
+            const stopButton = document.getElementById("stopButton");
+            stopButton.disabled = true;
+
+            // Volume control setup
+            const volumeControl = document.getElementById("volumeSlider");
+            const volumeLabel = document.getElementById("volumeLabel");
+
+            startButton.addEventListener("click", startAudio);
+            stopButton.addEventListener("click", stopAudio);
+
+            async function startAudio() {
+                try {
+                    debugger;
+                    // Get user media stream
+                    mediaStream = await navigator.mediaDevices.getUserMedia({
+                        audio: true,
+                    });
+
+                    // Create audio source
+                    source = context.createMediaStreamSource(mediaStream);
+
+                    // Create delay node
+                    delayNode = context.createDelay(2);
+                    delayNode.delayTime.value = 1; // 1 second delay
+
+                    // Create gain node for volume control
+                    gainNode = context.createGain();
+                    gainNode.gain.value = volumeControl.value;
+
+                    // Create analyser for visualization
+                    const analyser = context.createAnalyser();
+
+                    // Connect the audio nodes
+                    source.connect(delayNode);
+                    delayNode.connect(gainNode);
+                    gainNode.connect(context.destination);
+                    gainNode.connect(analyser);
+
+                    // Setup visualization
+                    const canvas = document.getElementById("canvas");
+                    const canvasContext = canvas.getContext("2d");
+                    let data = new Float32Array(analyser.frequencyBinCount);
+                    let smoothLevel = 0;
+
+                    function draw() {
+                        requestAnimationFrame(draw);
+                        analyser.getFloatTimeDomainData(data);
+                        canvasContext.clearRect(
+                            0,
+                            0,
+                            canvas.width,
+                            canvas.height,
+                        );
+
+                        let level = 0;
+                        for (let i = 0; i < data.length; i++) {
+                            if (data[i]) {
+                                level += (5 * Math.abs(data[i])) / data.length;
+                            }
+                        }
+
+                        smoothLevel = 0.85 * smoothLevel + 0.15 * level;
+                        let canvasMeter = canvas.height * (1 - smoothLevel) - 1;
+
+                        canvasContext.fillRect(
+                            1,
+                            canvasMeter,
+                            canvas.width,
+                            canvas.height,
+                        );
+                    }
+                    draw();
+
+                    startButton.disabled = true;
+                    stopButton.disabled = false;
+                } catch (error) {
+                    console.error("Error:", error);
+                }
+            }
+
+            function stopAudio() {
+                if (mediaStream) {
+                    mediaStream.getTracks().forEach((track) => track.stop());
+                }
+                if (source) {
+                    source.disconnect();
+                    delayNode.disconnect();
+                    gainNode.disconnect();
+                }
+                startButton.disabled = false;
+                stopButton.disabled = true;
+            }
+
+            // Volume control handler
+            volumeControl.oninput = function () {
+                volumeLabel.innerHTML = this.value;
+                if (gainNode) {
+                    gainNode.gain.value = this.value;
+                }
+            };
+        </script>
+    </body>
+</html>
