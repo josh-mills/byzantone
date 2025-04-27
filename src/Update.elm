@@ -4,7 +4,7 @@ import Array
 import Browser.Dom as Dom
 import Byzantine.Accidental as Accidental exposing (Accidental)
 import Byzantine.Degree as Degree exposing (Degree(..))
-import Byzantine.Pitch exposing (PitchStandard, Register)
+import Byzantine.Pitch as Pitch exposing (PitchStandard, Register)
 import Byzantine.Scale exposing (Scale)
 import Maybe.Extra as Maybe
 import Model exposing (Modal, Model)
@@ -86,13 +86,14 @@ update msg model =
                 Cmd.none
             )
 
-        SelectPitch pitch maybeMovement ->
+        SelectPitch degree maybeMovement ->
             ( updatePitchState
                 (\pitchState ->
                     { pitchState
-                        | currentPitch = pitch
+                        | currentPitch = Maybe.map (Pitch.from pitchState.proposedAccidental) degree
+                        , proposedAccidental = Nothing
                         , proposedMovement =
-                            if Maybe.isJust pitch then
+                            if Maybe.isJust degree then
                                 Maybe.withDefault model.pitchState.proposedMovement maybeMovement
 
                             else
@@ -208,15 +209,21 @@ update msg model =
             let
                 moveAndFocus i =
                     let
-                        degree =
-                            Maybe.map (\d -> Degree.step d i |> Maybe.withDefault d) model.pitchState.currentPitch
+                        -- TODO: this needs to account for possible accidentals
+                        pitch =
+                            Maybe.map (Pitch.mapDegree (\d -> Degree.step d i |> Maybe.withDefault d)) model.pitchState.currentPitch
                     in
                     ( updatePitchState
-                        (\pitchState -> { pitchState | currentPitch = degree })
+                        (\pitchState -> { pitchState | currentPitch = pitch })
                         model
                     , Maybe.unwrap Cmd.none
-                        (Degree.toString >> (++) "p_" >> Dom.focus >> Task.attempt DomResult)
-                        degree
+                        (Pitch.unwrapDegree
+                            >> Degree.toString
+                            >> (++) "p_"
+                            >> Dom.focus
+                            >> Task.attempt DomResult
+                        )
+                        pitch
                     )
 
                 setAndFocus degree =
@@ -228,7 +235,12 @@ update msg model =
 
                         _ ->
                             updatePitchState
-                                (\pitchState -> { pitchState | currentPitch = Just degree })
+                                (\pitchState ->
+                                    { pitchState
+                                        | currentPitch = Just (Pitch.from pitchState.proposedAccidental degree)
+                                        , proposedAccidental = Nothing
+                                    }
+                                )
                                 model
                     , Degree.toString degree |> (++) "p_" |> Dom.focus |> Task.attempt DomResult
                     )
@@ -363,6 +375,7 @@ update msg model =
                         PitchState.Selected _ ->
                             ( model, Cmd.none )
 
+                -- TODO: add in f and s for sharp/flat selection
                 _ ->
                     ( model, Cmd.none )
 

@@ -1,5 +1,6 @@
 module Byzantine.Pitch exposing
-    ( pitchPosition, pitchPositions
+    ( Pitch(..), from, mapDegree, unwrapDegree
+    , pitchPosition, pitchPositions
     , PitchStandard(..), Register(..), frequency
     , Interval, intervals, intervalsFrom
     )
@@ -10,6 +11,11 @@ In actual practice, this will need to be based on the tetrachord for a given
 mode, not a fixed position based merely on the scale. So there will be
 additional complexity that we'll need to model somehow. The same with with
 attractions and inflections.
+
+
+# Pitch
+
+@docs Pitch, from, mapDegree, unwrapDegree
 
 
 # Pitch Positions
@@ -29,8 +35,44 @@ attractions and inflections.
 -}
 
 import Array exposing (Array)
+import Byzantine.Accidental as Accidental exposing (Accidental)
 import Byzantine.Degree as Degree exposing (Degree)
 import Byzantine.Scale exposing (Scale(..))
+
+
+type Pitch
+    = Natural Degree
+    | Inflected Accidental Degree
+
+
+from : Maybe Accidental -> Degree -> Pitch
+from maybeAccidental degree =
+    case maybeAccidental of
+        Just accidental ->
+            Inflected accidental degree
+
+        Nothing ->
+            Natural degree
+
+
+unwrapDegree : Pitch -> Degree
+unwrapDegree pitch =
+    case pitch of
+        Natural degree ->
+            degree
+
+        Inflected _ degree ->
+            degree
+
+
+mapDegree : (Degree -> Degree) -> Pitch -> Pitch
+mapDegree f pitch =
+    case pitch of
+        Natural degree ->
+            Natural (f degree)
+
+        Inflected accidental degree ->
+            Inflected accidental (f degree)
 
 
 
@@ -108,11 +150,19 @@ type Register
 {-| Frequency relative to a fixed pitch for Di, according to the given pitch
 standard and register.
 -}
-frequency : PitchStandard -> Register -> Scale -> Degree -> Float
-frequency pitchStandard register scale degree =
+frequency : PitchStandard -> Register -> Scale -> Pitch -> Float
+frequency pitchStandard register scale pitch =
     let
+        ( degree, inflection ) =
+            case pitch of
+                Natural degree_ ->
+                    ( degree_, 0 )
+
+                Inflected accidental degree_ ->
+                    ( degree_, Accidental.moriaAdjustment accidental )
+
         position =
-            pitchPosition scale degree - 84 |> toFloat
+            pitchPosition scale degree - 84 |> (+) inflection |> toFloat
 
         di =
             case pitchStandard of
@@ -145,10 +195,10 @@ type alias Interval =
 
 
 getInterval : Scale -> Degree -> Degree -> Interval
-getInterval scale from to =
-    { from = from
+getInterval scale from_ to =
+    { from = from_
     , to = to
-    , moria = pitchPosition scale to - pitchPosition scale from
+    , moria = pitchPosition scale to - pitchPosition scale from_
     }
 
 

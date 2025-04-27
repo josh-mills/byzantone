@@ -166,15 +166,19 @@ calculateVisibleRange : ModeSettings -> PitchState -> { start : Degree, end : De
 calculateVisibleRange modeSettings pitchState =
     case pitchState.currentPitch of
         Just currentPitch ->
+            let
+                currentDegree =
+                    Pitch.unwrapDegree currentPitch
+            in
             { start =
-                if Degree.indexOf currentPitch < Degree.indexOf modeSettings.rangeStart then
-                    currentPitch
+                if Degree.indexOf currentDegree < Degree.indexOf modeSettings.rangeStart then
+                    currentDegree
 
                 else
                     modeSettings.rangeStart
             , end =
-                if Degree.indexOf currentPitch > Degree.indexOf modeSettings.rangeEnd then
-                    currentPitch
+                if Degree.indexOf currentDegree > Degree.indexOf modeSettings.rangeEnd then
+                    currentDegree
 
                 else
                     modeSettings.rangeEnd
@@ -285,7 +289,7 @@ viewInterval { layout, layoutData, pitchState, scalingFactor } ( interval, posit
                     toFloat interval.moria * scalingFactor
 
         movement =
-            Movement.ofInterval pitchState.currentPitch interval
+            Movement.ofInterval (Maybe.map Pitch.unwrapDegree pitchState.currentPitch) interval
 
         moria =
             span [ class "text-gray-600" ]
@@ -324,7 +328,7 @@ viewInterval { layout, layoutData, pitchState, scalingFactor } ( interval, posit
                     (onClick (SelectPitch (Just degree) (Maybe.map DescendTo (Degree.step degree -1)))
                         :: buttonAttrs
                     )
-                    [ viewIntervalCharacter pitchState.currentPitch degree
+                    [ viewIntervalCharacter (Maybe.map Pitch.unwrapDegree pitchState.currentPitch) degree
                     , moria
                     ]
 
@@ -333,7 +337,7 @@ viewInterval { layout, layoutData, pitchState, scalingFactor } ( interval, posit
                     (onClick (SelectPitch (Just degree) (Maybe.map AscendTo (Degree.step degree 1)))
                         :: buttonAttrs
                     )
-                    [ viewIntervalCharacter pitchState.currentPitch degree
+                    [ viewIntervalCharacter (Maybe.map Pitch.unwrapDegree pitchState.currentPitch) degree
                     , moria
                     ]
 
@@ -380,7 +384,7 @@ shouldHighlightInterval { currentPitch, proposedMovement } interval =
                 None ->
                     False
         )
-        currentPitch
+        (Maybe.map Pitch.unwrapDegree currentPitch)
 
 
 
@@ -491,7 +495,7 @@ viewPitch ({ layout, layoutData, modeSettings, scalingFactor } as params) ( degr
             Attr.attributeIf (positionIsVisible positionWithinRange)
 
         isIson =
-            PitchState.ison params.pitchState == Just degree
+            PitchState.ison params.pitchState == Just (Pitch.Natural degree)
     in
     li
         ([ Attr.id ("pitch-" ++ Degree.toString degree)
@@ -523,7 +527,7 @@ pitchButton : Params -> PitchDisplayParams -> Html Msg
 pitchButton ({ layout, modeSettings, pitchState } as params) ({ degree } as pitchDisplayParams) =
     let
         isCurrentPitch =
-            Just degree == pitchState.currentPitch
+            Just degree == Maybe.map Pitch.unwrapDegree pitchState.currentPitch
 
         canBeSelectedAsIson =
             -- this should be made a bit more robust once modal logic gets built out.

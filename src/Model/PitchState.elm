@@ -13,11 +13,12 @@ module Model.PitchState exposing
 
 import Byzantine.Accidental exposing (Accidental)
 import Byzantine.Degree exposing (Degree)
+import Byzantine.Pitch as Pitch exposing (Pitch)
 import Movement exposing (Movement)
 
 
 type alias PitchState =
-    { currentPitch : Maybe Degree
+    { currentPitch : Maybe Pitch
     , ison : IsonStatus
     , proposedAccidental : Maybe Accidental
     , proposedMovement : Movement
@@ -45,14 +46,14 @@ type IsonStatus
 
 {-| Current pitch of the ison status.
 -}
-ison : PitchState -> Maybe Degree
+ison : PitchState -> Maybe Pitch
 ison pitchState =
     case pitchState.ison of
         NoIson ->
             Nothing
 
         SelectingIson maybeDegree ->
-            maybeDegree
+            Maybe.map Pitch.Natural maybeDegree
 
         Selected degree ->
-            Just degree
+            Just (Pitch.Natural degree)

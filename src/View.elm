@@ -6,7 +6,7 @@ import Byzantine.ByzHtml.Martyria as Martyria
 import Byzantine.Degree as Degree exposing (Degree(..))
 import Byzantine.IntervalCharacter exposing (..)
 import Byzantine.Martyria as Martyria
-import Byzantine.Pitch as Pitch exposing (PitchStandard(..), Register(..))
+import Byzantine.Pitch as Pitch exposing (Pitch, PitchStandard(..), Register(..))
 import Byzantine.Scale as Scale exposing (Scale(..))
 import Copy
 import Html exposing (Html, button, datalist, div, h1, h2, input, main_, p, span, text)
@@ -89,11 +89,11 @@ backdrop model =
 audio : Model -> Html msg
 audio model =
     let
-        frequency degree =
+        frequency pitch =
             Pitch.frequency model.audioSettings.pitchStandard
                 model.audioSettings.register
                 model.modeSettings.scale
-                degree
+                pitch
                 |> String.fromFloat
     in
     Html.node "chant-engine"
@@ -365,14 +365,17 @@ isonButton pitchState =
                         PitchState.NoIson
 
                     PitchState.Selected _ ->
-                        PitchState.SelectingIson (PitchState.ison pitchState)
+                        PitchState.SelectingIson
+                            (PitchState.ison pitchState
+                                |> Maybe.map Pitch.unwrapDegree
+                            )
                 )
             )
         ]
         [ text "Select Ison" ]
 
 
-viewIson : Maybe Degree -> Html Msg
+viewIson : Maybe Pitch -> Html Msg
 viewIson pitch =
     div [ class "mt-2" ]
         [ text <| "Current Ison: "
@@ -381,7 +384,7 @@ viewIson pitch =
                 text "none"
 
             Just p ->
-                Degree.text p
+                Degree.text (Pitch.unwrapDegree p)
         , viewIf (Maybe.isJust pitch) (clearButton (SetIson PitchState.NoIson))
         ]
 
@@ -413,7 +416,7 @@ selectScale model =
         }
 
 
-viewCurrentPitch : Maybe Degree -> Html Msg
+viewCurrentPitch : Maybe Pitch -> Html Msg
 viewCurrentPitch pitch =
     div [ class "mt-2" ]
         [ text <| "Current Pitch: "
@@ -421,8 +424,16 @@ viewCurrentPitch pitch =
             Nothing ->
                 text "none"
 
-            Just p ->
-                Degree.text p
+            Just (Pitch.Natural degree) ->
+                Degree.text degree
+
+            Just (Pitch.Inflected accidental degree) ->
+                span []
+                    [ Degree.text degree
+                    , text " ("
+                    , text (Accidental.toString accidental)
+                    , text ")"
+                    ]
         , viewIf (Maybe.isJust pitch) (clearButton (SelectPitch Nothing Nothing))
         ]
 

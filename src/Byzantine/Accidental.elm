@@ -1,4 +1,4 @@
-module Byzantine.Accidental exposing (Accidental(..), all, moriaAdjustment)
+module Byzantine.Accidental exposing (Accidental(..), all, moriaAdjustment, toString)
 
 
 type Accidental
@@ -46,3 +46,16 @@ moriaAdjustment accidental =
 
         Flat8 ->
             -8
+
+
+toString : Accidental -> String
+toString accidental =
+    let
+        val =
+            moriaAdjustment accidental
+    in
+    if val > 0 then
+        "+" ++ String.fromInt val
+
+    else
+        String.fromInt val
