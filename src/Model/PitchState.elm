@@ -11,6 +11,7 @@ module Model.PitchState exposing
 
 -}
 
+import Byzantine.Accidental exposing (Accidental)
 import Byzantine.Degree exposing (Degree)
 import Movement exposing (Movement)
 
@@ -18,6 +19,7 @@ import Movement exposing (Movement)
 type alias PitchState =
     { currentPitch : Maybe Degree
     , ison : IsonStatus
+    , proposedAccidental : Maybe Accidental
     , proposedMovement : Movement
     }
 
@@ -26,6 +28,7 @@ initialPitchState : PitchState
 initialPitchState =
     { currentPitch = Nothing
     , ison = NoIson
+    , proposedAccidental = Nothing
     , proposedMovement = Movement.None
     }
 

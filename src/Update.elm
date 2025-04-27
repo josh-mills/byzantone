@@ -2,6 +2,7 @@ module Update exposing (Msg(..), update)
 
 import Array
 import Browser.Dom as Dom
+import Byzantine.Accidental as Accidental exposing (Accidental)
 import Byzantine.Degree as Degree exposing (Degree(..))
 import Byzantine.Pitch exposing (PitchStandard, Register)
 import Byzantine.Scale exposing (Scale)
@@ -25,6 +26,7 @@ type Msg
     | NoOp
     | SelectModal Modal
     | SelectPitch (Maybe Degree) (Maybe Movement)
+    | SelectProposedAccidental (Maybe Accidental)
     | SelectProposedMovement Movement
     | SetGain Float
     | SetIson IsonStatus
@@ -97,6 +99,13 @@ update msg model =
                                 Movement.None
                     }
                 )
+                model
+            , Cmd.none
+            )
+
+        SelectProposedAccidental maybeAccidental ->
+            ( updatePitchState
+                (\pitchState -> { pitchState | proposedAccidental = maybeAccidental })
                 model
             , Cmd.none
             )

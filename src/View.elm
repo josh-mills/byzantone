@@ -1,5 +1,7 @@
 module View exposing (view)
 
+import Byzantine.Accidental as Accidental exposing (Accidental)
+import Byzantine.ByzHtml.Accidental as Accidental
 import Byzantine.ByzHtml.Martyria as Martyria
 import Byzantine.Degree as Degree exposing (Degree(..))
 import Byzantine.IntervalCharacter exposing (..)
@@ -340,6 +342,7 @@ viewControls model =
         , isonButton model.pitchState
         , viewIson (PitchState.ison model.pitchState)
         , viewCurrentPitch model.pitchState.currentPitch
+        , viewAccidentalButtons model.pitchState.proposedAccidental
         , gainInput model.audioSettings
         ]
 
@@ -422,6 +425,36 @@ viewCurrentPitch pitch =
                 Degree.text p
         , viewIf (Maybe.isJust pitch) (clearButton (SelectPitch Nothing Nothing))
         ]
+
+
+viewAccidentalButtons : Maybe Accidental -> Html Msg
+viewAccidentalButtons maybeAccidental =
+    div [ class "flex flex-row flex-wrap gap-2 mt-2" ]
+        (List.map (viewAccidentalButton maybeAccidental) Accidental.all)
+
+
+viewAccidentalButton : Maybe Accidental -> Accidental -> Html Msg
+viewAccidentalButton proposedAccidental accidental =
+    let
+        isCurrent =
+            proposedAccidental == Just accidental
+    in
+    button
+        [ Styles.buttonClass
+        , class "text-3xl min-w-12"
+        , classList
+            [ ( "text-blue-700 border-2 border-blue-700", isCurrent )
+            , ( "border-2 border-transparent", not isCurrent )
+            ]
+        , onClick
+            (if isCurrent then
+                SelectProposedAccidental Nothing
+
+             else
+                SelectProposedAccidental (Just accidental)
+            )
+        ]
+        [ Accidental.view accidental ]
 
 
 clearButton : Msg -> Html Msg
