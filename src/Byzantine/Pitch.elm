@@ -1,5 +1,5 @@
 module Byzantine.Pitch exposing
-    ( Pitch(..), from, mapDegree, unwrapDegree
+    ( Pitch(..), from, mapDegree, wrapDegree, unwrapDegree
     , pitchPosition, pitchPositions
     , PitchStandard(..), Register(..), frequency
     , Interval, intervals, intervalsFrom
@@ -15,7 +15,7 @@ attractions and inflections.
 
 # Pitch
 
-@docs Pitch, from, mapDegree, unwrapDegree
+@docs Pitch, from, mapDegree, wrapDegree, unwrapDegree
 
 
 # Pitch Positions
@@ -55,6 +55,24 @@ from maybeAccidental degree =
             Natural degree
 
 
+{-| Wrap a degree as a Natural pitch, unless the current pitch happens to be
+inflected and the same degree. In that case, this will evaluate to the inflected
+current pitch.
+-}
+wrapDegree : Maybe Pitch -> Degree -> Pitch
+wrapDegree currentPitch degree =
+    case currentPitch of
+        Just pitch ->
+            if degree == unwrapDegree pitch then
+                pitch
+
+            else
+                Natural degree
+
+        _ ->
+            Natural degree
+
+
 unwrapDegree : Pitch -> Degree
 unwrapDegree pitch =
     case pitch of
@@ -85,10 +103,20 @@ mapDegree f pitch =
 to Di for other modes; see discussion in Melling.)
 
 -}
-pitchPosition : Scale -> Degree -> Int
-pitchPosition scale degree =
+pitchPosition : Scale -> Pitch -> Int
+pitchPosition scale pitch =
+    let
+        ( degree, moriaAdjustment ) =
+            case pitch of
+                Natural degree_ ->
+                    ( degree_, identity )
+
+                Inflected accidental degree_ ->
+                    ( degree_, (+) <| Accidental.moriaAdjustment accidental )
+    in
     pitchPositions scale
         |> Array.get (Degree.indexOf degree)
+        |> Maybe.map moriaAdjustment
         -- tests ensure that the -1 sentinel value never occurs.
         |> Maybe.withDefault -1
 
@@ -147,22 +175,14 @@ type Register
     | Bass
 
 
-{-| Frequency relative to a fixed pitch for Di, according to the given pitch
+{-| Frequency relative to a fixed pitch for Natural Di, according to the given pitch
 standard and register.
 -}
 frequency : PitchStandard -> Register -> Scale -> Pitch -> Float
 frequency pitchStandard register scale pitch =
     let
-        ( degree, inflection ) =
-            case pitch of
-                Natural degree_ ->
-                    ( degree_, 0 )
-
-                Inflected accidental degree_ ->
-                    ( degree_, Accidental.moriaAdjustment accidental )
-
         position =
-            pitchPosition scale degree - 84 |> (+) inflection |> toFloat
+            pitchPosition scale pitch - 84 |> toFloat
 
         di =
             case pitchStandard of
@@ -188,13 +208,13 @@ frequency pitchStandard register scale pitch =
 
 
 type alias Interval =
-    { from : Degree
-    , to : Degree
+    { from : Pitch
+    , to : Pitch
     , moria : Int
     }
 
 
-getInterval : Scale -> Degree -> Degree -> Interval
+getInterval : Scale -> Pitch -> Pitch -> Interval
 getInterval scale from_ to =
     { from = from_
     , to = to
@@ -202,17 +222,26 @@ getInterval scale from_ to =
     }
 
 
-intervals : Scale -> List Interval
-intervals scale =
-    intervalsHelper scale Degree.gamutList
+{-| Intervals between all natural degrees in the given scale
+
+the currentPitch needs to be taken into account
+
+-}
+intervals : Scale -> Maybe Pitch -> List Interval
+intervals scale currentPitch =
+    Degree.gamutList
+        |> List.map (wrapDegree currentPitch)
+        |> intervalsHelper scale
 
 
-intervalsFrom : Scale -> Degree -> Degree -> List Interval
+intervalsFrom : Scale -> Pitch -> Pitch -> List Interval
 intervalsFrom scale lower upper =
-    intervalsHelper scale (Degree.range lower upper)
+    Degree.range (unwrapDegree lower) (unwrapDegree upper)
+        |> List.map Natural
+        |> intervalsHelper scale
 
 
-intervalsHelper : Scale -> List Degree -> List Interval
+intervalsHelper : Scale -> List Pitch -> List Interval
 intervalsHelper scale degrees =
     case degrees of
         a :: b :: rest ->

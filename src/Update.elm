@@ -2,7 +2,7 @@ module Update exposing (Msg(..), update)
 
 import Array
 import Browser.Dom as Dom
-import Byzantine.Accidental as Accidental exposing (Accidental)
+import Byzantine.Accidental exposing (Accidental)
 import Byzantine.Degree as Degree exposing (Degree(..))
 import Byzantine.Pitch as Pitch exposing (PitchStandard, Register)
 import Byzantine.Scale exposing (Scale)

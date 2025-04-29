@@ -41,7 +41,7 @@ degreeTests =
                         (\degree ->
                             test (Scale.name scale ++ " pitch position for " ++ Degree.toString degree ++ " is not negative") <|
                                 \_ ->
-                                    Expect.greaterThan -1 (Pitch.pitchPosition scale degree)
+                                    Expect.greaterThan -1 (Pitch.pitchPosition scale (Pitch.Natural degree))
                         )
                         gamutBuilder
                 )

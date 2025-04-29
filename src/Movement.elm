@@ -6,7 +6,7 @@ for example, there is no purpose in modeling the ison.
 -}
 
 import Byzantine.Degree as Degree exposing (Degree)
-import Byzantine.Pitch exposing (Interval)
+import Byzantine.Pitch as Pitch exposing (Interval)
 
 
 type Movement
@@ -22,11 +22,18 @@ ofInterval fromDegree interval =
             None
 
         Just currentDegree ->
-            if Degree.indexOf interval.to > Degree.indexOf currentDegree then
-                AscendTo interval.to
+            let
+                toDegree_ =
+                    Pitch.unwrapDegree interval.to
 
-            else if Degree.indexOf interval.from < Degree.indexOf currentDegree then
-                DescendTo interval.from
+                fromDegree_ =
+                    Pitch.unwrapDegree interval.from
+            in
+            if Degree.indexOf toDegree_ > Degree.indexOf currentDegree then
+                AscendTo toDegree_
+
+            else if Degree.indexOf fromDegree_ < Degree.indexOf currentDegree then
+                DescendTo fromDegree_
 
             else
                 None

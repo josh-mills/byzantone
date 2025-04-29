@@ -8,7 +8,7 @@ import Byzantine.ByzHtml.Martyria as ByzHtmlMartyria
 import Byzantine.Degree as Degree exposing (Degree)
 import Byzantine.IntervalCharacter as IntervalCharacter
 import Byzantine.Martyria as Martyria
-import Byzantine.Pitch as Pitch exposing (Interval)
+import Byzantine.Pitch as Pitch exposing (Interval, Pitch)
 import Html exposing (Html, button, div, li, span, text)
 import Html.Attributes as Attr exposing (class, classList)
 import Html.Attributes.Extra as Attr
@@ -81,15 +81,15 @@ type alias Params =
     , pitchButtonSize : Float
     , pitchState : PitchState
     , scalingFactor : Float
-    , visibleRange : { start : Degree, end : Degree }
+    , visibleRange : { start : Pitch, end : Pitch }
     }
 
 
 type alias PitchDisplayParams =
     { degree : Degree
-    , pitch : Int
-    , pitchAbove : Maybe Int
-    , pitchBelow : Maybe Int
+    , pitchPosition : Int
+    , pitchPositionAbove : Maybe Int
+    , pitchPositionBelow : Maybe Int
     , positionWithinRange : PositionWithinVisibleRange
     , scalingFactor : Float
     }
@@ -101,7 +101,7 @@ TODO: we'll need some sort of minimum for the portrait to enable scrolling on
 small viewports.
 
 -}
-calculateScalingFactor : Layout -> LayoutData -> ModeSettings -> { start : Degree, end : Degree } -> Float
+calculateScalingFactor : Layout -> LayoutData -> ModeSettings -> { start : Pitch, end : Pitch } -> Float
 calculateScalingFactor layout layoutData modeSettings visibleRange =
     let
         visibleRangeInMoria =
@@ -162,7 +162,7 @@ calculatePitchButtonSize layoutData =
 user-set) start and stop positions to include the current pitch. (We may want to
 consider additional limits as well.)
 -}
-calculateVisibleRange : ModeSettings -> PitchState -> { start : Degree, end : Degree }
+calculateVisibleRange : ModeSettings -> PitchState -> { start : Pitch, end : Pitch }
 calculateVisibleRange modeSettings pitchState =
     case pitchState.currentPitch of
         Just currentPitch ->
@@ -172,21 +172,21 @@ calculateVisibleRange modeSettings pitchState =
             in
             { start =
                 if Degree.indexOf currentDegree < Degree.indexOf modeSettings.rangeStart then
-                    currentDegree
+                    currentPitch
 
                 else
-                    modeSettings.rangeStart
+                    Pitch.Natural modeSettings.rangeStart
             , end =
                 if Degree.indexOf currentDegree > Degree.indexOf modeSettings.rangeEnd then
-                    currentDegree
+                    currentPitch
 
                 else
-                    modeSettings.rangeEnd
+                    Pitch.Natural modeSettings.rangeEnd
             }
 
         Nothing ->
-            { start = modeSettings.rangeStart
-            , end = modeSettings.rangeEnd
+            { start = Pitch.Natural modeSettings.rangeStart
+            , end = Pitch.Natural modeSettings.rangeEnd
             }
 
 
@@ -234,18 +234,18 @@ intervalsWithVisibility : Params -> List ( Interval, PositionWithinVisibleRange 
 intervalsWithVisibility params =
     let
         lowerBoundIndex =
-            Degree.indexOf params.visibleRange.start
+            Degree.indexOf (Pitch.unwrapDegree params.visibleRange.start)
 
         upperBoundIndex =
-            Degree.indexOf params.visibleRange.end
+            Degree.indexOf (Pitch.unwrapDegree params.visibleRange.end)
 
         visibility interval =
             let
                 intervalFromIndex =
-                    Degree.indexOf interval.from
+                    Degree.indexOf (Pitch.unwrapDegree interval.from)
 
                 intervalToIndex =
-                    Degree.indexOf interval.to
+                    Degree.indexOf (Pitch.unwrapDegree interval.to)
             in
             if intervalToIndex <= lowerBoundIndex then
                 Below
@@ -268,7 +268,7 @@ intervalsWithVisibility params =
             , visibility interval
             )
         )
-        (Pitch.intervals params.modeSettings.scale)
+        (Pitch.intervals params.modeSettings.scale params.pitchState.currentPitch)
 
 
 {-| TODO: see if with some refactors, we could use Html.Lazy for this. But
@@ -311,7 +311,12 @@ viewInterval { layout, layoutData, pitchState, scalingFactor } ( interval, posit
             ]
     in
     li
-        [ Attr.id ("interval-" ++ Degree.toString interval.from ++ "-" ++ Degree.toString interval.to)
+        [ Attr.id
+            ("interval-"
+                ++ Degree.toString (Pitch.unwrapDegree interval.from)
+                ++ "-"
+                ++ Degree.toString (Pitch.unwrapDegree interval.to)
+            )
         , Styles.flexRowCentered
         , case layout of
             Vertical ->
@@ -367,10 +372,10 @@ shouldHighlightInterval { currentPitch, proposedMovement } interval =
                     Degree.indexOf current
 
                 fromIndex =
-                    Degree.indexOf interval.from
+                    Degree.indexOf (Pitch.unwrapDegree interval.from)
 
                 toIndex =
-                    Degree.indexOf interval.to
+                    Degree.indexOf (Pitch.unwrapDegree interval.to)
             in
             case proposedMovement of
                 AscendTo degree ->
@@ -397,14 +402,14 @@ viewPitches params =
         (List.map (viewPitch params) (pitchesWithVisibility params))
 
 
-pitchesWithVisibility : Params -> List ( Degree, PositionWithinVisibleRange )
+pitchesWithVisibility : Params -> List ( Pitch, PositionWithinVisibleRange )
 pitchesWithVisibility params =
     let
         lowerBoundIndex =
-            Degree.indexOf params.visibleRange.start
+            Degree.indexOf (Pitch.unwrapDegree params.visibleRange.start)
 
         upperBoundIndex =
-            Degree.indexOf params.visibleRange.end
+            Degree.indexOf (Pitch.unwrapDegree params.visibleRange.end)
 
         visibility pitchIndex =
             if pitchIndex < lowerBoundIndex then
@@ -424,32 +429,41 @@ pitchesWithVisibility params =
     in
     List.map
         (\degree ->
-            ( degree
+            ( Pitch.wrapDegree params.pitchState.currentPitch degree
             , visibility (Degree.indexOf degree)
             )
         )
         Degree.gamutList
 
 
-viewPitch : Params -> ( Degree, PositionWithinVisibleRange ) -> Html Msg
-viewPitch ({ layout, layoutData, modeSettings, scalingFactor } as params) ( degree, positionWithinRange ) =
+viewPitch : Params -> ( Pitch, PositionWithinVisibleRange ) -> Html Msg
+viewPitch ({ layout, layoutData, modeSettings, scalingFactor } as params) ( pitch, positionWithinRange ) =
     let
-        pitch =
-            Pitch.pitchPosition modeSettings.scale degree
+        degree =
+            Pitch.unwrapDegree pitch
 
-        pitchAbove =
+        pitchPosition : Int
+        pitchPosition =
+            Pitch.pitchPosition modeSettings.scale pitch
+
+        pitchPositionAbove : Maybe Int
+        pitchPositionAbove =
             Degree.step degree 1
+                |> Maybe.map (Pitch.wrapDegree params.pitchState.currentPitch)
                 |> Maybe.map (Pitch.pitchPosition modeSettings.scale)
 
-        pitchBelow =
+        pitchPositionBelow : Maybe Int
+        pitchPositionBelow =
             Degree.step degree -1
+                |> Maybe.map (Pitch.wrapDegree params.pitchState.currentPitch)
                 |> Maybe.map (Pitch.pitchPosition modeSettings.scale)
 
         pitchDisplayParams =
+            -- TODO: we'll need to feed in the accidental somehow.
             { degree = degree
-            , pitch = pitch
-            , pitchAbove = pitchAbove
-            , pitchBelow = pitchBelow
+            , pitchPosition = pitchPosition
+            , pitchPositionAbove = pitchPositionAbove
+            , pitchPositionBelow = pitchPositionBelow
             , positionWithinRange = positionWithinRange
             , scalingFactor = scalingFactor
             }
@@ -464,25 +478,25 @@ viewPitch ({ layout, layoutData, modeSettings, scalingFactor } as params) ( degr
 
                 LowerBoundary ->
                     Maybe.map
-                        (\above -> scale (above - pitch))
-                        pitchAbove
+                        (\above -> scale (above - pitchPosition))
+                        pitchPositionAbove
                         |> Maybe.withDefault 0
 
                 Within ->
                     Maybe.map2
                         (\below above ->
-                            (toFloat (above - pitch) / 2)
-                                |> (+) (toFloat (pitch - below) / 2)
+                            (toFloat (above - pitchPosition) / 2)
+                                |> (+) (toFloat (pitchPosition - below) / 2)
                                 |> (*) scalingFactor
                         )
-                        pitchBelow
-                        pitchAbove
+                        pitchPositionBelow
+                        pitchPositionAbove
                         |> Maybe.withDefault 0
 
                 UpperBoundary ->
                     Maybe.map
-                        (\below -> scale (pitch - below))
-                        pitchBelow
+                        (\below -> scale (pitchPosition - below))
+                        pitchPositionBelow
                         |> Maybe.withDefault 0
 
                 Above ->
@@ -603,7 +617,7 @@ type PitchElementTarget
 
 
 pitchElementPosition : Params -> PitchDisplayParams -> PitchElementTarget -> Float
-pitchElementPosition { layout, pitchButtonSize } { pitch, pitchAbove, pitchBelow, positionWithinRange, scalingFactor } target =
+pitchElementPosition { layout, pitchButtonSize } { pitchPosition, pitchPositionAbove, pitchPositionBelow, positionWithinRange, scalingFactor } target =
     let
         scale int =
             (toFloat int / 2)
@@ -624,29 +638,29 @@ pitchElementPosition { layout, pitchButtonSize } { pitch, pitchAbove, pitchBelow
 
         ( Vertical, LowerBoundary ) ->
             Maybe.unwrap 0
-                (\above -> scale (above - pitch))
-                pitchAbove
+                (\above -> scale (above - pitchPosition))
+                pitchPositionAbove
 
         ( Horizontal, LowerBoundary ) ->
             negate pitchButtonSizeValue
 
         ( Vertical, Within ) ->
             Maybe.unwrap 0
-                (\above -> scale (above - pitch))
-                pitchAbove
+                (\above -> scale (above - pitchPosition))
+                pitchPositionAbove
 
         ( Horizontal, Within ) ->
             Maybe.unwrap 0
-                (\below -> scale (pitch - below))
-                pitchBelow
+                (\below -> scale (pitchPosition - below))
+                pitchPositionBelow
 
         ( Vertical, UpperBoundary ) ->
             negate pitchButtonSizeValue
 
         ( Horizontal, UpperBoundary ) ->
             Maybe.unwrap 0
-                (\below -> scale (pitch - below))
-                pitchBelow
+                (\below -> scale (pitchPosition - below))
+                pitchPositionBelow
 
         ( _, Above ) ->
             0
