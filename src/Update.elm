@@ -2,7 +2,7 @@ module Update exposing (Msg(..), update)
 
 import Array
 import Browser.Dom as Dom
-import Byzantine.Accidental exposing (Accidental)
+import Byzantine.Accidental as Accidental exposing (Accidental)
 import Byzantine.Degree as Degree exposing (Degree(..))
 import Byzantine.Pitch as Pitch exposing (PitchStandard, Register)
 import Byzantine.Scale exposing (Scale)
@@ -336,7 +336,40 @@ update msg model =
                         PitchState.Selected _ ->
                             ( model, Cmd.none )
 
-                -- TODO: add in f and s for sharp/flat selection
+                "f" ->
+                    ( updatePitchState
+                        (\pitchState ->
+                            { pitchState
+                                | proposedAccidental =
+                                    case pitchState.proposedAccidental of
+                                        Just accidental ->
+                                            Accidental.lower accidental
+
+                                        Nothing ->
+                                            Just Accidental.Flat2
+                            }
+                        )
+                        model
+                    , Cmd.none
+                    )
+
+                "s" ->
+                    ( updatePitchState
+                        (\pitchState ->
+                            { pitchState
+                                | proposedAccidental =
+                                    case pitchState.proposedAccidental of
+                                        Just accidental ->
+                                            Accidental.raise accidental
+
+                                        Nothing ->
+                                            Just Accidental.Sharp2
+                            }
+                        )
+                        model
+                    , Cmd.none
+                    )
+
                 _ ->
                     ( model, Cmd.none )
 
