@@ -3,6 +3,8 @@ module View.PitchSpace exposing (view)
 {-| View logic for pitch space (i.e., the intervalic space and positioned pitches)
 -}
 
+import Byzantine.Accidental as Accidental
+import Byzantine.ByzHtml.Accidental as Accidental
 import Byzantine.ByzHtml.Interval as ByzHtmlInterval
 import Byzantine.ByzHtml.Martyria as ByzHtmlMartyria
 import Byzantine.Degree as Degree exposing (Degree)
@@ -86,7 +88,7 @@ type alias Params =
 
 
 type alias PitchDisplayParams =
-    { degree : Degree
+    { pitch : Pitch
     , pitchPosition : Int
     , pitchPositionAbove : Maybe Int
     , pitchPositionBelow : Maybe Int
@@ -289,7 +291,7 @@ viewInterval { layout, layoutData, pitchState, scalingFactor } ( interval, posit
                     toFloat interval.moria * scalingFactor
 
         movement =
-            Movement.ofInterval (Maybe.map Pitch.unwrapDegree pitchState.currentPitch) interval
+            Movement.ofInterval pitchState.currentPitch interval
 
         moria =
             span [ class "text-gray-600" ]
@@ -328,21 +330,21 @@ viewInterval { layout, layoutData, pitchState, scalingFactor } ( interval, posit
         , Attr.attributeIf (positionIsVisible position) Styles.border
         ]
         [ (case movement of
-            AscendTo degree ->
+            AscendTo pitch ->
                 button
-                    (onClick (SelectPitch (Just degree) (Maybe.map DescendTo (Degree.step degree -1)))
+                    (onClick (SelectPitch (Just (Pitch.unwrapDegree pitch)) Nothing {- (Maybe.map DescendTo (Degree.step pitch -1)) -})
                         :: buttonAttrs
                     )
-                    [ viewIntervalCharacter (Maybe.map Pitch.unwrapDegree pitchState.currentPitch) degree
+                    [ viewIntervalCharacter (Maybe.map Pitch.unwrapDegree pitchState.currentPitch) (Pitch.unwrapDegree pitch)
                     , moria
                     ]
 
-            DescendTo degree ->
+            DescendTo pitch ->
                 button
-                    (onClick (SelectPitch (Just degree) (Maybe.map AscendTo (Degree.step degree 1)))
+                    (onClick (SelectPitch (Just (Pitch.unwrapDegree pitch)) Nothing {- (Maybe.map AscendTo (Degree.step pitch 1)) -})
                         :: buttonAttrs
                     )
-                    [ viewIntervalCharacter (Maybe.map Pitch.unwrapDegree pitchState.currentPitch) degree
+                    [ viewIntervalCharacter (Maybe.map Pitch.unwrapDegree pitchState.currentPitch) (Pitch.unwrapDegree pitch)
                     , moria
                     ]
 
@@ -354,6 +356,9 @@ viewInterval { layout, layoutData, pitchState, scalingFactor } ( interval, posit
         ]
 
 
+{-| TODO: We should have this take pitches, not just degrees. And probably don't wrap
+in a maybe.
+-}
 viewIntervalCharacter : Maybe Degree -> Degree -> Html Msg
 viewIntervalCharacter currentPitch degree =
     currentPitch
@@ -380,11 +385,11 @@ shouldHighlightInterval { currentPitch, proposedMovement } interval =
             case proposedMovement of
                 AscendTo degree ->
                     (currentPitchIndex < toIndex)
-                        && (toIndex <= Degree.indexOf degree)
+                        && (toIndex <= Degree.indexOf (Pitch.unwrapDegree degree))
 
                 DescendTo degree ->
                     (currentPitchIndex > fromIndex)
-                        && (fromIndex >= Degree.indexOf degree)
+                        && (fromIndex >= Degree.indexOf (Pitch.unwrapDegree degree))
 
                 None ->
                     False
@@ -458,9 +463,10 @@ viewPitch ({ layout, layoutData, modeSettings, scalingFactor } as params) ( pitc
                 |> Maybe.map (Pitch.wrapDegree params.pitchState.currentPitch)
                 |> Maybe.map (Pitch.pitchPosition modeSettings.scale)
 
+        pitchDisplayParams : PitchDisplayParams
         pitchDisplayParams =
             -- TODO: we'll need to feed in the accidental somehow.
-            { degree = degree
+            { pitch = pitch
             , pitchPosition = pitchPosition
             , pitchPositionAbove = pitchPositionAbove
             , pitchPositionBelow = pitchPositionBelow
@@ -538,10 +544,10 @@ viewPitch ({ layout, layoutData, modeSettings, scalingFactor } as params) ( pitc
 
 
 pitchButton : Params -> PitchDisplayParams -> Html Msg
-pitchButton ({ layout, modeSettings, pitchState } as params) ({ degree } as pitchDisplayParams) =
+pitchButton ({ layout, modeSettings, pitchState } as params) ({ pitch } as pitchDisplayParams) =
     let
         isCurrentPitch =
-            Just degree == Maybe.map Pitch.unwrapDegree pitchState.currentPitch
+            Just (Pitch.unwrapDegree pitch) == Maybe.map Pitch.unwrapDegree pitchState.currentPitch
 
         canBeSelectedAsIson =
             -- this should be made a bit more robust once modal logic gets built out.
@@ -558,13 +564,13 @@ pitchButton ({ layout, modeSettings, pitchState } as params) ({ degree } as pitc
     button
         [ onClick <|
             if canBeSelectedAsIson then
-                SetIson (Selected degree)
+                SetIson (Selected (Pitch.unwrapDegree pitch))
 
             else if isCurrentPitch then
                 SelectPitch Nothing Nothing
 
             else
-                SelectPitch (Just degree) Nothing
+                SelectPitch (Just (Pitch.unwrapDegree pitch)) Nothing
         , pitchButtonSizeClass
         , class "rounded-full hover:z-10 cursor-pointer relative pb-8"
         , Styles.transition
@@ -577,19 +583,25 @@ pitchButton ({ layout, modeSettings, pitchState } as params) ({ degree } as pitc
         , classList
             [ ( "bg-red-200", isCurrentPitch )
             , ( "hover:text-green-700 bg-slate-200 hover:bg-slate-300 opacity-75 hover:opacity-100", not isCurrentPitch )
-            , ( "text-green-700 bg-slate-300 z-10", Movement.toDegree pitchState.proposedMovement == Just degree )
+            , ( "text-green-700 bg-slate-300 z-10", Movement.toPitch pitchState.proposedMovement == Just pitch )
             , ( "border-2 border-blue-700", canBeSelectedAsIson )
             , ( "border-2 border-transparent", not canBeSelectedAsIson )
             ]
         ]
-        [ ByzHtmlMartyria.viewWithAttributes
+        [ Html.Extra.viewMaybe
+            (\accidental ->
+                span [ class "absolute mt-2 md:mt-4", Styles.left 12 ]
+                    [ Accidental.view accidental ]
+            )
+            (Pitch.unwrapAccidental pitch)
+        , ByzHtmlMartyria.viewWithAttributes
             [ Styles.left -3, Styles.top -3 ]
-            (Martyria.for modeSettings.scale degree)
+            (Martyria.for modeSettings.scale (Pitch.unwrapDegree pitch))
         ]
 
 
 isonIndicator : Params -> PitchDisplayParams -> Html Msg
-isonIndicator ({ layout } as params) ({ degree } as pitchDisplayParams) =
+isonIndicator ({ layout } as params) ({ pitch } as pitchDisplayParams) =
     let
         position =
             pitchElementPosition params pitchDisplayParams IsonIndicator
@@ -608,7 +620,7 @@ isonIndicator ({ layout } as params) ({ degree } as pitchDisplayParams) =
                         ]
                )
         )
-        [ text "(", Degree.text degree, text ")" ]
+        [ text "(", Degree.text (Pitch.unwrapDegree pitch), text ")" ]
 
 
 type PitchElementTarget

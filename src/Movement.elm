@@ -1,28 +1,31 @@
-module Movement exposing (Movement(..), ofInterval, toDegree)
+module Movement exposing (Movement(..), ofInterval, toPitch)
 
 {-| A representation of motion within intervallic space. This is more a
 presentational concern rather than a theoretical concept within the system, so,
 for example, there is no purpose in modeling the ison.
 -}
 
-import Byzantine.Degree as Degree exposing (Degree)
-import Byzantine.Pitch as Pitch exposing (Interval)
+import Byzantine.Degree as Degree
+import Byzantine.Pitch as Pitch exposing (Interval, Pitch)
 
 
 type Movement
-    = AscendTo Degree
-    | DescendTo Degree
+    = AscendTo Pitch
+    | DescendTo Pitch
     | None
 
 
-ofInterval : Maybe Degree -> Interval -> Movement
-ofInterval fromDegree interval =
-    case fromDegree of
+ofInterval : Maybe Pitch -> Interval -> Movement
+ofInterval fromPitch interval =
+    case fromPitch of
         Nothing ->
             None
 
-        Just currentDegree ->
+        Just currentPitch ->
             let
+                currentDegree =
+                    Pitch.unwrapDegree currentPitch
+
                 toDegree_ =
                     Pitch.unwrapDegree interval.to
 
@@ -30,23 +33,23 @@ ofInterval fromDegree interval =
                     Pitch.unwrapDegree interval.from
             in
             if Degree.indexOf toDegree_ > Degree.indexOf currentDegree then
-                AscendTo toDegree_
+                AscendTo interval.to
 
             else if Degree.indexOf fromDegree_ < Degree.indexOf currentDegree then
-                DescendTo fromDegree_
+                DescendTo interval.from
 
             else
                 None
 
 
-toDegree : Movement -> Maybe Degree
-toDegree movement_ =
+toPitch : Movement -> Maybe Pitch
+toPitch movement_ =
     case movement_ of
-        AscendTo degree ->
-            Just degree
+        AscendTo pitch ->
+            Just pitch
 
-        DescendTo degree ->
-            Just degree
+        DescendTo pitch ->
+            Just pitch
 
         None ->
             Nothing

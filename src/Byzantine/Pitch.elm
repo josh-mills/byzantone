@@ -1,5 +1,5 @@
 module Byzantine.Pitch exposing
-    ( Pitch(..), from, mapDegree, wrapDegree, unwrapDegree
+    ( Pitch(..), from, mapDegree, wrapDegree, unwrapDegree, unwrapAccidental
     , pitchPosition, pitchPositions
     , PitchStandard(..), Register(..), frequency
     , Interval, intervals, intervalsFrom
@@ -15,7 +15,7 @@ attractions and inflections.
 
 # Pitch
 
-@docs Pitch, from, mapDegree, wrapDegree, unwrapDegree
+@docs Pitch, from, mapDegree, wrapDegree, unwrapDegree, unwrapAccidental
 
 
 # Pitch Positions
@@ -91,6 +91,16 @@ mapDegree f pitch =
 
         Inflected accidental degree ->
             Inflected accidental (f degree)
+
+
+unwrapAccidental : Pitch -> Maybe Accidental
+unwrapAccidental pitch =
+    case pitch of
+        Natural _ ->
+            Nothing
+
+        Inflected accidental _ ->
+            Just accidental
 
 
 

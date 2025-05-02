@@ -4,7 +4,7 @@ import Array
 import Browser.Dom as Dom
 import Byzantine.Accidental as Accidental exposing (Accidental)
 import Byzantine.Degree as Degree exposing (Degree(..))
-import Byzantine.Pitch as Pitch exposing (PitchStandard, Register)
+import Byzantine.Pitch as Pitch exposing (Pitch, PitchStandard, Register)
 import Byzantine.Scale exposing (Scale)
 import Maybe.Extra as Maybe
 import Model exposing (Modal, Model)
@@ -87,6 +87,7 @@ update msg model =
             )
 
         SelectPitch degree maybeMovement ->
+            -- should automatically apply the accidental.
             ( updatePitchState
                 (\pitchState ->
                     { pitchState

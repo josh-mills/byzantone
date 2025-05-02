@@ -14,10 +14,6 @@ type Accidental
 
 {-| Lists all accidentals in order of inflection, from `Flat8` through
 `Sharp8`.
-
-TODO: write a test to ensure that this is in ascending order by
-moriaAdjustment value.
-
 -}
 all : List Accidental
 all =
