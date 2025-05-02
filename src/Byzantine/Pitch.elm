@@ -55,22 +55,20 @@ from maybeAccidental degree =
             Natural degree
 
 
-{-| Wrap a degree as a Natural pitch, unless the current pitch happens to be
-inflected and the same degree. In that case, this will evaluate to the inflected
-current pitch.
+{-| Wrap a degree as a Natural pitch, unless the current pitch or proposed
+movement happens to be inflected and the same degree. In that case, this will
+evaluate to a pitch wrapping the inflected degree.
 -}
-wrapDegree : Maybe Pitch -> Degree -> Pitch
-wrapDegree currentPitch degree =
-    case currentPitch of
-        Just pitch ->
-            if degree == unwrapDegree pitch then
-                pitch
+wrapDegree : Maybe Pitch -> Maybe Pitch -> Degree -> Pitch
+wrapDegree currentPitch proposedMovementTo degree =
+    if Maybe.map unwrapDegree currentPitch == Just degree then
+        Maybe.withDefault (Natural degree) currentPitch
 
-            else
-                Natural degree
+    else if Maybe.map unwrapDegree proposedMovementTo == Just degree then
+        Maybe.withDefault (Natural degree) proposedMovementTo
 
-        _ ->
-            Natural degree
+    else
+        Natural degree
 
 
 unwrapDegree : Pitch -> Degree
@@ -237,10 +235,10 @@ getInterval scale from_ to =
 the currentPitch needs to be taken into account
 
 -}
-intervals : Scale -> Maybe Pitch -> List Interval
-intervals scale currentPitch =
+intervals : Scale -> Maybe Pitch -> Maybe Pitch -> List Interval
+intervals scale currentPitch proposedMovementTo =
     Degree.gamutList
-        |> List.map (wrapDegree currentPitch)
+        |> List.map (wrapDegree currentPitch proposedMovementTo)
         |> intervalsHelper scale
 
 

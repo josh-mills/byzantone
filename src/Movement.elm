@@ -1,10 +1,11 @@
-module Movement exposing (Movement(..), ofInterval, toPitch)
+module Movement exposing (Movement(..), applyAccidental, ofInterval, toPitch)
 
 {-| A representation of motion within intervallic space. This is more a
 presentational concern rather than a theoretical concept within the system, so,
 for example, there is no purpose in modeling the ison.
 -}
 
+import Byzantine.Accidental exposing (Accidental)
 import Byzantine.Degree as Degree
 import Byzantine.Pitch as Pitch exposing (Interval, Pitch)
 
@@ -53,3 +54,16 @@ toPitch movement_ =
 
         None ->
             Nothing
+
+
+applyAccidental : Maybe Accidental -> Movement -> Movement
+applyAccidental accidental movement =
+    case movement of
+        AscendTo pitch ->
+            AscendTo (Pitch.from accidental (Pitch.unwrapDegree pitch))
+
+        DescendTo pitch ->
+            DescendTo (Pitch.from accidental (Pitch.unwrapDegree pitch))
+
+        None ->
+            None

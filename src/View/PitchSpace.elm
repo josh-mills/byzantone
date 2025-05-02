@@ -270,7 +270,10 @@ intervalsWithVisibility params =
             , visibility interval
             )
         )
-        (Pitch.intervals params.modeSettings.scale params.pitchState.currentPitch)
+        (Pitch.intervals params.modeSettings.scale
+            params.pitchState.currentPitch
+            (Movement.toPitch params.pitchState.proposedMovement)
+        )
 
 
 {-| TODO: see if with some refactors, we could use Html.Lazy for this. But
@@ -434,7 +437,9 @@ pitchesWithVisibility params =
     in
     List.map
         (\degree ->
-            ( Pitch.wrapDegree params.pitchState.currentPitch degree
+            ( Pitch.wrapDegree params.pitchState.currentPitch
+                (Movement.toPitch params.pitchState.proposedMovement)
+                degree
             , visibility (Degree.indexOf degree)
             )
         )
@@ -451,17 +456,21 @@ viewPitch ({ layout, layoutData, modeSettings, scalingFactor } as params) ( pitc
         pitchPosition =
             Pitch.pitchPosition modeSettings.scale pitch
 
+        inflectedPitchPosition : Degree -> Int
+        inflectedPitchPosition =
+            Pitch.wrapDegree params.pitchState.currentPitch
+                (Movement.toPitch params.pitchState.proposedMovement)
+                >> Pitch.pitchPosition modeSettings.scale
+
         pitchPositionAbove : Maybe Int
         pitchPositionAbove =
             Degree.step degree 1
-                |> Maybe.map (Pitch.wrapDegree params.pitchState.currentPitch)
-                |> Maybe.map (Pitch.pitchPosition modeSettings.scale)
+                |> Maybe.map inflectedPitchPosition
 
         pitchPositionBelow : Maybe Int
         pitchPositionBelow =
             Degree.step degree -1
-                |> Maybe.map (Pitch.wrapDegree params.pitchState.currentPitch)
-                |> Maybe.map (Pitch.pitchPosition modeSettings.scale)
+                |> Maybe.map inflectedPitchPosition
 
         pitchDisplayParams : PitchDisplayParams
         pitchDisplayParams =
