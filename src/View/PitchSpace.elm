@@ -600,7 +600,7 @@ pitchButton ({ layout, modeSettings, pitchState } as params) ({ pitch } as pitch
         [ Html.Extra.viewMaybe
             (\accidental ->
                 span [ class "absolute mt-2 md:mt-4", Styles.left 12 ]
-                    [ Accidental.view accidental ]
+                    [ Accidental.view Accidental.Red accidental ]
             )
             (Pitch.unwrapAccidental pitch)
         , ByzHtmlMartyria.viewWithAttributes

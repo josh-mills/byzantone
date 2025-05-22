@@ -465,7 +465,7 @@ viewAccidentalButton proposedAccidental accidental =
                 SelectProposedAccidental (Just accidental)
             )
         ]
-        [ Accidental.view accidental ]
+        [ Accidental.view Accidental.InheritColor accidental ]
 
 
 clearButton : Msg -> Html Msg
