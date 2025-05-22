@@ -296,6 +296,24 @@ viewInterval { layout, layoutData, pitchState, scalingFactor } ( interval, posit
         movement =
             Movement.ofInterval pitchState.currentPitch interval
 
+        proposedMovementWithAccidental =
+            Movement.applyAccidental pitchState.proposedAccidental movement
+
+        unwrapMovementDegree =
+            Movement.toPitch >> Maybe.map Pitch.unwrapDegree
+
+        applyAccidental toMovement =
+            case ( unwrapMovementDegree toMovement, unwrapMovementDegree pitchState.proposedMovement ) of
+                ( Just toDegree, Just proposedMovementDegree ) ->
+                    if toDegree == proposedMovementDegree then
+                        Movement.applyAccidental pitchState.proposedAccidental toMovement
+
+                    else
+                        toMovement
+
+                _ ->
+                    toMovement
+
         moria =
             span [ class "text-gray-600" ]
                 [ text (String.fromInt interval.moria)
@@ -311,8 +329,8 @@ viewInterval { layout, layoutData, pitchState, scalingFactor } ( interval, posit
                   )
                 , ( "hover:bg-slate-200", Maybe.isJust pitchState.currentPitch )
                 ]
-            , onFocus (SelectProposedMovement movement)
-            , onMouseEnter (SelectProposedMovement movement)
+            , onFocus (SelectProposedMovement proposedMovementWithAccidental)
+            , onMouseEnter (SelectProposedMovement proposedMovementWithAccidental)
             ]
     in
     li
@@ -332,13 +350,13 @@ viewInterval { layout, layoutData, pitchState, scalingFactor } ( interval, posit
         , Styles.transition
         , Attr.attributeIf (positionIsVisible position) Styles.border
         ]
-        [ (case movement of
+        [ (case applyAccidental movement of
             AscendTo pitch ->
                 button
                     (onClick (SelectPitch (Just (Pitch.unwrapDegree pitch)) Nothing {- (Maybe.map DescendTo (Degree.step pitch -1)) -})
                         :: buttonAttrs
                     )
-                    [ viewIntervalCharacter (Maybe.map Pitch.unwrapDegree pitchState.currentPitch) (Pitch.unwrapDegree pitch)
+                    [ viewIntervalCharacter (Maybe.map Pitch.unwrapDegree pitchState.currentPitch) pitch
                     , moria
                     ]
 
@@ -347,7 +365,7 @@ viewInterval { layout, layoutData, pitchState, scalingFactor } ( interval, posit
                     (onClick (SelectPitch (Just (Pitch.unwrapDegree pitch)) Nothing {- (Maybe.map AscendTo (Degree.step pitch 1)) -})
                         :: buttonAttrs
                     )
-                    [ viewIntervalCharacter (Maybe.map Pitch.unwrapDegree pitchState.currentPitch) (Pitch.unwrapDegree pitch)
+                    [ viewIntervalCharacter (Maybe.map Pitch.unwrapDegree pitchState.currentPitch) pitch
                     , moria
                     ]
 
@@ -359,14 +377,15 @@ viewInterval { layout, layoutData, pitchState, scalingFactor } ( interval, posit
         ]
 
 
-{-| TODO: We should have this take pitches, not just degrees. And probably don't wrap
-in a maybe.
+{-| TODO: We should have this take pitches, not just degrees. And probably don't
+wrap in a maybe.
 -}
-viewIntervalCharacter : Maybe Degree -> Degree -> Html Msg
-viewIntervalCharacter currentPitch degree =
+viewIntervalCharacter : Maybe Degree -> Pitch -> Html Msg
+viewIntervalCharacter currentPitch toPitch =
     currentPitch
-        |> Maybe.map (\current -> Degree.getInterval current degree)
+        |> Maybe.map (\current -> Degree.getInterval current (Pitch.unwrapDegree toPitch))
         |> Maybe.andThen IntervalCharacter.basicInterval
+        |> Maybe.map (IntervalCharacter.applyAccidental (Pitch.unwrapAccidental toPitch))
         |> Html.Extra.viewMaybe
             (ByzHtmlInterval.view >> List.singleton >> span [ class "me-2" ])
 

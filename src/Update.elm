@@ -114,12 +114,7 @@ update msg model =
 
         SelectProposedMovement movement ->
             ( updatePitchState
-                (\pitchState ->
-                    { pitchState
-                        | proposedMovement =
-                            Movement.applyAccidental pitchState.proposedAccidental movement
-                    }
-                )
+                (\pitchState -> { pitchState | proposedMovement = movement })
                 model
             , Cmd.none
             )
