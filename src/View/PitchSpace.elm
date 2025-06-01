@@ -299,21 +299,6 @@ viewInterval { layout, layoutData, pitchState, scalingFactor } ( interval, posit
         proposedMovementWithAccidental =
             Movement.applyAccidental pitchState.proposedAccidental movement
 
-        unwrapMovementDegree =
-            Movement.toPitch >> Maybe.map Pitch.unwrapDegree
-
-        applyAccidental toMovement =
-            case ( unwrapMovementDegree toMovement, unwrapMovementDegree pitchState.proposedMovement ) of
-                ( Just toDegree, Just proposedMovementDegree ) ->
-                    if toDegree == proposedMovementDegree then
-                        Movement.applyAccidental pitchState.proposedAccidental toMovement
-
-                    else
-                        toMovement
-
-                _ ->
-                    toMovement
-
         moria =
             span [ class "text-gray-600" ]
                 [ text (String.fromInt interval.moria)
@@ -350,7 +335,7 @@ viewInterval { layout, layoutData, pitchState, scalingFactor } ( interval, posit
         , Styles.transition
         , Attr.attributeIf (positionIsVisible position) Styles.border
         ]
-        [ (case applyAccidental movement of
+        [ (case movement of
             AscendTo pitch ->
                 button
                     (onClick (SelectPitch (Just (Pitch.unwrapDegree pitch)) Nothing {- (Maybe.map DescendTo (Degree.step pitch -1)) -})

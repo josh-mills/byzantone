@@ -4,7 +4,7 @@ import Array
 import Browser.Dom as Dom
 import Byzantine.Accidental as Accidental exposing (Accidental)
 import Byzantine.Degree as Degree exposing (Degree(..))
-import Byzantine.Pitch as Pitch exposing (Pitch, PitchStandard, Register)
+import Byzantine.Pitch as Pitch exposing (PitchStandard, Register)
 import Byzantine.Scale exposing (Scale)
 import Maybe.Extra as Maybe
 import Model exposing (Modal, Model)
@@ -113,8 +113,59 @@ update msg model =
             )
 
         SelectProposedMovement movement ->
+            let
+                stepToPitch step degree =
+                    Degree.step degree step
+                        |> Maybe.map Pitch.Natural
+
+                areInverted lowerPitch higherPitch =
+                    pitchPosition lowerPitch >= pitchPosition higherPitch
+
+                pitchPosition =
+                    Pitch.pitchPosition model.modeSettings.scale
+
+                validatedMovement =
+                    case movement of
+                        Movement.AscendTo ((Pitch.Inflected _ degree) as movementToPitch) ->
+                            let
+                                wouldBeInverted =
+                                    Maybe.unwrap True
+                                        (\stepHigherPitch ->
+                                            areInverted movementToPitch stepHigherPitch
+                                        )
+                                        (stepToPitch 1 degree)
+                            in
+                            if wouldBeInverted then
+                                Movement.AscendTo (Pitch.Natural degree)
+
+                            else
+                                movement
+
+                        Movement.DescendTo ((Pitch.Inflected _ degree) as movementToPitch) ->
+                            let
+                                wouldBeInverted =
+                                    Maybe.unwrap True
+                                        (\stepLowerPitch ->
+                                            areInverted stepLowerPitch movementToPitch
+                                        )
+                                        (stepToPitch -1 degree)
+                            in
+                            if wouldBeInverted then
+                                Movement.DescendTo (Pitch.Natural degree)
+
+                            else
+                                movement
+
+                        _ ->
+                            movement
+            in
             ( updatePitchState
-                (\pitchState -> { pitchState | proposedMovement = movement })
+                (\pitchState ->
+                    { pitchState
+                        | proposedMovement =
+                            validatedMovement
+                    }
+                )
                 model
             , Cmd.none
             )

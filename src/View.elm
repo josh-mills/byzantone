@@ -440,8 +440,14 @@ viewCurrentPitch pitch =
 
 viewAccidentalButtons : Maybe Accidental -> Html Msg
 viewAccidentalButtons maybeAccidental =
-    div [ class "flex flex-row flex-wrap gap-2 mt-2" ]
-        (List.map (viewAccidentalButton maybeAccidental) Accidental.all)
+    Html.fieldset
+        [ Styles.borderRounded
+        , class "px-2 pb-1 mb-2"
+        , class "flex flex-row flex-wrap gap-2 mt-2"
+        ]
+        (Html.legend [ class "px-1" ] [ Html.text "Accidental" ]
+            :: List.map (viewAccidentalButton maybeAccidental) Accidental.all
+        )
 
 
 viewAccidentalButton : Maybe Accidental -> Accidental -> Html Msg
