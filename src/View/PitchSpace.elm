@@ -334,6 +334,12 @@ viewInterval { layout, layoutData, pitchState, scalingFactor } ( interval, posit
                 Styles.width size
         , Styles.transition
         , Attr.attributeIf (positionIsVisible position) Styles.border
+        , case layout of
+            Vertical ->
+                class "border-r-0"
+
+            Horizontal ->
+                class "border-b-0"
         ]
         [ (case movement of
             AscendTo pitch ->
@@ -585,7 +591,7 @@ pitchButton ({ layout, modeSettings, pitchState } as params) ({ pitch } as pitch
             else
                 SelectPitch (Just (Pitch.unwrapDegree pitch)) Nothing
         , pitchButtonSizeClass
-        , class "rounded-full hover:z-10 cursor-pointer relative pb-8"
+        , class "rounded-full hover:z-20 cursor-pointer relative pb-8"
         , Styles.transition
         , case layout of
             Vertical ->
@@ -594,8 +600,8 @@ pitchButton ({ layout, modeSettings, pitchState } as params) ({ pitch } as pitch
             Horizontal ->
                 Styles.left position
         , classList
-            [ ( "bg-red-200", isCurrentPitch )
-            , ( "hover:text-green-700 bg-slate-200 hover:bg-slate-300 opacity-75 hover:opacity-100", not isCurrentPitch )
+            [ ( "bg-red-200 z-10", isCurrentPitch )
+            , ( "hover:text-green-700 bg-slate-200 hover:bg-slate-300 opacity-75 hover:opacity-90", not isCurrentPitch )
             , ( "text-green-700 bg-slate-300 z-10", Movement.toPitch pitchState.proposedMovement == Just pitch )
             , ( "border-2 border-blue-700", canBeSelectedAsIson )
             , ( "border-2 border-transparent", not canBeSelectedAsIson )
