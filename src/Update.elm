@@ -4,8 +4,9 @@ import Array
 import Browser.Dom as Dom
 import Byzantine.Accidental as Accidental exposing (Accidental)
 import Byzantine.Degree as Degree exposing (Degree(..))
-import Byzantine.Pitch as Pitch exposing (PitchStandard, Register)
+import Byzantine.Pitch as Pitch exposing (Pitch, PitchStandard, Register)
 import Byzantine.Scale exposing (Scale)
+import Byzantine.Utils exposing (degreeCanSupportAccidental)
 import Maybe.Extra as Maybe
 import Model exposing (Modal, Model)
 import Model.AudioSettings exposing (AudioSettings)
@@ -25,7 +26,7 @@ type Msg
     | Keydown String
     | NoOp
     | SelectModal Modal
-    | SelectPitch (Maybe Degree) (Maybe Movement)
+    | SelectPitch (Maybe Pitch) (Maybe Movement)
     | SelectProposedAccidental (Maybe Accidental)
     | SelectProposedMovement Movement
     | SetGain Float
@@ -86,15 +87,14 @@ update msg model =
                 Cmd.none
             )
 
-        SelectPitch degree maybeMovement ->
-            -- should automatically apply the accidental.
+        SelectPitch maybePitch maybeMovement ->
             ( updatePitchState
                 (\pitchState ->
                     { pitchState
-                        | currentPitch = Maybe.map (Pitch.from pitchState.proposedAccidental) degree
+                        | currentPitch = maybePitch
                         , proposedAccidental = Nothing
                         , proposedMovement =
-                            if Maybe.isJust degree then
+                            if Maybe.isJust maybePitch then
                                 Maybe.withDefault model.pitchState.proposedMovement maybeMovement
 
                             else
@@ -125,6 +125,7 @@ update msg model =
                     Pitch.pitchPosition model.modeSettings.scale
 
                 validatedMovement =
+                    -- TODO: can this be implemented with the new util function?
                     case movement of
                         Movement.AscendTo ((Pitch.Inflected _ degree) as movementToPitch) ->
                             let

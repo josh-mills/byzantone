@@ -11,6 +11,7 @@ import Byzantine.Degree as Degree exposing (Degree)
 import Byzantine.IntervalCharacter as IntervalCharacter
 import Byzantine.Martyria as Martyria
 import Byzantine.Pitch as Pitch exposing (Interval, Pitch)
+import Byzantine.Utils
 import Html exposing (Html, button, div, li, span, text)
 import Html.Attributes as Attr exposing (class, classList)
 import Html.Attributes.Extra as Attr
@@ -344,7 +345,7 @@ viewInterval { layout, layoutData, pitchState, scalingFactor } ( interval, posit
         [ (case movement of
             AscendTo pitch ->
                 button
-                    (onClick (SelectPitch (Just (Pitch.unwrapDegree pitch)) Nothing {- (Maybe.map DescendTo (Degree.step pitch -1)) -})
+                    (onClick (SelectPitch (Just pitch) Nothing {- (Maybe.map DescendTo (Degree.step pitch -1)) -})
                         :: buttonAttrs
                     )
                     [ viewIntervalCharacter (Maybe.map Pitch.unwrapDegree pitchState.currentPitch) pitch
@@ -353,7 +354,7 @@ viewInterval { layout, layoutData, pitchState, scalingFactor } ( interval, posit
 
             DescendTo pitch ->
                 button
-                    (onClick (SelectPitch (Just (Pitch.unwrapDegree pitch)) Nothing {- (Maybe.map AscendTo (Degree.step pitch 1)) -})
+                    (onClick (SelectPitch (Just pitch) Nothing {- (Maybe.map AscendTo (Degree.step pitch 1)) -})
                         :: buttonAttrs
                     )
                     [ viewIntervalCharacter (Maybe.map Pitch.unwrapDegree pitchState.currentPitch) pitch
@@ -565,8 +566,11 @@ viewPitch ({ layout, layoutData, modeSettings, scalingFactor } as params) ( pitc
 pitchButton : Params -> PitchDisplayParams -> Html Msg
 pitchButton ({ layout, modeSettings, pitchState } as params) ({ pitch } as pitchDisplayParams) =
     let
-        isCurrentPitch =
+        isCurrentDegree =
             Just (Pitch.unwrapDegree pitch) == Maybe.map Pitch.unwrapDegree pitchState.currentPitch
+
+        isCurrentPitch =
+            Just proposedPitch == pitchState.currentPitch
 
         canBeSelectedAsIson =
             -- this should be made a bit more robust once modal logic gets built out.
@@ -579,17 +583,45 @@ pitchButton ({ layout, modeSettings, pitchState } as params) ({ pitch } as pitch
 
         position =
             pitchElementPosition params pitchDisplayParams PitchButton
+
+        degreeCanSupportProposedAccidental =
+            Maybe.map
+                (\accidental ->
+                    Byzantine.Utils.degreeCanSupportAccidental
+                        params.modeSettings.scale
+                        accidental
+                        (Pitch.unwrapDegree pitch)
+                )
+                pitchState.proposedAccidental
+
+        proposedPitch =
+            if Maybe.withDefault False degreeCanSupportProposedAccidental then
+                Pitch.applyAccidental pitchState.proposedAccidental pitch
+
+            else
+                pitch
+
+        shouldHighlight =
+            canBeSelectedAsIson
+                || Maybe.withDefault False degreeCanSupportProposedAccidental
     in
     button
         [ onClick <|
             if canBeSelectedAsIson then
                 SetIson (Selected (Pitch.unwrapDegree pitch))
 
-            else if isCurrentPitch then
-                SelectPitch Nothing Nothing
+            else if isCurrentDegree then
+                if isCurrentPitch && Pitch.isInflected proposedPitch then
+                    SelectPitch (Just (Pitch.applyAccidental Nothing pitch)) Nothing
+
+                else if not isCurrentPitch && Pitch.isInflected proposedPitch then
+                    SelectPitch (Just proposedPitch) Nothing
+
+                else
+                    SelectPitch Nothing Nothing
 
             else
-                SelectPitch (Just (Pitch.unwrapDegree pitch)) Nothing
+                SelectPitch (Just proposedPitch) Nothing
         , pitchButtonSizeClass
         , class "rounded-full hover:z-20 cursor-pointer relative pb-8"
         , Styles.transition
@@ -603,8 +635,8 @@ pitchButton ({ layout, modeSettings, pitchState } as params) ({ pitch } as pitch
             [ ( "bg-red-200 z-10", isCurrentPitch )
             , ( "hover:text-green-700 bg-slate-200 hover:bg-slate-300 opacity-75 hover:opacity-90", not isCurrentPitch )
             , ( "text-green-700 bg-slate-300 z-10", Movement.toPitch pitchState.proposedMovement == Just pitch )
-            , ( "border-2 border-blue-700", canBeSelectedAsIson )
-            , ( "border-2 border-transparent", not canBeSelectedAsIson )
+            , ( "border-2 border-blue-700", shouldHighlight )
+            , ( "border-2 border-transparent", not shouldHighlight )
             ]
         ]
         [ Html.Extra.viewMaybe
