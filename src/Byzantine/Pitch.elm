@@ -1,9 +1,11 @@
 module Byzantine.Pitch exposing
-    ( Pitch(..), from, mapDegree, wrapDegree, unwrapDegree, applyAccidental, unwrapAccidental
+    ( Pitch(..)
+    , from, wrapDegree, applyAccidental
+    , unwrapDegree, unwrapAccidental
+    , mapDegree, isInflected
     , pitchPosition, pitchPositions
     , PitchStandard(..), Register(..), frequency
     , Interval, intervals, intervalsFrom
-    , isInflected
     )
 
 {-| Pitch positions and derived intervals. Di is fixed at 84.
@@ -16,10 +18,25 @@ attractions and inflections.
 
 # Pitch
 
-@docs Pitch, from, mapDegree, wrapDegree, unwrapDegree, applyAccidental, unwrapAccidental
+@docs Pitch
 
 
-# Pitch Positions
+## Construct
+
+@docs from, wrapDegree, applyAccidental
+
+
+## Unwrap
+
+@docs unwrapDegree, unwrapAccidental
+
+
+## Misc
+
+@docs mapDegree, isInflected
+
+
+## Pitch Positions
 
 @docs pitchPosition, pitchPositions
 
@@ -44,6 +61,10 @@ import Byzantine.Scale exposing (Scale(..))
 type Pitch
     = Natural Degree
     | Inflected Accidental Degree
+
+
+
+-- CONSTRUCT
 
 
 from : Maybe Accidental -> Degree -> Pitch
@@ -72,6 +93,25 @@ wrapDegree currentPitch proposedMovementTo degree =
         Natural degree
 
 
+applyAccidental : Maybe Accidental -> Pitch -> Pitch
+applyAccidental maybeAccidental pitch =
+    case maybeAccidental of
+        Nothing ->
+            Natural (unwrapDegree pitch)
+
+        Just accidental ->
+            case pitch of
+                Natural degree ->
+                    Inflected accidental degree
+
+                Inflected _ degree ->
+                    Inflected accidental degree
+
+
+
+-- UNWRAP
+
+
 unwrapDegree : Pitch -> Degree
 unwrapDegree pitch =
     case pitch of
@@ -82,6 +122,23 @@ unwrapDegree pitch =
             degree
 
 
+unwrapAccidental : Pitch -> Maybe Accidental
+unwrapAccidental pitch =
+    case pitch of
+        Natural _ ->
+            Nothing
+
+        Inflected accidental _ ->
+            Just accidental
+
+
+
+-- MISC
+
+
+{-| TODO: I'm not sure this actually makes a lot of domain sense.
+Is this something we can get rid of?
+-}
 mapDegree : (Degree -> Degree) -> Pitch -> Pitch
 mapDegree f pitch =
     case pitch of
@@ -100,31 +157,6 @@ isInflected pitch =
 
         Inflected _ _ ->
             True
-
-
-unwrapAccidental : Pitch -> Maybe Accidental
-unwrapAccidental pitch =
-    case pitch of
-        Natural _ ->
-            Nothing
-
-        Inflected accidental _ ->
-            Just accidental
-
-
-applyAccidental : Maybe Accidental -> Pitch -> Pitch
-applyAccidental maybeAccidental pitch =
-    case maybeAccidental of
-        Nothing ->
-            Natural (unwrapDegree pitch)
-
-        Just accidental ->
-            case pitch of
-                Natural degree ->
-                    Inflected accidental degree
-
-                Inflected _ degree ->
-                    Inflected accidental degree
 
 
 
