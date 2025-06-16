@@ -15,11 +15,11 @@ degreeCanSupportAccidental : Scale -> Accidental -> Degree -> Bool
 degreeCanSupportAccidental scale accidental degree =
     let
         proposedPitchPosition =
-            Pitch.Inflected accidental degree
+            Pitch.from (Just accidental) degree
                 |> Pitch.pitchPosition scale
 
         naturalPosition degree_ =
-            Pitch.pitchPosition scale (Pitch.Natural degree_)
+            Pitch.pitchPosition scale (Pitch.natural degree_)
     in
     case accidentalInflectionDirection accidental of
         Up ->

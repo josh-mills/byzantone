@@ -53,7 +53,7 @@ ison pitchState =
             Nothing
 
         SelectingIson maybeDegree ->
-            Maybe.map Pitch.Natural maybeDegree
+            Maybe.map Pitch.natural maybeDegree
 
         Selected degree ->
-            Just (Pitch.Natural degree)
+            Just (Pitch.natural degree)

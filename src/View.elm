@@ -424,15 +424,18 @@ viewCurrentPitch pitch =
             Nothing ->
                 text "none"
 
-            Just (Pitch.Natural degree) ->
-                Degree.text degree
-
-            Just (Pitch.Inflected accidental degree) ->
+            Just pitch_ ->
                 span []
-                    [ Degree.text degree
-                    , text " ("
-                    , text (Accidental.toString accidental)
-                    , text ")"
+                    [ Degree.text (Pitch.unwrapDegree pitch_)
+                    , Html.Extra.viewMaybe
+                        (\accidental ->
+                            span []
+                                [ text " ("
+                                , text (Accidental.toString accidental)
+                                , text ")"
+                                ]
+                        )
+                        (Pitch.unwrapAccidental pitch_)
                     ]
         , viewIf (Maybe.isJust pitch) (clearButton (SelectPitch Nothing Nothing))
         ]

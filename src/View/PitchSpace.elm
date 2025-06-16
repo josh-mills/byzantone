@@ -178,18 +178,18 @@ calculateVisibleRange modeSettings pitchState =
                     currentPitch
 
                 else
-                    Pitch.Natural modeSettings.rangeStart
+                    Pitch.natural modeSettings.rangeStart
             , end =
                 if Degree.indexOf currentDegree > Degree.indexOf modeSettings.rangeEnd then
                     currentPitch
 
                 else
-                    Pitch.Natural modeSettings.rangeEnd
+                    Pitch.natural modeSettings.rangeEnd
             }
 
         Nothing ->
-            { start = Pitch.Natural modeSettings.rangeStart
-            , end = Pitch.Natural modeSettings.rangeEnd
+            { start = Pitch.natural modeSettings.rangeStart
+            , end = Pitch.natural modeSettings.rangeEnd
             }
 
 
@@ -535,7 +535,7 @@ viewPitch ({ layout, layoutData, modeSettings, scalingFactor } as params) ( pitc
             Attr.attributeIf (positionIsVisible positionWithinRange)
 
         isIson =
-            PitchState.ison params.pitchState == Just (Pitch.Natural degree)
+            PitchState.ison params.pitchState == Just (Pitch.natural degree)
     in
     li
         ([ Attr.id ("pitch-" ++ Degree.toString degree)

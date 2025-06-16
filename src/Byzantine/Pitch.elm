@@ -1,6 +1,6 @@
 module Byzantine.Pitch exposing
-    ( Pitch(..)
-    , from, wrapDegree, applyAccidental
+    ( Pitch
+    , natural, from, wrapDegree, applyAccidental
     , unwrapDegree, unwrapAccidental
     , mapDegree, isInflected
     , pitchPosition, pitchPositions
@@ -23,7 +23,7 @@ attractions and inflections.
 
 ## Construct
 
-@docs from, wrapDegree, applyAccidental
+@docs natural, from, wrapDegree, applyAccidental
 
 
 ## Unwrap
@@ -75,6 +75,13 @@ from maybeAccidental degree =
 
         Nothing ->
             Natural degree
+
+
+{-| Wrap a degree as a `Natural` pitch.
+-}
+natural : Degree -> Pitch
+natural degree =
+    Natural degree
 
 
 {-| Wrap a degree as a Natural pitch, unless the current pitch or proposed
