@@ -60,10 +60,10 @@ applyAccidental : Maybe Accidental -> Movement -> Movement
 applyAccidental accidental movement =
     case movement of
         AscendTo pitch ->
-            AscendTo (Pitch.from accidental (Pitch.unwrapDegree pitch))
+            AscendTo (Pitch.applyAccidental accidental pitch)
 
         DescendTo pitch ->
-            DescendTo (Pitch.from accidental (Pitch.unwrapDegree pitch))
+            DescendTo (Pitch.applyAccidental accidental pitch)
 
         None ->
             None

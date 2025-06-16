@@ -6,7 +6,6 @@ import Byzantine.Accidental as Accidental exposing (Accidental)
 import Byzantine.Degree as Degree exposing (Degree(..))
 import Byzantine.Pitch as Pitch exposing (Pitch, PitchStandard, Register)
 import Byzantine.Scale exposing (Scale)
-import Byzantine.Utils exposing (degreeCanSupportAccidental)
 import Maybe.Extra as Maybe
 import Model exposing (Modal, Model)
 import Model.AudioSettings exposing (AudioSettings)
@@ -114,57 +113,27 @@ update msg model =
 
         SelectProposedMovement movement ->
             let
-                stepToPitch step degree =
-                    Degree.step degree step
-                        |> Maybe.map Pitch.Natural
-
-                areInverted lowerPitch higherPitch =
-                    pitchPosition lowerPitch >= pitchPosition higherPitch
-
-                pitchPosition =
-                    Pitch.pitchPosition model.modeSettings.scale
-
-                validatedMovement =
-                    -- TODO: can this be implemented with the new util function?
-                    case movement of
-                        Movement.AscendTo ((Pitch.Inflected _ degree) as movementToPitch) ->
-                            let
-                                wouldBeInverted =
-                                    Maybe.unwrap True
-                                        (\stepHigherPitch ->
-                                            areInverted movementToPitch stepHigherPitch
-                                        )
-                                        (stepToPitch 1 degree)
-                            in
-                            if wouldBeInverted then
-                                Movement.AscendTo (Pitch.Natural degree)
-
-                            else
-                                movement
-
-                        Movement.DescendTo ((Pitch.Inflected _ degree) as movementToPitch) ->
-                            let
-                                wouldBeInverted =
-                                    Maybe.unwrap True
-                                        (\stepLowerPitch ->
-                                            areInverted stepLowerPitch movementToPitch
-                                        )
-                                        (stepToPitch -1 degree)
-                            in
-                            if wouldBeInverted then
-                                Movement.DescendTo (Pitch.Natural degree)
-
-                            else
-                                movement
-
-                        _ ->
-                            movement
+                -- TODO: still needs some more validation I think
+                movementWithProposedAccidental =
+                    Movement.applyAccidental model.pitchState.proposedAccidental movement
             in
             ( updatePitchState
                 (\pitchState ->
                     { pitchState
                         | proposedMovement =
-                            validatedMovement
+                            Maybe.unwrap Movement.None
+                                (\currentPitch ->
+                                    if
+                                        Movement.isValid model.modeSettings.scale
+                                            currentPitch
+                                            movementWithProposedAccidental
+                                    then
+                                        movementWithProposedAccidental
+
+                                    else
+                                        movement
+                                )
+                                model.pitchState.currentPitch
                     }
                 )
                 model

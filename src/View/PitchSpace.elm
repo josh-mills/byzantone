@@ -11,7 +11,6 @@ import Byzantine.Degree as Degree exposing (Degree)
 import Byzantine.IntervalCharacter as IntervalCharacter
 import Byzantine.Martyria as Martyria
 import Byzantine.Pitch as Pitch exposing (Interval, Pitch)
-import Byzantine.Utils
 import Html exposing (Html, button, div, li, span, text)
 import Html.Attributes as Attr exposing (class, classList)
 import Html.Attributes.Extra as Attr
@@ -587,7 +586,7 @@ pitchButton ({ layout, modeSettings, pitchState } as params) ({ pitch } as pitch
         degreeCanSupportProposedAccidental =
             Maybe.map
                 (\accidental ->
-                    Byzantine.Utils.degreeCanSupportAccidental
+                    Pitch.degreeCanSupportAccidental
                         params.modeSettings.scale
                         accidental
                         (Pitch.unwrapDegree pitch)
