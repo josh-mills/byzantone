@@ -113,9 +113,11 @@ update msg model =
 
         SelectProposedMovement movement ->
             let
-                -- TODO: still needs some more validation I think
                 movementWithProposedAccidental =
-                    Movement.applyAccidental model.pitchState.proposedAccidental movement
+                    Movement.applyAccidental
+                        model.modeSettings.scale
+                        model.pitchState.proposedAccidental
+                        movement
             in
             ( updatePitchState
                 (\pitchState ->
@@ -464,7 +466,13 @@ setAndFocus model degree =
             updatePitchState
                 (\pitchState ->
                     { pitchState
-                        | currentPitch = Just (Pitch.from pitchState.proposedAccidental degree)
+                        | currentPitch =
+                            Just
+                                (Pitch.from
+                                    model.modeSettings.scale
+                                    pitchState.proposedAccidental
+                                    degree
+                                )
                         , proposedAccidental = Nothing
                     }
                 )

@@ -296,9 +296,6 @@ viewInterval { layout, layoutData, pitchState, scalingFactor } ( interval, posit
         movement =
             Movement.ofInterval pitchState.currentPitch interval
 
-        proposedMovementWithAccidental =
-            Movement.applyAccidental pitchState.proposedAccidental movement
-
         moria =
             span [ class "text-gray-600" ]
                 [ text (String.fromInt interval.moria)
@@ -314,8 +311,8 @@ viewInterval { layout, layoutData, pitchState, scalingFactor } ( interval, posit
                   )
                 , ( "hover:bg-slate-200", Maybe.isJust pitchState.currentPitch )
                 ]
-            , onFocus (SelectProposedMovement proposedMovementWithAccidental)
-            , onMouseEnter (SelectProposedMovement proposedMovementWithAccidental)
+            , onFocus (SelectProposedMovement movement)
+            , onMouseEnter (SelectProposedMovement movement)
             ]
     in
     li
@@ -586,7 +583,7 @@ pitchButton ({ layout, modeSettings, pitchState } as params) ({ pitch } as pitch
         degreeCanSupportProposedAccidental =
             Maybe.map
                 (\accidental ->
-                    Pitch.degreeCanSupportAccidental
+                    Pitch.isValid
                         params.modeSettings.scale
                         accidental
                         (Pitch.unwrapDegree pitch)
@@ -595,7 +592,7 @@ pitchButton ({ layout, modeSettings, pitchState } as params) ({ pitch } as pitch
 
         proposedPitch =
             if Maybe.withDefault False degreeCanSupportProposedAccidental then
-                Pitch.applyAccidental pitchState.proposedAccidental pitch
+                Pitch.applyAccidental modeSettings.scale pitchState.proposedAccidental pitch
 
             else
                 pitch
@@ -611,7 +608,7 @@ pitchButton ({ layout, modeSettings, pitchState } as params) ({ pitch } as pitch
 
             else if isCurrentDegree then
                 if isCurrentPitch && Pitch.isInflected proposedPitch then
-                    SelectPitch (Just (Pitch.applyAccidental Nothing pitch)) Nothing
+                    SelectPitch (Just (Pitch.applyAccidental modeSettings.scale Nothing pitch)) Nothing
 
                 else if not isCurrentPitch && Pitch.isInflected proposedPitch then
                     SelectPitch (Just proposedPitch) Nothing

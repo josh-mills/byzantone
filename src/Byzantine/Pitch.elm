@@ -1,12 +1,11 @@
 module Byzantine.Pitch exposing
     ( Pitch
-    , natural, from, wrapDegree, applyAccidental
+    , natural, inflected, from, wrapDegree, applyAccidental
     , unwrapDegree, unwrapAccidental
-    , mapDegree, isInflected
+    , isInflected, isValid, mapDegree
     , pitchPosition, pitchPositions
     , PitchStandard(..), Register(..), frequency
     , Interval, intervals, intervalsFrom
-    , degreeCanSupportAccidental, inflected
     )
 
 {-| Pitch positions and derived intervals. Di is fixed at 84.
@@ -24,7 +23,7 @@ attractions and inflections.
 
 ## Construct
 
-@docs natural, from, wrapDegree, applyAccidental
+@docs natural, inflected, from, wrapDegree, applyAccidental
 
 
 ## Unwrap
@@ -34,7 +33,7 @@ attractions and inflections.
 
 ## Misc
 
-@docs mapDegree, isInflected
+@docs isInflected, isValid, mapDegree
 
 
 ## Pitch Positions
@@ -56,7 +55,7 @@ attractions and inflections.
 import Array exposing (Array)
 import Byzantine.Accidental as Accidental exposing (Accidental)
 import Byzantine.Degree as Degree exposing (Degree)
-import Byzantine.Scale exposing (Scale(..))
+import Byzantine.Scale as Scale exposing (Scale(..))
 import Maybe.Extra
 import Result exposing (Result)
 
@@ -70,11 +69,18 @@ type Pitch
 -- CONSTRUCT
 
 
-from : Maybe Accidental -> Degree -> Pitch
-from maybeAccidental degree =
+{-| Construct a `Pitch`, which _may_ be inflected. If the degree cannot support
+the accidental within the scale, this will default to a natural pitch.
+-}
+from : Scale -> Maybe Accidental -> Degree -> Pitch
+from scale maybeAccidental degree =
     case maybeAccidental of
         Just accidental ->
-            Inflected accidental degree
+            if isValid scale accidental degree then
+                Inflected accidental degree
+
+            else
+                Natural degree
 
         Nothing ->
             Natural degree
@@ -88,17 +94,21 @@ natural degree =
 
 
 {-| Wrap a degree as an `Inflected` pitch.
-
-TODO: add validation.
-
 -}
 inflected : Scale -> Accidental -> Degree -> Result String Pitch
 inflected scale accidental degree =
-    if degreeCanSupportAccidental scale accidental degree then
+    if isValid scale accidental degree then
         Ok (Inflected accidental degree)
 
     else
-        Err "nope"
+        Err
+            (Scale.name scale
+                ++ " "
+                ++ Degree.toString degree
+                ++ " cannot support a "
+                ++ Accidental.toString accidental
+                ++ " accidental."
+            )
 
 
 {-| Wrap a degree as a Natural pitch, unless the current pitch or proposed
@@ -117,19 +127,26 @@ wrapDegree currentPitch proposedMovementTo degree =
         Natural degree
 
 
-applyAccidental : Maybe Accidental -> Pitch -> Pitch
-applyAccidental maybeAccidental pitch =
+{-| Apply the accidental to the given pitch. This will evaluate to Natural
+if the accidental is not valid for that degree within the given scale, or if
+it is `Nothing`.
+-}
+applyAccidental : Scale -> Maybe Accidental -> Pitch -> Pitch
+applyAccidental scale maybeAccidental pitch =
+    let
+        degree =
+            unwrapDegree pitch
+    in
     case maybeAccidental of
         Nothing ->
-            Natural (unwrapDegree pitch)
+            Natural degree
 
         Just accidental ->
-            case pitch of
-                Natural degree ->
-                    Inflected accidental degree
+            if isValid scale accidental degree then
+                Inflected accidental degree
 
-                Inflected _ degree ->
-                    Inflected accidental degree
+            else
+                Natural degree
 
 
 
@@ -139,13 +156,9 @@ applyAccidental maybeAccidental pitch =
 {-| Given the scale, does it make sense for the proposed accidental be applied
 to the given degree? An inflected pitch cannot be at or beyond the pitch
 position of the next degree in the direction of inflection.
-
-TODO: can we move this to the Pitch module and bake into the `applyAccidental`
-logic? Maybe even make `Pitch` opaque?
-
 -}
-degreeCanSupportAccidental : Scale -> Accidental -> Degree -> Bool
-degreeCanSupportAccidental scale accidental degree =
+isValid : Scale -> Accidental -> Degree -> Bool
+isValid scale accidental degree =
     let
         proposedPitchPosition =
             Inflected accidental degree
