@@ -1,4 +1,4 @@
-module Movement exposing (Movement(..), applyAccidental, isValid, ofInterval, toPitch)
+module Movement exposing (Movement(..), applyAccidental, isValid, ofInterval, unwrapTargetPitch)
 
 {-| A representation of motion within intervallic space. This is more a
 presentational concern rather than a theoretical concept within the system, so,
@@ -48,8 +48,8 @@ ofInterval fromPitch interval =
                 None
 
 
-toPitch : Movement -> Maybe Pitch
-toPitch movement_ =
+unwrapTargetPitch : Movement -> Maybe Pitch
+unwrapTargetPitch movement_ =
     case movement_ of
         AscendTo pitch ->
             Just pitch

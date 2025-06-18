@@ -2,10 +2,10 @@ module Byzantine.Pitch exposing
     ( Pitch
     , natural, inflected, from, wrapDegree, applyAccidental
     , unwrapDegree, unwrapAccidental
-    , isInflected, isValid, mapDegree
+    , isInflected, isValidInflection
     , pitchPosition, pitchPositions
     , PitchStandard(..), Register(..), frequency
-    , Interval, intervals, intervalsFrom
+    , Interval, intervals, intervalsFrom, getInterval
     )
 
 {-| Pitch positions and derived intervals. Di is fixed at 84.
@@ -33,7 +33,7 @@ attractions and inflections.
 
 ## Misc
 
-@docs isInflected, isValid, mapDegree
+@docs isInflected, isValidInflection
 
 
 ## Pitch Positions
@@ -48,7 +48,7 @@ attractions and inflections.
 
 # Intervals
 
-@docs Interval, intervals, intervalsFrom
+@docs Interval, intervals, intervalsFrom, getInterval
 
 -}
 
@@ -76,7 +76,7 @@ from : Scale -> Maybe Accidental -> Degree -> Pitch
 from scale maybeAccidental degree =
     case maybeAccidental of
         Just accidental ->
-            if isValid scale accidental degree then
+            if isValidInflection scale accidental degree then
                 Inflected accidental degree
 
             else
@@ -97,7 +97,7 @@ natural degree =
 -}
 inflected : Scale -> Accidental -> Degree -> Result String Pitch
 inflected scale accidental degree =
-    if isValid scale accidental degree then
+    if isValidInflection scale accidental degree then
         Ok (Inflected accidental degree)
 
     else
@@ -142,7 +142,7 @@ applyAccidental scale maybeAccidental pitch =
             Natural degree
 
         Just accidental ->
-            if isValid scale accidental degree then
+            if isValidInflection scale accidental degree then
                 Inflected accidental degree
 
             else
@@ -157,8 +157,8 @@ applyAccidental scale maybeAccidental pitch =
 to the given degree? An inflected pitch cannot be at or beyond the pitch
 position of the next degree in the direction of inflection.
 -}
-isValid : Scale -> Accidental -> Degree -> Bool
-isValid scale accidental degree =
+isValidInflection : Scale -> Accidental -> Degree -> Bool
+isValidInflection scale accidental degree =
     let
         proposedPitchPosition =
             Inflected accidental degree
@@ -226,19 +226,6 @@ unwrapAccidental pitch =
 -- MISC
 
 
-{-| TODO: I'm not sure this actually makes a lot of domain sense.
-Is this something we can get rid of?
--}
-mapDegree : (Degree -> Degree) -> Pitch -> Pitch
-mapDegree f pitch =
-    case pitch of
-        Natural degree ->
-            Natural (f degree)
-
-        Inflected accidental degree ->
-            Inflected accidental (f degree)
-
-
 isInflected : Pitch -> Bool
 isInflected pitch =
     case pitch of
@@ -268,7 +255,7 @@ pitchPosition scale pitch =
                     ( degree_, identity )
 
                 Inflected accidental degree_ ->
-                    ( degree_, (+) <| Accidental.moriaAdjustment accidental )
+                    ( degree_, (+) (Accidental.moriaAdjustment accidental) )
     in
     pitchPositions scale
         |> Array.get (Degree.indexOf degree)
@@ -303,6 +290,11 @@ enharmonicPitchPositions =
     Array.fromList [ 0, 12, 24, 30, 42, 54, 66, 72, 84, 96, 102, 114, 126, 138, 144 ]
 
 
+{-| Michael Tsiappoutas gives slightly different positions for this: he shows 7
+for the smaller steps rather than 8. It may be worth exploring this and
+providing this as an option, if this is a standard tradition to reflect in the
+app.
+-}
 softChromaticPitchPositions : Array Int
 softChromaticPitchPositions =
     Array.fromList [ 0, 8, 22, 30, 42, 50, 64, 72, 84, 92, 106, 114, 126, 134, 148 ]

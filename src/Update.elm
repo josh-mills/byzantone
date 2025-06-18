@@ -430,25 +430,27 @@ updatePitchState f model =
 moveAndFocus : Model -> Int -> ( Model, Cmd Msg )
 moveAndFocus model interval =
     let
-        -- TODO: this needs to account for possible accidentals
         pitch =
-            Maybe.map
-                (Pitch.mapDegree
-                    (\degree ->
-                        Degree.step degree interval |> Maybe.withDefault degree
-                    )
-                )
-                model.pitchState.currentPitch
+            model.pitchState.currentPitch
+                |> Maybe.map Pitch.unwrapDegree
+                |> Maybe.andThen (\degree -> Degree.step degree interval)
+                |> Maybe.map (Pitch.from model.modeSettings.scale model.pitchState.proposedAccidental)
     in
     ( updatePitchState
-        (\pitchState -> { pitchState | currentPitch = pitch })
+        (\pitchState ->
+            { pitchState
+                | currentPitch = pitch
+                , proposedAccidental = Nothing
+            }
+        )
         model
     , Maybe.unwrap Cmd.none
-        (Pitch.unwrapDegree
-            >> Degree.toString
-            >> (++) "p_"
-            >> Dom.focus
-            >> Task.attempt DomResult
+        (\pitch_ ->
+            Pitch.unwrapDegree pitch_
+                |> Degree.toString
+                |> (++) "p_"
+                |> Dom.focus
+                |> Task.attempt DomResult
         )
         pitch
     )

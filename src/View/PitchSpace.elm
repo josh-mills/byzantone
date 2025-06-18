@@ -272,7 +272,7 @@ intervalsWithVisibility params =
         )
         (Pitch.intervals params.modeSettings.scale
             params.pitchState.currentPitch
-            (Movement.toPitch params.pitchState.proposedMovement)
+            (Movement.unwrapTargetPitch params.pitchState.proposedMovement)
         )
 
 
@@ -445,7 +445,7 @@ pitchesWithVisibility params =
     List.map
         (\degree ->
             ( Pitch.wrapDegree params.pitchState.currentPitch
-                (Movement.toPitch params.pitchState.proposedMovement)
+                (Movement.unwrapTargetPitch params.pitchState.proposedMovement)
                 degree
             , visibility (Degree.indexOf degree)
             )
@@ -466,7 +466,7 @@ viewPitch ({ layout, layoutData, modeSettings, scalingFactor } as params) ( pitc
         inflectedPitchPosition : Degree -> Int
         inflectedPitchPosition =
             Pitch.wrapDegree params.pitchState.currentPitch
-                (Movement.toPitch params.pitchState.proposedMovement)
+                (Movement.unwrapTargetPitch params.pitchState.proposedMovement)
                 >> Pitch.pitchPosition modeSettings.scale
 
         pitchPositionAbove : Maybe Int
@@ -583,23 +583,23 @@ pitchButton ({ layout, modeSettings, pitchState } as params) ({ pitch } as pitch
         degreeCanSupportProposedAccidental =
             Maybe.map
                 (\accidental ->
-                    Pitch.isValid
+                    Pitch.isValidInflection
                         params.modeSettings.scale
                         accidental
                         (Pitch.unwrapDegree pitch)
                 )
                 pitchState.proposedAccidental
+                |> Maybe.withDefault False
 
         proposedPitch =
-            if Maybe.withDefault False degreeCanSupportProposedAccidental then
+            if degreeCanSupportProposedAccidental then
                 Pitch.applyAccidental modeSettings.scale pitchState.proposedAccidental pitch
 
             else
                 pitch
 
         shouldHighlight =
-            canBeSelectedAsIson
-                || Maybe.withDefault False degreeCanSupportProposedAccidental
+            canBeSelectedAsIson || degreeCanSupportProposedAccidental
     in
     button
         [ onClick <|
@@ -630,7 +630,7 @@ pitchButton ({ layout, modeSettings, pitchState } as params) ({ pitch } as pitch
         , classList
             [ ( "bg-red-200 z-10", isCurrentPitch )
             , ( "hover:text-green-700 bg-slate-200 hover:bg-slate-300 opacity-75 hover:opacity-90", not isCurrentPitch )
-            , ( "text-green-700 bg-slate-300 z-10", Movement.toPitch pitchState.proposedMovement == Just pitch )
+            , ( "text-green-700 bg-slate-300 z-10", Movement.unwrapTargetPitch pitchState.proposedMovement == Just pitch )
             , ( "border-2 border-blue-700", shouldHighlight )
             , ( "border-2 border-transparent", not shouldHighlight )
             ]
