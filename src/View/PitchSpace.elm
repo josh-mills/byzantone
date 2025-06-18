@@ -590,6 +590,23 @@ pitchButton ({ layout, modeSettings, pitchState } as params) ({ pitch } as pitch
                 )
                 pitchState.proposedAccidental
                 |> Maybe.withDefault False
+                |> (&&) movementWouldBeValid
+
+        movementWouldBeValid =
+            pitchState.proposedAccidental
+                |> Maybe.andThen
+                    (\accidental ->
+                        Pitch.inflected modeSettings.scale
+                            accidental
+                            (Pitch.unwrapDegree pitch)
+                            |> Result.toMaybe
+                    )
+                |> Maybe.map2
+                    (Pitch.getInterval modeSettings.scale)
+                    pitchState.currentPitch
+                |> Maybe.map (Movement.ofInterval pitchState.currentPitch)
+                |> Maybe.map2 (Movement.isValid modeSettings.scale) pitchState.currentPitch
+                |> Maybe.withDefault True
 
         proposedPitch =
             if degreeCanSupportProposedAccidental then
