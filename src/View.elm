@@ -14,6 +14,7 @@ import Html.Attributes as Attr exposing (class, classList, id, type_)
 import Html.Attributes.Extra as Attr
 import Html.Events exposing (onClick, onInput)
 import Html.Extra exposing (viewIf)
+import Html.Lazy
 import Icons
 import Json.Decode exposing (Decoder)
 import List.Extra as List
@@ -43,7 +44,11 @@ view : Model -> Html Msg
 view model =
     div
         [ class "p-4" ]
-        [ audio model
+        [ Html.Lazy.lazy4 chantEngineNode
+            model.audioSettings
+            model.modeSettings.scale
+            model.pitchState.currentPitch
+            (PitchState.ison model.pitchState)
         , backdrop model
         , header model
         , viewModal model
@@ -86,26 +91,26 @@ backdrop model =
         []
 
 
-audio : Model -> Html msg
-audio model =
+chantEngineNode : AudioSettings -> Scale -> Maybe Pitch -> Maybe Pitch -> Html msg
+chantEngineNode audioSettings scale currentPitch currentIson =
     let
         frequency pitch =
-            Pitch.frequency model.audioSettings.pitchStandard
-                model.audioSettings.register
-                model.modeSettings.scale
+            Pitch.frequency audioSettings.pitchStandard
+                audioSettings.register
+                scale
                 pitch
                 |> String.fromFloat
     in
     Html.node "chant-engine"
-        [ model.audioSettings.gain
+        [ audioSettings.gain
             |> String.fromFloat
             |> Attr.attribute "gain"
         , Maybe.unwrap Attr.empty
             (Attr.attribute "melos" << frequency)
-            model.pitchState.currentPitch
+            currentPitch
         , Maybe.unwrap Attr.empty
             (Attr.attribute "ison" << frequency)
-            (PitchState.ison model.pitchState)
+            currentIson
         ]
         []
 
