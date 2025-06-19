@@ -1,10 +1,12 @@
 module View exposing (view)
 
+import Byzantine.Accidental as Accidental exposing (Accidental)
+import Byzantine.ByzHtml.Accidental as Accidental
 import Byzantine.ByzHtml.Martyria as Martyria
 import Byzantine.Degree as Degree exposing (Degree(..))
 import Byzantine.IntervalCharacter exposing (..)
 import Byzantine.Martyria as Martyria
-import Byzantine.Pitch as Pitch exposing (PitchStandard(..), Register(..))
+import Byzantine.Pitch as Pitch exposing (Pitch, PitchStandard(..), Register(..))
 import Byzantine.Scale as Scale exposing (Scale(..))
 import Copy
 import Html exposing (Html, button, datalist, div, h1, h2, input, main_, p, span, text)
@@ -87,11 +89,11 @@ backdrop model =
 audio : Model -> Html msg
 audio model =
     let
-        frequency degree =
+        frequency pitch =
             Pitch.frequency model.audioSettings.pitchStandard
                 model.audioSettings.register
                 model.modeSettings.scale
-                degree
+                pitch
                 |> String.fromFloat
     in
     Html.node "chant-engine"
@@ -340,6 +342,7 @@ viewControls model =
         , isonButton model.pitchState
         , viewIson (PitchState.ison model.pitchState)
         , viewCurrentPitch model.pitchState.currentPitch
+        , viewAccidentalButtons model.pitchState.proposedAccidental
         , gainInput model.audioSettings
         ]
 
@@ -362,14 +365,17 @@ isonButton pitchState =
                         PitchState.NoIson
 
                     PitchState.Selected _ ->
-                        PitchState.SelectingIson (PitchState.ison pitchState)
+                        PitchState.SelectingIson
+                            (PitchState.ison pitchState
+                                |> Maybe.map Pitch.unwrapDegree
+                            )
                 )
             )
         ]
         [ text "Select Ison" ]
 
 
-viewIson : Maybe Degree -> Html Msg
+viewIson : Maybe Pitch -> Html Msg
 viewIson pitch =
     div [ class "mt-2" ]
         [ text <| "Current Ison: "
@@ -378,7 +384,7 @@ viewIson pitch =
                 text "none"
 
             Just p ->
-                Degree.text p
+                Degree.text (Pitch.unwrapDegree p)
         , viewIf (Maybe.isJust pitch) (clearButton (SetIson PitchState.NoIson))
         ]
 
@@ -410,7 +416,7 @@ selectScale model =
         }
 
 
-viewCurrentPitch : Maybe Degree -> Html Msg
+viewCurrentPitch : Maybe Pitch -> Html Msg
 viewCurrentPitch pitch =
     div [ class "mt-2" ]
         [ text <| "Current Pitch: "
@@ -418,10 +424,57 @@ viewCurrentPitch pitch =
             Nothing ->
                 text "none"
 
-            Just p ->
-                Degree.text p
+            Just pitch_ ->
+                span []
+                    [ Degree.text (Pitch.unwrapDegree pitch_)
+                    , Html.Extra.viewMaybe
+                        (\accidental ->
+                            span []
+                                [ text " ("
+                                , text (Accidental.toString accidental)
+                                , text ")"
+                                ]
+                        )
+                        (Pitch.unwrapAccidental pitch_)
+                    ]
         , viewIf (Maybe.isJust pitch) (clearButton (SelectPitch Nothing Nothing))
         ]
+
+
+viewAccidentalButtons : Maybe Accidental -> Html Msg
+viewAccidentalButtons maybeAccidental =
+    Html.fieldset
+        [ Styles.borderRounded
+        , class "px-2 pb-1 mb-2"
+        , class "flex flex-row flex-wrap gap-2 mt-2"
+        ]
+        (Html.legend [ class "px-1" ] [ Html.text "Accidental" ]
+            :: List.map (viewAccidentalButton maybeAccidental) Accidental.all
+        )
+
+
+viewAccidentalButton : Maybe Accidental -> Accidental -> Html Msg
+viewAccidentalButton proposedAccidental accidental =
+    let
+        isCurrent =
+            proposedAccidental == Just accidental
+    in
+    button
+        [ Styles.buttonClass
+        , class "text-3xl min-w-12"
+        , classList
+            [ ( "text-blue-700 border-2 border-blue-700", isCurrent )
+            , ( "border-2 border-transparent", not isCurrent )
+            ]
+        , onClick
+            (if isCurrent then
+                SelectProposedAccidental Nothing
+
+             else
+                SelectProposedAccidental (Just accidental)
+            )
+        ]
+        [ Accidental.view Accidental.InheritColor accidental ]
 
 
 clearButton : Msg -> Html Msg

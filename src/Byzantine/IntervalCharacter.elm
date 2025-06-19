@@ -2,6 +2,7 @@ module Byzantine.IntervalCharacter exposing
     ( IntervalCharacter(..), allIntervals, basicInterval
     , AscendingChar(..), SomaChar(..), SkipType(..), ascendingStepsString
     , DescendingChar(..), DescendingSteps(..), descendingStepsString
+    , applyAccidental
     )
 
 {-| Modeling of intervals.
@@ -21,14 +22,22 @@ module Byzantine.IntervalCharacter exposing
 
 @docs DescendingChar, DescendingSteps, descendingStepsString
 
+
+# Accidentals
+
+@docs applyAccidental
+
 -}
+
+import Basics.Extra exposing (flip)
+import Byzantine.Accidental exposing (Accidental)
 
 
 {-| An interval be be either ascending, descending, or unison (ἴσον).
 -}
 type IntervalCharacter
-    = Ascending AscendingChar
-    | Descending DescendingSteps
+    = Ascending AscendingChar (Maybe Accidental)
+    | Descending DescendingSteps (Maybe Accidental)
     | Ison
 
 
@@ -36,8 +45,8 @@ allIntervals : List IntervalCharacter
 allIntervals =
     List.concat
         [ [ Ison ]
-        , List.map Ascending allAscendingChars
-        , List.map Descending allDescendingSteps
+        , List.map (flip Ascending Nothing) allAscendingChars
+        , List.map (flip Descending Nothing) allDescendingSteps
         ]
 
 
@@ -215,7 +224,7 @@ descendingStepsString steps =
 
 
 {-| Basic interval character for the given int. Ascending intervals are based on
-the oligon.
+the oligon. No accidentals.
 -}
 basicInterval : Int -> Maybe IntervalCharacter
 basicInterval int =
@@ -224,78 +233,93 @@ basicInterval int =
             Just Ison
 
         1 ->
-            Just (Ascending (SomaStep Oligon))
+            Just (Ascending (SomaStep Oligon) Nothing)
 
         2 ->
-            Just (Ascending (Skip OligonKentimaRight))
+            Just (Ascending (Skip OligonKentimaRight) Nothing)
 
         3 ->
-            Just (Ascending (Leap Oligon UpThree))
+            Just (Ascending (Leap Oligon UpThree) Nothing)
 
         4 ->
-            Just (Ascending (Leap Oligon UpFour))
+            Just (Ascending (Leap Oligon UpFour) Nothing)
 
         5 ->
-            Just (Ascending (Leap Oligon UpFive))
+            Just (Ascending (Leap Oligon UpFive) Nothing)
 
         6 ->
-            Just (Ascending (Leap Oligon UpSix))
+            Just (Ascending (Leap Oligon UpSix) Nothing)
 
         7 ->
-            Just (Ascending (Leap Oligon UpSeven))
+            Just (Ascending (Leap Oligon UpSeven) Nothing)
 
         8 ->
-            Just (Ascending (Leap Oligon UpEight))
+            Just (Ascending (Leap Oligon UpEight) Nothing)
 
         9 ->
-            Just (Ascending (Leap Oligon UpNine))
+            Just (Ascending (Leap Oligon UpNine) Nothing)
 
         10 ->
-            Just (Ascending (Leap Oligon UpTen))
+            Just (Ascending (Leap Oligon UpTen) Nothing)
 
         11 ->
-            Just (Ascending (Leap Oligon UpEleven))
+            Just (Ascending (Leap Oligon UpEleven) Nothing)
 
         12 ->
-            Just (Ascending (Leap Oligon UpTwelve))
+            Just (Ascending (Leap Oligon UpTwelve) Nothing)
 
         other ->
             case negate other of
                 1 ->
-                    Just (Descending DownOne)
+                    Just (Descending DownOne Nothing)
 
                 2 ->
-                    Just (Descending DownTwo)
+                    Just (Descending DownTwo Nothing)
 
                 3 ->
-                    Just (Descending DownThree)
+                    Just (Descending DownThree Nothing)
 
                 4 ->
-                    Just (Descending DownFour)
+                    Just (Descending DownFour Nothing)
 
                 5 ->
-                    Just (Descending DownFive)
+                    Just (Descending DownFive Nothing)
 
                 6 ->
-                    Just (Descending DownSix)
+                    Just (Descending DownSix Nothing)
 
                 7 ->
-                    Just (Descending DownSeven)
+                    Just (Descending DownSeven Nothing)
 
                 8 ->
-                    Just (Descending DownEight)
+                    Just (Descending DownEight Nothing)
 
                 9 ->
-                    Just (Descending DownNine)
+                    Just (Descending DownNine Nothing)
 
                 10 ->
-                    Just (Descending DownTen)
+                    Just (Descending DownTen Nothing)
 
                 11 ->
-                    Just (Descending DownEleven)
+                    Just (Descending DownEleven Nothing)
 
                 12 ->
-                    Just (Descending DownTwelve)
+                    Just (Descending DownTwelve Nothing)
 
                 _ ->
                     Nothing
+
+
+{-| Add an accidental to an interval character.
+-}
+applyAccidental : Maybe Accidental -> IntervalCharacter -> IntervalCharacter
+applyAccidental maybeAccidental intervalCharacter =
+    case intervalCharacter of
+        Ascending ascendingChar _ ->
+            Ascending ascendingChar maybeAccidental
+
+        Descending descendingChar _ ->
+            Descending descendingChar maybeAccidental
+
+        Ison ->
+            Ison

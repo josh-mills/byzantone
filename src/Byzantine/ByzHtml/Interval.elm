@@ -1,51 +1,67 @@
 module Byzantine.ByzHtml.Interval exposing (view)
 
+import Byzantine.Accidental as Accidental
+import Byzantine.ByzHtml.Accidental as Accidental
 import Byzantine.IntervalCharacter exposing (..)
 import Html exposing (Html, node)
+import Html.Attributes exposing (class)
+import Html.Extra
 
 
+{-| We're making this decently opinionated rather than atomic.
+We may need to step back and make this simpler.
+-}
 view : IntervalCharacter -> Html msg
 view interval =
     case interval of
-        Ascending ascendingChar ->
+        Ascending ascendingChar maybeAccidental ->
             case ascendingChar of
                 SomaStep Oligon ->
-                    node "x-o1" [] []
+                    note "x-o1" maybeAccidental
 
                 SomaStep Petasti ->
-                    node "x-p" [] []
+                    note "x-p" maybeAccidental
 
                 Kentimata ->
-                    node "x-k" [] []
+                    note "x-k" maybeAccidental
 
                 Skip OligonKentimaBelow ->
-                    node "x-o2" [] []
+                    note "x-o2" maybeAccidental
 
                 Skip OligonKentimaRight ->
-                    node "x-o2-m" [] []
+                    note "x-o2-m" maybeAccidental
 
                 Skip PetastiOligon ->
-                    node "x-p2" [] []
+                    note "x-p2" maybeAccidental
 
                 Leap Oligon steps ->
-                    node ("x-o" ++ ascendingStepsString steps) [] []
+                    note ("x-o" ++ ascendingStepsString steps) maybeAccidental
 
                 Leap Petasti steps ->
-                    node ("x-p" ++ ascendingStepsString steps) [] []
+                    note ("x-p" ++ ascendingStepsString steps) maybeAccidental
 
-        Descending steps ->
+        Descending steps maybeAccidental ->
             case steps of
                 DownOne ->
-                    node "x-a" [] []
+                    note "x-a" maybeAccidental
 
                 DownTwo ->
-                    node "x-e" [] []
+                    note "x-e" maybeAccidental
 
                 DownThree ->
-                    node "x-ea" [] []
+                    note "x-ea" maybeAccidental
 
                 downMore ->
-                    node ("x-ch" ++ descendingStepsString downMore) [] []
+                    note ("x-ch" ++ descendingStepsString downMore) maybeAccidental
 
         Ison ->
-            node "x-i" [] []
+            note "x-i" Nothing
+
+
+note : String -> Maybe Accidental.Accidental -> Html msg
+note intervalNeume maybeAccidental =
+    node "x-note"
+        [ class "lg:text-2xl" ]
+        [ node intervalNeume [] []
+        , Html.Extra.viewMaybe (Accidental.view Accidental.Red) maybeAccidental
+        ]
