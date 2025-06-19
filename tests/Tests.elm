@@ -1,10 +1,12 @@
 module Tests exposing (..)
 
 import Array
+import Byzantine.Accidental as Accidental exposing (Accidental(..))
 import Byzantine.Degree as Degree exposing (Degree(..))
 import Byzantine.Pitch as Pitch
 import Byzantine.Scale as Scale exposing (Scale(..))
 import Expect
+import List.Extra
 import Test exposing (Test, describe, test)
 
 
@@ -41,7 +43,7 @@ degreeTests =
                         (\degree ->
                             test (Scale.name scale ++ " pitch position for " ++ Degree.toString degree ++ " is not negative") <|
                                 \_ ->
-                                    Expect.greaterThan -1 (Pitch.pitchPosition scale degree)
+                                    Expect.greaterThan -1 (Pitch.pitchPosition scale (Pitch.natural degree))
                         )
                         gamutBuilder
                 )
@@ -102,5 +104,60 @@ gamutBuilder =
 
                 Just Ga_ ->
                     degrees
+    in
+    next [] |> List.reverse
+
+
+accidentalTests : Test
+accidentalTests =
+    describe "Accidental Tests"
+        [ test "Accidental.all is complete and unique" <|
+            \_ ->
+                Expect.equalLists accidentalBuilder Accidental.all
+        , describe "accidentals in the Accidental.all function are in ascending order" <|
+            (Accidental.all
+                |> List.map Accidental.moriaAdjustment
+                |> List.Extra.uniquePairs
+                |> List.map
+                    (\( a, b ) ->
+                        test (String.fromInt a ++ " is less than " ++ String.fromInt b) <|
+                            \_ -> Expect.lessThan b a
+                    )
+            )
+        ]
+
+
+accidentalBuilder : List Accidental
+accidentalBuilder =
+    let
+        next : List Accidental -> List Accidental
+        next accidentals =
+            case List.head accidentals of
+                Nothing ->
+                    Flat8 :: accidentals |> next
+
+                Just Flat8 ->
+                    Flat6 :: accidentals |> next
+
+                Just Flat6 ->
+                    Flat4 :: accidentals |> next
+
+                Just Flat4 ->
+                    Flat2 :: accidentals |> next
+
+                Just Flat2 ->
+                    Sharp2 :: accidentals |> next
+
+                Just Sharp2 ->
+                    Sharp4 :: accidentals |> next
+
+                Just Sharp4 ->
+                    Sharp6 :: accidentals |> next
+
+                Just Sharp6 ->
+                    Sharp8 :: accidentals |> next
+
+                Just Sharp8 ->
+                    accidentals
     in
     next [] |> List.reverse

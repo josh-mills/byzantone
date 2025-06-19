@@ -2,8 +2,9 @@ module Update exposing (Msg(..), update)
 
 import Array
 import Browser.Dom as Dom
+import Byzantine.Accidental as Accidental exposing (Accidental)
 import Byzantine.Degree as Degree exposing (Degree(..))
-import Byzantine.Pitch exposing (PitchStandard, Register)
+import Byzantine.Pitch as Pitch exposing (Pitch, PitchStandard, Register)
 import Byzantine.Scale exposing (Scale)
 import Maybe.Extra as Maybe
 import Model exposing (Modal, Model)
@@ -24,7 +25,8 @@ type Msg
     | Keydown String
     | NoOp
     | SelectModal Modal
-    | SelectPitch (Maybe Degree) (Maybe Movement)
+    | SelectPitch (Maybe Pitch) (Maybe Movement)
+    | SelectProposedAccidental (Maybe Accidental)
     | SelectProposedMovement Movement
     | SetGain Float
     | SetIson IsonStatus
@@ -84,13 +86,14 @@ update msg model =
                 Cmd.none
             )
 
-        SelectPitch pitch maybeMovement ->
+        SelectPitch maybePitch maybeMovement ->
             ( updatePitchState
                 (\pitchState ->
                     { pitchState
-                        | currentPitch = pitch
+                        | currentPitch = maybePitch
+                        , proposedAccidental = Nothing
                         , proposedMovement =
-                            if Maybe.isJust pitch then
+                            if Maybe.isJust maybePitch then
                                 Maybe.withDefault model.pitchState.proposedMovement maybeMovement
 
                             else
@@ -101,9 +104,40 @@ update msg model =
             , Cmd.none
             )
 
-        SelectProposedMovement movement ->
+        SelectProposedAccidental maybeAccidental ->
             ( updatePitchState
-                (\pitchState -> { pitchState | proposedMovement = movement })
+                (\pitchState -> { pitchState | proposedAccidental = maybeAccidental })
+                model
+            , Cmd.none
+            )
+
+        SelectProposedMovement movement ->
+            let
+                movementWithProposedAccidental =
+                    Movement.applyAccidental
+                        model.modeSettings.scale
+                        model.pitchState.proposedAccidental
+                        movement
+            in
+            ( updatePitchState
+                (\pitchState ->
+                    { pitchState
+                        | proposedMovement =
+                            Maybe.unwrap Movement.None
+                                (\currentPitch ->
+                                    if
+                                        Movement.isValid model.modeSettings.scale
+                                            currentPitch
+                                            movementWithProposedAccidental
+                                    then
+                                        movementWithProposedAccidental
+
+                                    else
+                                        movement
+                                )
+                                model.pitchState.currentPitch
+                    }
+                )
                 model
             , Cmd.none
             )
@@ -196,40 +230,12 @@ update msg model =
             )
 
         Keydown key ->
-            let
-                moveAndFocus i =
-                    let
-                        degree =
-                            Maybe.map (\d -> Degree.step d i |> Maybe.withDefault d) model.pitchState.currentPitch
-                    in
-                    ( updatePitchState
-                        (\pitchState -> { pitchState | currentPitch = degree })
-                        model
-                    , Maybe.unwrap Cmd.none
-                        (Degree.toString >> (++) "p_" >> Dom.focus >> Task.attempt DomResult)
-                        degree
-                    )
-
-                setAndFocus degree =
-                    ( case model.pitchState.ison of
-                        PitchState.SelectingIson _ ->
-                            updatePitchState
-                                (\pitchState -> { pitchState | ison = PitchState.Selected degree })
-                                model
-
-                        _ ->
-                            updatePitchState
-                                (\pitchState -> { pitchState | currentPitch = Just degree })
-                                model
-                    , Degree.toString degree |> (++) "p_" |> Dom.focus |> Task.attempt DomResult
-                    )
-            in
             case key of
                 "ArrowUp" ->
-                    moveAndFocus 1
+                    moveAndFocus model 1
 
                 "ArrowDown" ->
-                    moveAndFocus -1
+                    moveAndFocus model -1
 
                 "Escape" ->
                     if model.menuOpen then
@@ -243,82 +249,82 @@ update msg model =
                         )
 
                 "1" ->
-                    moveAndFocus 1
+                    moveAndFocus model 1
 
                 "2" ->
-                    moveAndFocus 2
+                    moveAndFocus model 2
 
                 "3" ->
-                    moveAndFocus 3
+                    moveAndFocus model 3
 
                 "4" ->
-                    moveAndFocus 4
+                    moveAndFocus model 4
 
                 "5" ->
-                    moveAndFocus 5
+                    moveAndFocus model 5
 
                 "6" ->
-                    moveAndFocus 6
+                    moveAndFocus model 6
 
                 "7" ->
-                    moveAndFocus 7
+                    moveAndFocus model 7
 
                 "8" ->
-                    moveAndFocus 8
+                    moveAndFocus model 8
 
                 "9" ->
-                    moveAndFocus 9
+                    moveAndFocus model 9
 
                 "!" ->
-                    moveAndFocus -1
+                    moveAndFocus model -1
 
                 "@" ->
-                    moveAndFocus -2
+                    moveAndFocus model -2
 
                 "#" ->
-                    moveAndFocus -3
+                    moveAndFocus model -3
 
                 "$" ->
-                    moveAndFocus -4
+                    moveAndFocus model -4
 
                 "%" ->
-                    moveAndFocus -5
+                    moveAndFocus model -5
 
                 "^" ->
-                    moveAndFocus -6
+                    moveAndFocus model -6
 
                 "&" ->
-                    moveAndFocus -7
+                    moveAndFocus model -7
 
                 "*" ->
-                    moveAndFocus -8
+                    moveAndFocus model -8
 
                 "(" ->
-                    moveAndFocus -9
+                    moveAndFocus model -9
 
                 "n" ->
-                    setAndFocus Ni
+                    setAndFocus model Ni
 
                 "p" ->
-                    setAndFocus Pa
+                    setAndFocus model Pa
 
                 "b" ->
-                    setAndFocus Bou
+                    setAndFocus model Bou
 
                 "v" ->
-                    setAndFocus Bou
+                    setAndFocus model Bou
 
                 "g" ->
-                    setAndFocus Ga
+                    setAndFocus model Ga
 
                 "d" ->
-                    setAndFocus Di
+                    setAndFocus model Di
 
                 "k" ->
-                    setAndFocus Ke
+                    setAndFocus model Ke
 
                 "z" ->
-                    setAndFocus Zo_
+                    setAndFocus model Zo_
 
                 "i" ->
                     case model.pitchState.ison of
@@ -354,6 +360,40 @@ update msg model =
                         PitchState.Selected _ ->
                             ( model, Cmd.none )
 
+                "f" ->
+                    ( updatePitchState
+                        (\pitchState ->
+                            { pitchState
+                                | proposedAccidental =
+                                    case pitchState.proposedAccidental of
+                                        Just accidental ->
+                                            Accidental.lower accidental
+
+                                        Nothing ->
+                                            Just Accidental.Flat2
+                            }
+                        )
+                        model
+                    , Cmd.none
+                    )
+
+                "s" ->
+                    ( updatePitchState
+                        (\pitchState ->
+                            { pitchState
+                                | proposedAccidental =
+                                    case pitchState.proposedAccidental of
+                                        Just accidental ->
+                                            Accidental.raise accidental
+
+                                        Nothing ->
+                                            Just Accidental.Sharp2
+                            }
+                        )
+                        model
+                    , Cmd.none
+                    )
+
                 _ ->
                     ( model, Cmd.none )
 
@@ -381,6 +421,70 @@ setPitchState pitchState model =
 updatePitchState : (PitchState -> PitchState) -> Model -> Model
 updatePitchState f model =
     { model | pitchState = f model.pitchState }
+
+
+
+-- KEYBOARD SHORTCUT HELPERS
+
+
+moveAndFocus : Model -> Int -> ( Model, Cmd Msg )
+moveAndFocus model interval =
+    let
+        pitch =
+            model.pitchState.currentPitch
+                |> Maybe.map Pitch.unwrapDegree
+                |> Maybe.andThen (\degree -> Degree.step degree interval)
+                |> Maybe.map (Pitch.from model.modeSettings.scale model.pitchState.proposedAccidental)
+    in
+    ( updatePitchState
+        (\pitchState ->
+            { pitchState
+                | currentPitch = pitch
+                , proposedAccidental = Nothing
+            }
+        )
+        model
+    , Maybe.unwrap Cmd.none
+        (\pitch_ ->
+            Pitch.unwrapDegree pitch_
+                |> Degree.toString
+                |> (++) "p_"
+                |> Dom.focus
+                |> Task.attempt DomResult
+        )
+        pitch
+    )
+
+
+setAndFocus : Model -> Degree -> ( Model, Cmd Msg )
+setAndFocus model degree =
+    ( case model.pitchState.ison of
+        PitchState.SelectingIson _ ->
+            updatePitchState
+                (\pitchState -> { pitchState | ison = PitchState.Selected degree })
+                model
+
+        _ ->
+            updatePitchState
+                (\pitchState ->
+                    { pitchState
+                        | currentPitch =
+                            Just
+                                (Pitch.from
+                                    model.modeSettings.scale
+                                    pitchState.proposedAccidental
+                                    degree
+                                )
+                        , proposedAccidental = Nothing
+                    }
+                )
+                model
+    , Degree.toString degree |> (++) "p_" |> Dom.focus |> Task.attempt DomResult
+    )
+
+
+
+-- CMD HELPERS
 
 
 focus : String -> Cmd Msg
