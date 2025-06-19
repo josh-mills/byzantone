@@ -301,9 +301,9 @@ enharmonicPitchPositions =
 
 
 {-| Michael Tsiappoutas gives slightly different positions for this: he shows 7
-for the smaller steps rather than 8. It may be worth exploring this and
-providing this as an option, if this is a standard tradition to reflect in the
-app.
+for the smaller steps rather than 8, and 9 rather than 10 for others. It may be
+worth exploring this and providing this as an option, if this is a standard
+tradition to reflect in the app.
 -}
 softChromaticPitchPositions : Array Int
 softChromaticPitchPositions =
@@ -381,9 +381,6 @@ getInterval scale from_ to =
 
 
 {-| Intervals between all natural degrees in the given scale
-
-the currentPitch needs to be taken into account
-
 -}
 intervals : Scale -> Maybe Pitch -> Maybe Pitch -> List Interval
 intervals scale currentPitch proposedMovementTo =
