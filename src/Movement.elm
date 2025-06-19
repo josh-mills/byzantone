@@ -20,6 +20,10 @@ type Movement
 {-| Given a starting pitch (i.e., the current pitch) and an interval
 representing the step between two adjacent degrees in the scale, what is the
 movement from the current pitch to the next pitch represented by that interval?
+
+TODO: I think this needs work. This assumes that intervals are adjacent steps,
+and ascending. See also the note on `isValid` below.
+
 -}
 ofInterval : Maybe Pitch -> Interval -> Movement
 ofInterval fromPitch interval =
@@ -77,6 +81,13 @@ applyAccidental scale accidental movement =
 {-| Evaluate the movement to verify that it makes sense with respect to the
 current pitch. (The target pitch itself will already have been validated by
 being constructed.)
+
+We have a problem of an `Interval` in that it's really only conceptually
+well-defined for ascending intervals. This causes some minor problems with how
+this is used in validating movements involving two different inflected pitches.
+This shouldn't _really_ be a problem within the framework of a well-defined
+modal framework, but it's a bit inelegant in the abstract.
+
 -}
 isValid : Scale -> Pitch -> Movement -> Bool
 isValid scale currentPitch movement =

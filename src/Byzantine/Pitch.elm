@@ -2,7 +2,7 @@ module Byzantine.Pitch exposing
     ( Pitch
     , natural, inflected, from, wrapDegree, applyAccidental
     , unwrapDegree, unwrapAccidental
-    , isInflected, isValidInflection
+    , isInflected, isValidInflection, toString
     , pitchPosition, pitchPositions
     , PitchStandard(..), Register(..), frequency
     , Interval, intervals, intervalsFrom, getInterval
@@ -33,7 +33,7 @@ attractions and inflections.
 
 ## Misc
 
-@docs isInflected, isValidInflection
+@docs isInflected, isValidInflection, toString
 
 
 ## Pitch Positions
@@ -234,6 +234,16 @@ isInflected pitch =
 
         Inflected _ _ ->
             True
+
+
+toString : Pitch -> String
+toString pitch =
+    case pitch of
+        Natural degree ->
+            Degree.toString degree
+
+        Inflected accidental degree ->
+            Degree.toString degree ++ " " ++ Accidental.toString accidental
 
 
 

@@ -481,7 +481,6 @@ viewPitch ({ layout, layoutData, modeSettings, scalingFactor } as params) ( pitc
 
         pitchDisplayParams : PitchDisplayParams
         pitchDisplayParams =
-            -- TODO: we'll need to feed in the accidental somehow.
             { pitch = pitch
             , pitchPosition = pitchPosition
             , pitchPositionAbove = pitchPositionAbove
@@ -609,7 +608,7 @@ pitchButton ({ layout, modeSettings, pitchState } as params) ({ pitch } as pitch
                 |> Maybe.withDefault True
 
         proposedPitch =
-            if degreeCanSupportProposedAccidental then
+            if degreeCanSupportProposedAccidental && movementWouldBeValid then
                 Pitch.applyAccidental modeSettings.scale pitchState.proposedAccidental pitch
 
             else
@@ -692,7 +691,11 @@ type PitchElementTarget
     | IsonIndicator
 
 
-pitchElementPosition : Params -> PitchDisplayParams -> PitchElementTarget -> Float
+pitchElementPosition :
+    Params
+    -> PitchDisplayParams
+    -> PitchElementTarget
+    -> Float
 pitchElementPosition { layout, pitchButtonSize } { pitchPosition, pitchPositionAbove, pitchPositionBelow, positionWithinRange, scalingFactor } target =
     let
         scale int =
