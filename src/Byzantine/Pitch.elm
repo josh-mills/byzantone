@@ -4,7 +4,9 @@ module Byzantine.Pitch exposing
     , unwrapDegree, unwrapAccidental
     , isInflected, isValidInflection, toString
     , pitchPosition, pitchPositions
-    , PitchStandard(..), Register(..), frequency
+    , PitchStandard(..), pitchStandardToString
+    , Register(..), registerToString
+    , frequency
     , Interval, intervals, intervalsFrom, getInterval
     )
 
@@ -43,7 +45,20 @@ attractions and inflections.
 
 # Frequency
 
-@docs PitchStandard, Register, frequency
+
+## PitchStandard
+
+@docs PitchStandard, pitchStandardToString
+
+
+## Register
+
+@docs Register, registerToString
+
+
+## Frequency
+
+@docs frequency
 
 
 # Intervals
@@ -328,9 +343,29 @@ type PitchStandard
     | Ke440
 
 
+pitchStandardToString : PitchStandard -> String
+pitchStandardToString pitchStandard =
+    case pitchStandard of
+        Ni256 ->
+            "Ni256"
+
+        Ke440 ->
+            "Ke440"
+
+
 type Register
     = Treble
     | Bass
+
+
+registerToString : Register -> String
+registerToString register =
+    case register of
+        Treble ->
+            "Treble"
+
+        Bass ->
+            "Bass"
 
 
 {-| Frequency relative to a fixed pitch for Natural Di, according to the given pitch

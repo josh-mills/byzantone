@@ -14,14 +14,14 @@ import Html.Attributes as Attr exposing (class, classList, id, type_)
 import Html.Attributes.Extra as Attr
 import Html.Events exposing (onClick, onInput)
 import Html.Extra exposing (viewIf)
-import Html.Lazy
+import Html.Lazy exposing (lazy2)
 import Icons
 import Json.Decode exposing (Decoder)
 import List.Extra as List
 import Maybe.Extra as Maybe
 import Model exposing (Modal(..), Model)
 import Model.AudioSettings exposing (AudioSettings)
-import Model.LayoutData as LayoutData exposing (Layout(..), LayoutSelection(..), layoutFor)
+import Model.LayoutData as LayoutData exposing (Layout(..), LayoutData, LayoutSelection(..), layoutFor)
 import Model.ModeSettings exposing (ModeSettings)
 import Model.PitchState as PitchState exposing (PitchState)
 import Movement exposing (Movement(..))
@@ -202,55 +202,54 @@ modalContent model =
             Copy.about
 
         SettingsModal ->
-            settings model
+            Html.Lazy.lazy3
+                settings
+                model.audioSettings
+                model.layoutData
+                model.modeSettings
 
 
-settings : Model -> Html Msg
-settings model =
+settings : AudioSettings -> LayoutData -> ModeSettings -> Html Msg
+settings audioSettings layoutData modeSettings =
     div [ Styles.flexCol, class "gap-2" ]
-        [ spacingButton model.layoutData.showSpacing
+        [ spacingButton layoutData.showSpacing
             |> viewIf debuggingLayout
-        , RadioFieldset.view
-            { itemToString = LayoutData.layoutString
-            , legendText = "Layout"
-            , onSelect = SetLayout
-            , options = [ Auto, Manual Vertical, Manual Horizontal ]
-            , selected = model.layoutData.layoutSelection
-            , viewItem = Nothing
-            }
-        , RadioFieldset.view
-            { itemToString =
-                \register ->
-                    case register of
-                        Treble ->
-                            "Treble"
-
-                        Bass ->
-                            "Bass"
-            , legendText = "Register"
-            , onSelect = SetRegister
-            , options = [ Treble, Bass ]
-            , selected = model.audioSettings.register
-            , viewItem = Nothing
-            }
-        , RadioFieldset.view
-            { itemToString =
-                \pitchStandard ->
-                    case pitchStandard of
-                        Ni256 ->
-                            "Ni256"
-
-                        Ke440 ->
-                            "Ke440"
-            , legendText = "Pitch Standard"
-            , onSelect = SetPitchStandard
-            , options = [ Ni256, Ke440 ]
-            , selected = model.audioSettings.pitchStandard
-            , viewItem = Just viewPitchStandard
-            }
-        , gainInput model.audioSettings
-        , rangeFieldset model.modeSettings
+        , lazy2 RadioFieldset.view layoutRadioConfig layoutData.layoutSelection
+        , lazy2 RadioFieldset.view registerRadioConfig audioSettings.register
+        , lazy2 RadioFieldset.view pitchStandardRadioConfig audioSettings.pitchStandard
+        , gainInput audioSettings
+        , rangeFieldset modeSettings
         ]
+
+
+layoutRadioConfig : RadioFieldset.Config LayoutSelection Msg
+layoutRadioConfig =
+    { itemToString = LayoutData.layoutString
+    , legendText = "Layout"
+    , onSelect = SetLayout
+    , options = [ Auto, Manual Vertical, Manual Horizontal ]
+    , viewItem = Nothing
+    }
+
+
+registerRadioConfig : RadioFieldset.Config Register Msg
+registerRadioConfig =
+    { itemToString = Pitch.registerToString
+    , legendText = "Register"
+    , onSelect = SetRegister
+    , options = [ Treble, Bass ]
+    , viewItem = Nothing
+    }
+
+
+pitchStandardRadioConfig : RadioFieldset.Config PitchStandard Msg
+pitchStandardRadioConfig =
+    { itemToString = Pitch.pitchStandardToString
+    , legendText = "Pitch Standard"
+    , onSelect = SetPitchStandard
+    , options = [ Ni256, Ke440 ]
+    , viewItem = Just viewPitchStandard
+    }
 
 
 {-| Set the visible range of the pitch space. A minimum of a tetrachord is
@@ -411,14 +410,17 @@ spacingButton showSpacing =
 
 selectScale : Model -> Html Msg
 selectScale model =
-    RadioFieldset.view
-        { itemToString = Scale.name
-        , legendText = "Select Scale"
-        , onSelect = SetScale
-        , options = Scale.all
-        , selected = model.modeSettings.scale
-        , viewItem = Nothing
-        }
+    lazy2 RadioFieldset.view scaleRadioConfig model.modeSettings.scale
+
+
+scaleRadioConfig : RadioFieldset.Config Scale Msg
+scaleRadioConfig =
+    { itemToString = Scale.name
+    , legendText = "Select Scale"
+    , onSelect = SetScale
+    , options = Scale.all
+    , viewItem = Nothing
+    }
 
 
 viewCurrentPitch : Maybe Pitch -> Html Msg
