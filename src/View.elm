@@ -14,7 +14,7 @@ import Html.Attributes as Attr exposing (class, classList, id, type_)
 import Html.Attributes.Extra as Attr
 import Html.Events exposing (onClick, onInput)
 import Html.Extra exposing (viewIf, viewIfLazy)
-import Html.Lazy exposing (lazy, lazy2)
+import Html.Lazy exposing (lazy, lazy2, lazy3, lazy4)
 import Icons
 import Json.Decode exposing (Decoder)
 import List.Extra as List
@@ -23,7 +23,7 @@ import Model exposing (Modal(..), Model)
 import Model.AudioSettings exposing (AudioSettings)
 import Model.LayoutData as LayoutData exposing (Layout(..), LayoutData, LayoutSelection(..), layoutFor)
 import Model.ModeSettings exposing (ModeSettings)
-import Model.PitchState as PitchState exposing (IsonStatus)
+import Model.PitchState as PitchState exposing (IsonStatus, PitchState)
 import Movement exposing (Movement(..))
 import RadioFieldset
 import Styles
@@ -44,14 +44,14 @@ view : Model -> Html Msg
 view model =
     div
         [ class "p-4" ]
-        [ Html.Lazy.lazy4 chantEngineNode
+        [ lazy4 chantEngineNode
             model.audioSettings
             model.modeSettings.scale
             model.pitchState.currentPitch
             (PitchState.ison model.pitchState.ison)
-        , backdrop model
-        , header model
-        , viewModal model
+        , lazy2 backdrop model.menuOpen model.modal
+        , header
+        , lazy4 viewModal model.audioSettings model.layoutData model.modeSettings model.modal
 
         -- , viewIf model.layoutData.showSpacing (div [ class "text-center" ] [ text "|" ])
         , viewIf model.menuOpen menu
@@ -66,17 +66,17 @@ view model =
             , Html.Events.on "keydown" keyDecoder
             , Attr.attributeIf model.menuOpen (onClick ToggleMenu)
             ]
-            [ PitchSpace.view model
-            , viewControls model
+            [ lazy3 PitchSpace.view model.layoutData model.modeSettings model.pitchState
+            , lazy3 viewControls model.audioSettings model.modeSettings model.pitchState
             ]
         ]
 
 
-backdrop : Model -> Html Msg
-backdrop model =
+backdrop : Bool -> Modal -> Html Msg
+backdrop menuOpen modal =
     let
         show =
-            model.menuOpen || Model.modalOpen model.modal
+            menuOpen || Model.modalOpen modal
     in
     div
         [ class "fixed top-0 left-0 w-full h-full"
@@ -85,8 +85,8 @@ backdrop model =
             [ ( "-z-10", not show )
             , ( "bg-slate-400 opacity-40 z-10", show )
             ]
-        , Attr.attributeIf model.menuOpen (onClick ToggleMenu)
-        , Attr.attributeIf (Model.modalOpen model.modal) (onClick (SelectModal NoModal))
+        , Attr.attributeIf menuOpen (onClick ToggleMenu)
+        , Attr.attributeIf (Model.modalOpen modal) (onClick (SelectModal NoModal))
         ]
         []
 
@@ -115,8 +115,8 @@ chantEngineNode audioSettings scale currentPitch currentIson =
         []
 
 
-header : Model -> Html Msg
-header _ =
+header : Html Msg
+header =
     Html.header [ Styles.flexRowCentered ]
         [ div [ class "w-7" ] []
         , div [ Styles.flexCol, class "flex-1 mb-4 mx-4" ]
@@ -164,9 +164,9 @@ menu =
 
 {-| TODO: positioning still needs work.
 -}
-viewModal : Model -> Html Msg
-viewModal model =
-    case model.modal of
+viewModal : AudioSettings -> LayoutData -> ModeSettings -> Modal -> Html Msg
+viewModal audioSettings layoutData modeSettings modal =
+    case modal of
         NoModal ->
             Html.Extra.nothing
 
@@ -181,20 +181,20 @@ viewModal model =
                 ]
                 [ h2 [ Styles.flexRow, class "justify-between mb-1" ]
                     [ span [ class "font-heading text-2xl" ]
-                        [ text (Model.modalToString model.modal) ]
+                        [ text (Model.modalToString modal) ]
                     , button
                         [ class "w-8 p-2"
                         , onClick (SelectModal NoModal)
                         ]
                         [ Icons.xmark ]
                     ]
-                , modalContent model
+                , modalContent audioSettings layoutData modeSettings modal
                 ]
 
 
-modalContent : Model -> Html Msg
-modalContent model =
-    case model.modal of
+modalContent : AudioSettings -> LayoutData -> ModeSettings -> Modal -> Html Msg
+modalContent audioSettings layoutData modeSettings modal =
+    case modal of
         NoModal ->
             Html.Extra.nothing
 
@@ -202,11 +202,7 @@ modalContent model =
             Copy.about
 
         SettingsModal ->
-            Html.Lazy.lazy3
-                settings
-                model.audioSettings
-                model.layoutData
-                model.modeSettings
+            lazy3 settings audioSettings layoutData modeSettings
 
 
 settings : AudioSettings -> LayoutData -> ModeSettings -> Html Msg
@@ -339,16 +335,26 @@ viewPitchStandard pitchStandard =
 -- CONTROLS
 
 
-viewControls : Model -> Html Msg
-viewControls model =
+viewControls : AudioSettings -> ModeSettings -> PitchState -> Html Msg
+viewControls audioSettings modeSettings pitchState =
     div [ class "w-max", classList [ ( "mt-8", debuggingLayout ) ] ]
-        [ selectScale model
-        , lazy isonButton model.pitchState.ison
-        , lazy viewIson (PitchState.ison model.pitchState.ison)
-        , lazy viewCurrentPitch model.pitchState.currentPitch
-        , lazy viewAccidentalButtons model.pitchState.proposedAccidental
-        , lazy gainInput model.audioSettings
+        [ lazy2 RadioFieldset.view scaleRadioConfig modeSettings.scale
+        , lazy isonButton pitchState.ison
+        , lazy viewIson (PitchState.ison pitchState.ison)
+        , lazy viewCurrentPitch pitchState.currentPitch
+        , lazy viewAccidentalButtons pitchState.proposedAccidental
+        , lazy gainInput audioSettings
         ]
+
+
+scaleRadioConfig : RadioFieldset.Config Scale Msg
+scaleRadioConfig =
+    { itemToString = Scale.name
+    , legendText = "Select Scale"
+    , onSelect = SetScale
+    , options = Scale.all
+    , viewItem = Nothing
+    }
 
 
 isonButton : IsonStatus -> Html Msg
@@ -406,21 +412,6 @@ spacingButton showSpacing =
             else
                 "show spacing"
         ]
-
-
-selectScale : Model -> Html Msg
-selectScale model =
-    lazy2 RadioFieldset.view scaleRadioConfig model.modeSettings.scale
-
-
-scaleRadioConfig : RadioFieldset.Config Scale Msg
-scaleRadioConfig =
-    { itemToString = Scale.name
-    , legendText = "Select Scale"
-    , onSelect = SetScale
-    , options = Scale.all
-    , viewItem = Nothing
-    }
 
 
 viewCurrentPitch : Maybe Pitch -> Html Msg

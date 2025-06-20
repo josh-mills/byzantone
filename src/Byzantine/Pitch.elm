@@ -4,9 +4,9 @@ module Byzantine.Pitch exposing
     , unwrapDegree, unwrapAccidental
     , isInflected, isValidInflection, toString
     , pitchPosition, pitchPositions
+    , frequency
     , PitchStandard(..), pitchStandardToString
     , Register(..), registerToString
-    , frequency
     , Interval, intervals, intervalsFrom, getInterval
     )
 
@@ -45,6 +45,8 @@ attractions and inflections.
 
 # Frequency
 
+@docs frequency
+
 
 ## PitchStandard
 
@@ -54,11 +56,6 @@ attractions and inflections.
 ## Register
 
 @docs Register, registerToString
-
-
-## Frequency
-
-@docs frequency
 
 
 # Intervals
