@@ -1,6 +1,7 @@
 module Byzantine.Pitch exposing
     ( Pitch
     , natural, inflected, from, wrapDegree, applyAccidental
+    , encode, decode
     , unwrapDegree, unwrapAccidental
     , isInflected, isValidInflection, toString
     , pitchPosition, pitchPositions
@@ -26,6 +27,11 @@ attractions and inflections.
 ## Construct
 
 @docs natural, inflected, from, wrapDegree, applyAccidental
+
+
+## Encode
+
+@docs encode, decode
 
 
 ## Unwrap
@@ -75,6 +81,50 @@ import Result exposing (Result)
 type Pitch
     = Natural Degree
     | Inflected Accidental Degree
+
+
+
+-- ENCODE
+
+
+encode : Pitch -> String
+encode pitch =
+    case pitch of
+        Natural degree ->
+            "n|" ++ Degree.toString degree
+
+        Inflected accidental degree ->
+            "i|" ++ Degree.toString degree ++ "|" ++ Accidental.toString accidental
+
+
+{-| Decode a string representation of a Pitch. The string must be in one of two
+formats:
+
+  - "n|<degree>" for natural pitches
+
+  - "i|<degree>|<accidental>" for inflected pitches
+
+Scale argument is required for validating inflected pitches.
+
+-}
+decode : Scale -> String -> Result String Pitch
+decode scale str =
+    case String.split "|" str of
+        [ "n", degreeStr ] ->
+            Degree.fromString degreeStr
+                |> Result.map Natural
+
+        [ "i", degreeStr, accidentalStr ] ->
+            Result.map2 Tuple.pair
+                (Accidental.fromString accidentalStr)
+                (Degree.fromString degreeStr)
+                |> Result.andThen
+                    (\( accidental, degree ) ->
+                        inflected scale accidental degree
+                    )
+
+        _ ->
+            Err ("Invalid pitch format: " ++ str)
 
 
 
