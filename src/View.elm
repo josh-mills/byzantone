@@ -13,8 +13,8 @@ import Html exposing (Html, button, datalist, div, h1, h2, input, main_, p, span
 import Html.Attributes as Attr exposing (class, classList, id, type_)
 import Html.Attributes.Extra as Attr
 import Html.Events exposing (onClick, onInput)
-import Html.Extra exposing (viewIf)
-import Html.Lazy exposing (lazy2)
+import Html.Extra exposing (viewIf, viewIfLazy)
+import Html.Lazy exposing (lazy, lazy2)
 import Icons
 import Json.Decode exposing (Decoder)
 import List.Extra as List
@@ -23,7 +23,7 @@ import Model exposing (Modal(..), Model)
 import Model.AudioSettings exposing (AudioSettings)
 import Model.LayoutData as LayoutData exposing (Layout(..), LayoutData, LayoutSelection(..), layoutFor)
 import Model.ModeSettings exposing (ModeSettings)
-import Model.PitchState as PitchState exposing (PitchState)
+import Model.PitchState as PitchState exposing (IsonStatus)
 import Movement exposing (Movement(..))
 import RadioFieldset
 import Styles
@@ -48,7 +48,7 @@ view model =
             model.audioSettings
             model.modeSettings.scale
             model.pitchState.currentPitch
-            (PitchState.ison model.pitchState)
+            (PitchState.ison model.pitchState.ison)
         , backdrop model
         , header model
         , viewModal model
@@ -212,13 +212,13 @@ modalContent model =
 settings : AudioSettings -> LayoutData -> ModeSettings -> Html Msg
 settings audioSettings layoutData modeSettings =
     div [ Styles.flexCol, class "gap-2" ]
-        [ spacingButton layoutData.showSpacing
-            |> viewIf debuggingLayout
+        [ viewIfLazy debuggingLayout
+            (\_ -> spacingButton layoutData.showSpacing)
         , lazy2 RadioFieldset.view layoutRadioConfig layoutData.layoutSelection
         , lazy2 RadioFieldset.view registerRadioConfig audioSettings.register
         , lazy2 RadioFieldset.view pitchStandardRadioConfig audioSettings.pitchStandard
-        , gainInput audioSettings
-        , rangeFieldset modeSettings
+        , lazy gainInput audioSettings
+        , lazy rangeFieldset modeSettings
         ]
 
 
@@ -343,34 +343,34 @@ viewControls : Model -> Html Msg
 viewControls model =
     div [ class "w-max", classList [ ( "mt-8", debuggingLayout ) ] ]
         [ selectScale model
-        , isonButton model.pitchState
-        , viewIson (PitchState.ison model.pitchState)
-        , viewCurrentPitch model.pitchState.currentPitch
-        , viewAccidentalButtons model.pitchState.proposedAccidental
-        , gainInput model.audioSettings
+        , lazy isonButton model.pitchState.ison
+        , lazy viewIson (PitchState.ison model.pitchState.ison)
+        , lazy viewCurrentPitch model.pitchState.currentPitch
+        , lazy viewAccidentalButtons model.pitchState.proposedAccidental
+        , lazy gainInput model.audioSettings
         ]
 
 
-isonButton : PitchState -> Html Msg
-isonButton pitchState =
+isonButton : IsonStatus -> Html Msg
+isonButton ison =
     button
         [ Styles.buttonClass
         , id "select-ison-button"
         , onClick
             (SetIson
-                (case pitchState.ison of
+                (case ison of
                     PitchState.NoIson ->
                         PitchState.SelectingIson Nothing
 
-                    PitchState.SelectingIson (Just ison) ->
-                        PitchState.Selected ison
+                    PitchState.SelectingIson (Just ison_) ->
+                        PitchState.Selected ison_
 
                     PitchState.SelectingIson Nothing ->
                         PitchState.NoIson
 
                     PitchState.Selected _ ->
                         PitchState.SelectingIson
-                            (PitchState.ison pitchState
+                            (PitchState.ison ison
                                 |> Maybe.map Pitch.unwrapDegree
                             )
                 )

@@ -530,7 +530,7 @@ viewPitch ({ layout, layoutData, modeSettings, scalingFactor } as params) ( pitc
             Attr.attributeIf (positionIsVisible positionWithinRange)
 
         isIson =
-            PitchState.ison params.pitchState == Just (Pitch.natural degree)
+            PitchState.ison params.pitchState.ison == Just (Pitch.natural degree)
     in
     li
         ([ Attr.id ("pitch-" ++ Degree.toString degree)

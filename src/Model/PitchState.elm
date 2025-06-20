@@ -46,9 +46,9 @@ type IsonStatus
 
 {-| Current pitch of the ison status.
 -}
-ison : PitchState -> Maybe Pitch
-ison pitchState =
-    case pitchState.ison of
+ison : IsonStatus -> Maybe Pitch
+ison isonStatus =
+    case isonStatus of
         NoIson ->
             Nothing
 
