@@ -17,7 +17,6 @@ import Html.Attributes.Extra as Attr
 import Html.Events exposing (onClick, onFocus, onMouseEnter, onMouseLeave)
 import Html.Extra exposing (viewIf, viewIfLazy)
 import Maybe.Extra as Maybe
-import Model exposing (Model)
 import Model.LayoutData as LayoutData exposing (Layout(..), LayoutData)
 import Model.ModeSettings exposing (ModeSettings)
 import Model.PitchState as PitchState exposing (IsonStatus(..), PitchState)
@@ -31,8 +30,8 @@ import Update exposing (Msg(..))
 -- WRAPPER AND VIEW HELPERS
 
 
-view : Model -> Html Msg
-view { layoutData, modeSettings, pitchState } =
+view : LayoutData -> ModeSettings -> PitchState -> Html Msg
+view layoutData modeSettings pitchState =
     let
         layout =
             LayoutData.layoutFor layoutData
@@ -530,7 +529,7 @@ viewPitch ({ layout, layoutData, modeSettings, scalingFactor } as params) ( pitc
             Attr.attributeIf (positionIsVisible positionWithinRange)
 
         isIson =
-            PitchState.ison params.pitchState == Just (Pitch.natural degree)
+            PitchState.ison params.pitchState.ison == Just (Pitch.natural degree)
     in
     li
         ([ Attr.id ("pitch-" ++ Degree.toString degree)

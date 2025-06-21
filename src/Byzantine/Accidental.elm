@@ -1,4 +1,4 @@
-module Byzantine.Accidental exposing (Accidental(..), all, lower, moriaAdjustment, raise, toString)
+module Byzantine.Accidental exposing (Accidental(..), all, fromString, lower, moriaAdjustment, raise, toString)
 
 
 type Accidental
@@ -115,3 +115,37 @@ toString accidental =
 
     else
         String.fromInt val
+
+
+{-| Convert a string representation back to an Accidental. String must be in the
+format "+N" or "-N" where N is a valid moria adjustment (2, 4, 6, or 8).
+-}
+fromString : String -> Result String Accidental
+fromString str =
+    case str of
+        "+2" ->
+            Ok Sharp2
+
+        "+4" ->
+            Ok Sharp4
+
+        "+6" ->
+            Ok Sharp6
+
+        "+8" ->
+            Ok Sharp8
+
+        "-2" ->
+            Ok Flat2
+
+        "-4" ->
+            Ok Flat4
+
+        "-6" ->
+            Ok Flat6
+
+        "-8" ->
+            Ok Flat8
+
+        _ ->
+            Err ("Invalid accidental: " ++ str)

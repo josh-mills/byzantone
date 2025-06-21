@@ -161,3 +161,56 @@ accidentalBuilder =
                     accidentals
     in
     next [] |> List.reverse
+
+
+pitchTests : Test
+pitchTests =
+    describe "Pitch Tests"
+        [ describe "Encode/Decode Roundtrip Tests"
+            [ describe "Natural Pitches"
+                (List.concatMap
+                    (\scale ->
+                        List.map
+                            (\degree ->
+                                let
+                                    pitch =
+                                        Pitch.natural degree
+                                in
+                                test (Scale.name scale ++ " " ++ "Natural " ++ Pitch.toString pitch) <|
+                                    \_ ->
+                                        pitch
+                                            |> Pitch.encode
+                                            |> Pitch.decode scale
+                                            |> Expect.equal (Ok pitch)
+                            )
+                            Degree.gamutList
+                    )
+                    Scale.all
+                )
+            , describe "Inflected Pitches"
+                (List.concatMap
+                    (\scale ->
+                        List.concatMap
+                            (\degree ->
+                                List.filterMap
+                                    (\accidental ->
+                                        Pitch.inflected scale accidental degree
+                                            |> Result.toMaybe
+                                            |> Maybe.map
+                                                (\pitch ->
+                                                    test (Scale.name scale ++ " " ++ Pitch.toString pitch) <|
+                                                        \_ ->
+                                                            pitch
+                                                                |> Pitch.encode
+                                                                |> Pitch.decode scale
+                                                                |> Expect.equal (Ok pitch)
+                                                )
+                                    )
+                                    Accidental.all
+                            )
+                            Degree.gamutList
+                    )
+                    Scale.all
+                )
+            ]
+        ]

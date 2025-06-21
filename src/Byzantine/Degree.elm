@@ -1,4 +1,4 @@
-module Byzantine.Degree exposing (Degree(..), baseOctave, gamut, gamutList, getInterval, indexOf, range, step, text, toString, toStringGreek)
+module Byzantine.Degree exposing (Degree(..), baseOctave, fromString, gamut, gamutList, getInterval, indexOf, range, step, text, toString, toStringGreek)
 
 import Array exposing (Array)
 import Byzantine.Scale exposing (Scale(..))
@@ -243,3 +243,58 @@ baseOctave scale =
 
         HardChromatic ->
             octaveFrom Pa
+
+
+{-| Convert a string representation back to a Degree. Returns an Err if the
+string doesn't match a valid degree name.
+-}
+fromString : String -> Result String Degree
+fromString str =
+    case str of
+        "GA" ->
+            Ok GA
+
+        "DI" ->
+            Ok DI
+
+        "KE" ->
+            Ok KE
+
+        "Zo" ->
+            Ok Zo
+
+        "Ni" ->
+            Ok Ni
+
+        "Pa" ->
+            Ok Pa
+
+        "Bou" ->
+            Ok Bou
+
+        "Ga" ->
+            Ok Ga
+
+        "Di" ->
+            Ok Di
+
+        "Ke" ->
+            Ok Ke
+
+        "Zo_" ->
+            Ok Zo_
+
+        "Ni_" ->
+            Ok Ni_
+
+        "Pa_" ->
+            Ok Pa_
+
+        "Bou_" ->
+            Ok Bou_
+
+        "Ga_" ->
+            Ok Ga_
+
+        _ ->
+            Err ("Invalid degree name: " ++ str)
