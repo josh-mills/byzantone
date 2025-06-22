@@ -16,6 +16,7 @@ import Html.Attributes as Attr exposing (class, classList)
 import Html.Attributes.Extra as Attr
 import Html.Events exposing (onClick, onFocus, onMouseEnter, onMouseLeave)
 import Html.Extra exposing (viewIf, viewIfLazy)
+import Html.Lazy exposing (lazy)
 import Maybe.Extra as Maybe
 import Model.LayoutData as LayoutData exposing (Layout(..), LayoutData)
 import Model.ModeSettings exposing (ModeSettings)
@@ -30,6 +31,17 @@ import Update exposing (Msg(..))
 -- WRAPPER AND VIEW HELPERS
 
 
+{-| How we might refactor things to take advantage of lazy rendering? We only
+have three arguments, with everything else being derived, and the only dynamic
+items really being those from PitchState.
+
+If we are able to split out the pitchState arguments so they are passed in on an
+as-needed basis, and if derived values could be passed in as primitives (a
+Layout I think should also be fine), I think we should be able to lazify this.
+
+Consider treating the visibleRange values as two ints (moria pitch positions).
+
+-}
 view : LayoutData -> ModeSettings -> PitchState -> Html Msg
 view layoutData modeSettings pitchState =
     let
@@ -67,8 +79,8 @@ view layoutData modeSettings pitchState =
                         ]
                )
         )
-        [ viewIntervals params
-        , viewPitches params
+        [ viewIntervals layoutData modeSettings pitchState params
+        , viewPitches layoutData modeSettings pitchState params
         ]
 
 
@@ -222,23 +234,33 @@ positionIsVisible position =
 -- INTERVAL COLUMN
 
 
-viewIntervals : Params -> Html Msg
-viewIntervals params =
+{-| The core challenge with this, from a standpoint of lazy rendering, is that
+the intervalsWithVisibility list is dynamically calculated. So in the view JS
+code, these will be new objects with different references. I'm not sure if
+there's a good way to get around that, unless you find a way to encode the
+interval as a primitive.
+-}
+viewIntervals : LayoutData -> ModeSettings -> PitchState -> Params -> Html Msg
+viewIntervals layoutData modeSettings pitchState params =
     Html.ol (onMouseLeave (SelectProposedMovement None) :: listAttributes params.layout)
         (List.map
-            (viewInterval params)
-            (intervalsWithVisibility params)
+            (viewInterval layoutData params)
+            (intervalsWithVisibility modeSettings pitchState params.visibleRange)
         )
 
 
-intervalsWithVisibility : Params -> List ( Interval, PositionWithinVisibleRange )
-intervalsWithVisibility params =
+intervalsWithVisibility :
+    ModeSettings
+    -> PitchState
+    -> { start : Pitch, end : Pitch }
+    -> List ( Interval, PositionWithinVisibleRange )
+intervalsWithVisibility modeSettings pitchState visibleRange =
     let
         lowerBoundIndex =
-            Degree.indexOf (Pitch.unwrapDegree params.visibleRange.start)
+            Degree.indexOf (Pitch.unwrapDegree visibleRange.start)
 
         upperBoundIndex =
-            Degree.indexOf (Pitch.unwrapDegree params.visibleRange.end)
+            Degree.indexOf (Pitch.unwrapDegree visibleRange.end)
 
         visibility interval =
             let
@@ -269,18 +291,17 @@ intervalsWithVisibility params =
             , visibility interval
             )
         )
-        (Pitch.intervals params.modeSettings.scale
-            params.pitchState.currentPitch
-            (Movement.unwrapTargetPitch params.pitchState.proposedMovement)
+        (Pitch.intervals modeSettings.scale
+            pitchState.currentPitch
+            (Movement.unwrapTargetPitch pitchState.proposedMovement)
         )
 
 
-{-| TODO: see if with some refactors, we could use Html.Lazy for this. But
-benchmark this before shipping.
--}
-viewInterval : Params -> ( Interval, PositionWithinVisibleRange ) -> Html Msg
-viewInterval { layout, layoutData, pitchState, scalingFactor } ( interval, position ) =
+viewInterval : LayoutData -> Params -> ( Interval, PositionWithinVisibleRange ) -> Html Msg
+viewInterval layoutData { layout, pitchState, scalingFactor } ( interval, position ) =
     let
+        -- _ =
+        --     Debug.log "in viewInterval" interval
         size =
             case position of
                 Above ->
@@ -410,20 +431,30 @@ shouldHighlightInterval { currentPitch, proposedMovement } interval =
 -- PITCH COLUMN
 
 
-viewPitches : Params -> Html Msg
-viewPitches params =
+viewPitches : LayoutData -> ModeSettings -> PitchState -> Params -> Html Msg
+viewPitches layoutData modeSettings pitchState params =
+    -- let
+    --     _ =
+    --         Debug.log "in view pitches function" ""
+    -- in
     Html.ol (listAttributes params.layout)
-        (List.map (viewPitch params) (pitchesWithVisibility params))
+        (List.map
+            (viewPitch layoutData modeSettings pitchState)
+            (pitchesWithVisibility pitchState params.visibleRange)
+        )
 
 
-pitchesWithVisibility : Params -> List ( Pitch, PositionWithinVisibleRange )
-pitchesWithVisibility params =
+pitchesWithVisibility :
+    PitchState
+    -> { start : Pitch, end : Pitch }
+    -> List ( String, PositionWithinVisibleRange )
+pitchesWithVisibility pitchState visibleRange =
     let
         lowerBoundIndex =
-            Degree.indexOf (Pitch.unwrapDegree params.visibleRange.start)
+            Degree.indexOf (Pitch.unwrapDegree visibleRange.start)
 
         upperBoundIndex =
-            Degree.indexOf (Pitch.unwrapDegree params.visibleRange.end)
+            Degree.indexOf (Pitch.unwrapDegree visibleRange.end)
 
         visibility pitchIndex =
             if pitchIndex < lowerBoundIndex then
@@ -440,21 +471,47 @@ pitchesWithVisibility params =
 
             else
                 Within
+
+        proposedMovementTo =
+            Movement.unwrapTargetPitch pitchState.proposedMovement
     in
     List.map
         (\degree ->
-            ( Pitch.wrapDegree params.pitchState.currentPitch
-                (Movement.unwrapTargetPitch params.pitchState.proposedMovement)
-                degree
+            ( Pitch.wrapDegree pitchState.currentPitch proposedMovementTo degree
+                |> Pitch.encode
             , visibility (Degree.indexOf degree)
             )
         )
         Degree.gamutList
 
 
-viewPitch : Params -> ( Pitch, PositionWithinVisibleRange ) -> Html Msg
-viewPitch ({ layout, layoutData, modeSettings, scalingFactor } as params) ( pitch, positionWithinRange ) =
+viewPitch : LayoutData -> ModeSettings -> PitchState -> ( String, PositionWithinVisibleRange ) -> Html Msg
+viewPitch layoutData modeSettings pitchState ( pitchString, positionWithinRange ) =
     let
+        _ =
+            Debug.log "in viewPitch" pitchString
+
+        pitch =
+            Pitch.decode modeSettings.scale pitchString
+                |> Result.withDefault (Pitch.natural Degree.Pa)
+
+        layout =
+            LayoutData.layoutFor layoutData
+
+        visibleRange =
+            calculateVisibleRange modeSettings pitchState
+
+        params : Params
+        params =
+            { layout = layout
+            , pitchButtonSize = calculatePitchButtonSize layoutData
+            , layoutData = layoutData
+            , modeSettings = modeSettings
+            , pitchState = pitchState
+            , scalingFactor = calculateScalingFactor layout layoutData modeSettings visibleRange
+            , visibleRange = visibleRange
+            }
+
         degree =
             Pitch.unwrapDegree pitch
 
@@ -464,8 +521,8 @@ viewPitch ({ layout, layoutData, modeSettings, scalingFactor } as params) ( pitc
 
         inflectedPitchPosition : Degree -> Int
         inflectedPitchPosition =
-            Pitch.wrapDegree params.pitchState.currentPitch
-                (Movement.unwrapTargetPitch params.pitchState.proposedMovement)
+            Pitch.wrapDegree pitchState.currentPitch
+                (Movement.unwrapTargetPitch pitchState.proposedMovement)
                 >> Pitch.pitchPosition modeSettings.scale
 
         pitchPositionAbove : Maybe Int
@@ -485,11 +542,11 @@ viewPitch ({ layout, layoutData, modeSettings, scalingFactor } as params) ( pitc
             , pitchPositionAbove = pitchPositionAbove
             , pitchPositionBelow = pitchPositionBelow
             , positionWithinRange = positionWithinRange
-            , scalingFactor = scalingFactor
+            , scalingFactor = params.scalingFactor
             }
 
         scale int =
-            (toFloat int / 2) * scalingFactor
+            (toFloat int / 2) * params.scalingFactor
 
         size =
             case positionWithinRange of
@@ -507,7 +564,7 @@ viewPitch ({ layout, layoutData, modeSettings, scalingFactor } as params) ( pitc
                         (\below above ->
                             (toFloat (above - pitchPosition) / 2)
                                 |> (+) (toFloat (pitchPosition - below) / 2)
-                                |> (*) scalingFactor
+                                |> (*) params.scalingFactor
                         )
                         pitchPositionBelow
                         pitchPositionAbove
@@ -529,7 +586,7 @@ viewPitch ({ layout, layoutData, modeSettings, scalingFactor } as params) ( pitc
             Attr.attributeIf (positionIsVisible positionWithinRange)
 
         isIson =
-            PitchState.ison params.pitchState.ison == Just (Pitch.natural degree)
+            PitchState.ison pitchState.ison == Just (Pitch.natural degree)
     in
     li
         ([ Attr.id ("pitch-" ++ Degree.toString degree)
