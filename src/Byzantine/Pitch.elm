@@ -1,10 +1,13 @@
 module Byzantine.Pitch exposing
     ( Pitch
     , natural, inflected, from, wrapDegree, applyAccidental
+    , encode, decode
     , unwrapDegree, unwrapAccidental
     , isInflected, isValidInflection, toString
     , pitchPosition, pitchPositions
-    , PitchStandard(..), Register(..), frequency
+    , frequency
+    , PitchStandard(..), pitchStandardToString
+    , Register(..), registerToString
     , Interval, intervals, intervalsFrom, getInterval
     )
 
@@ -26,6 +29,11 @@ attractions and inflections.
 @docs natural, inflected, from, wrapDegree, applyAccidental
 
 
+## Encode
+
+@docs encode, decode
+
+
 ## Unwrap
 
 @docs unwrapDegree, unwrapAccidental
@@ -43,7 +51,17 @@ attractions and inflections.
 
 # Frequency
 
-@docs PitchStandard, Register, frequency
+@docs frequency
+
+
+## PitchStandard
+
+@docs PitchStandard, pitchStandardToString
+
+
+## Register
+
+@docs Register, registerToString
 
 
 # Intervals
@@ -63,6 +81,50 @@ import Result exposing (Result)
 type Pitch
     = Natural Degree
     | Inflected Accidental Degree
+
+
+
+-- ENCODE
+
+
+encode : Pitch -> String
+encode pitch =
+    case pitch of
+        Natural degree ->
+            "n|" ++ Degree.toString degree
+
+        Inflected accidental degree ->
+            "i|" ++ Degree.toString degree ++ "|" ++ Accidental.toString accidental
+
+
+{-| Decode a string representation of a Pitch. The string must be in one of two
+formats:
+
+  - "n|<degree>" for natural pitches
+
+  - "i|<degree>|<accidental>" for inflected pitches
+
+Scale argument is required for validating inflected pitches.
+
+-}
+decode : Scale -> String -> Result String Pitch
+decode scale str =
+    case String.split "|" str of
+        [ "n", degreeStr ] ->
+            Degree.fromString degreeStr
+                |> Result.map Natural
+
+        [ "i", degreeStr, accidentalStr ] ->
+            Result.map2 Tuple.pair
+                (Accidental.fromString accidentalStr)
+                (Degree.fromString degreeStr)
+                |> Result.andThen
+                    (\( accidental, degree ) ->
+                        inflected scale accidental degree
+                    )
+
+        _ ->
+            Err ("Invalid pitch format: " ++ str)
 
 
 
@@ -328,9 +390,29 @@ type PitchStandard
     | Ke440
 
 
+pitchStandardToString : PitchStandard -> String
+pitchStandardToString pitchStandard =
+    case pitchStandard of
+        Ni256 ->
+            "Ni256"
+
+        Ke440 ->
+            "Ke440"
+
+
 type Register
     = Treble
     | Bass
+
+
+registerToString : Register -> String
+registerToString register =
+    case register of
+        Treble ->
+            "Treble"
+
+        Bass ->
+            "Bass"
 
 
 {-| Frequency relative to a fixed pitch for Natural Di, according to the given pitch
