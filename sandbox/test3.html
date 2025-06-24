@@ -54,13 +54,6 @@
                 <label for="no-rounding">No rounding</label>
                 <input type="radio" name="rounding" value="hz" id="round-hz" />
                 <label for="round-hz">Round to nearest Hz</label>
-                <input
-                    type="radio"
-                    name="rounding"
-                    value="note"
-                    id="round-note"
-                />
-                <label for="round-note">Round to nearest note</label>
             </div>
 
             <div class="control-group">
@@ -68,16 +61,9 @@
                 <input
                     type="radio"
                     name="smoothing"
-                    value="none"
-                    id="no-smoothing"
-                    checked
-                />
-                <label for="no-smoothing">No smoothing</label>
-                <input
-                    type="radio"
-                    name="smoothing"
                     value="basic"
                     id="basic-smoothing"
+                    checked
                 />
                 <label for="basic-smoothing">Basic smoothing</label>
                 <input
@@ -150,7 +136,9 @@ https://alexanderell.is/posts/tuner/
                 analyser.smoothingTimeConstant = 0.85;
                 if (!navigator?.mediaDevices?.getUserMedia) {
                     // No audio allowed
-                    alert("Sorry, getUserMedia is required for the app.");
+                    alert(
+                        "Sorry, getUserMedia is required for this functionality.",
+                    );
                     return;
                 } else {
                     var constraints = { audio: true };
@@ -166,7 +154,7 @@ https://alexanderell.is/posts/tuner/
                         })
                         .catch(function (err) {
                             alert(
-                                "Sorry, microphone permissions are required for the app. Feel free to read on without playing :)",
+                                "Sorry, microphone permissions are required for this functionality.",
                             );
                         });
                 }
@@ -224,27 +212,6 @@ https://alexanderell.is/posts/tuner/
                     var smoothingThreshold = 5;
                     var smoothingCountThreshold = 5;
 
-                    // Thanks to PitchDetect: https://github.com/cwilso/PitchDetect/blob/master/js/pitchdetect.js
-                    var noteStrings = [
-                        "C",
-                        "C#",
-                        "D",
-                        "D#",
-                        "E",
-                        "F",
-                        "F#",
-                        "G",
-                        "G#",
-                        "A",
-                        "A#",
-                        "B",
-                    ];
-                    function noteFromPitch(frequency) {
-                        var noteNum =
-                            12 * (Math.log(frequency / 440) / Math.log(2));
-                        return Math.round(noteNum) + 69;
-                    }
-
                     var drawNote = function () {
                         drawNoteVisual = requestAnimationFrame(drawNote);
                         var bufferLength = analyser.fftSize;
@@ -260,17 +227,10 @@ https://alexanderell.is/posts/tuner/
                         var roundingValue = document.querySelector(
                             'input[name="rounding"]:checked',
                         ).value;
-                        if (roundingValue == "none") {
-                            // Do nothing
-                        } else if (roundingValue == "hz") {
+                        if (roundingValue == "hz") {
                             valueToDisplay = Math.round(valueToDisplay);
                         } else {
-                            // Get the closest note
-                            // Thanks to PitchDetect:
-                            valueToDisplay =
-                                noteStrings[
-                                    noteFromPitch(autoCorrelateValue) % 12
-                                ];
+                            // Do nothing
                         }
 
                         var smoothingValue = document.querySelector(
@@ -282,10 +242,7 @@ https://alexanderell.is/posts/tuner/
                                 "Too quiet...";
                             return;
                         }
-                        if (smoothingValue === "none") {
-                            smoothingThreshold = 99999;
-                            smoothingCountThreshold = 0;
-                        } else if (smoothingValue === "basic") {
+                        if (smoothingValue === "basic") {
                             smoothingThreshold = 10;
                             smoothingCountThreshold = 5;
                         } else if (smoothingValue === "very") {
