@@ -1,44 +1,65 @@
-const crossFadeSeconds = 0.2;
-const crossFadeMilliseconds = crossFadeSeconds * 1000;
+// Audio configuration constants
+const AUDIO_CONFIG = {
+    crossFadeSeconds: 0.2,
+    defaultGain: 0.3,
+    frequency: {
+        min: 32,
+        max: 18000,
+    },
+} as const;
 
-const localDev = false;
-const debugging = false;
-function devLog(x: any) {
-    if (localDev) {
-        if (debugging) {
+// Development constants
+const DEV_CONFIG = {
+    localDev: false,
+    debugging: false,
+} as const;
+
+function devLog(message: unknown): void {
+    if (DEV_CONFIG.localDev) {
+        if (DEV_CONFIG.debugging) {
             debugger;
         }
-        console.log(x);
+        console.log(message);
     }
 }
 
-class ChantEngine extends HTMLElement {
-    private audioContext: AudioContext;
-    private mainGainNode: GainNode;
-    private ison: OscillatorNode | undefined;
-    private melos: OscillatorNode | undefined;
+interface ToneNode {
+    oscillator: OscillatorNode;
+    gainNode: GainNode;
+}
 
-    static maxFrequency: number = 18000;
-    static minFrequency: number = 32;
+class ChantEngine extends HTMLElement {
+    private readonly audioContext: AudioContext;
+    private readonly mainGainNode: GainNode;
+    private ison?: ToneNode;
+    private melos?: ToneNode;
+
+    static get maxFrequency(): number {
+        return AUDIO_CONFIG.frequency.max;
+    }
+
+    static get minFrequency(): number {
+        return AUDIO_CONFIG.frequency.min;
+    }
 
     constructor() {
         super();
-
         this.audioContext = new AudioContext();
-
         this.mainGainNode = this.audioContext.createGain();
         this.mainGainNode.connect(this.audioContext.destination);
 
         const gainAttribute = this.getAttribute("gain");
-        const gain = gainAttribute ? parseFloat(gainAttribute) : 0.3;
+        const gain = gainAttribute
+            ? parseFloat(gainAttribute)
+            : AUDIO_CONFIG.defaultGain;
         this.mainGainNode.gain.value = gain;
     }
 
-    connectedCallback() {
+    connectedCallback(): void {
         devLog("connecting chant engine element...");
     }
 
-    disconnectedCallback() {
+    disconnectedCallback(): void {
         devLog("disconnecting chant engine...");
         this.stopTone(this.ison);
         this.stopTone(this.melos);
@@ -51,117 +72,113 @@ class ChantEngine extends HTMLElement {
 
     attributeChangedCallback(
         name: string,
-        oldValue: string,
-        newValue: string,
+        oldValue: string | null,
+        newValue: string | null,
     ): void {
+        if (oldValue === newValue) return;
+
         switch (name) {
             case "gain":
-                this.mainGainNode.gain.value = Number(newValue);
+                if (newValue !== null) {
+                    this.mainGainNode.gain.value = Number(newValue);
+                }
                 break;
 
             case "ison":
-                const oldIsonFreq = parseFloat(oldValue);
-                const newIsonFreq = parseFloat(newValue);
-                if (this.ison) {
-                    if (newIsonFreq) {
-                        devLog(`changing ison frequency to ${newIsonFreq}`);
-                        this.ison.frequency.value = newIsonFreq;
-                    } else {
-                        devLog("stopping ison tone");
-                        this.stopTone(this.ison);
-                        this.ison = undefined;
-                    }
-                } else {
-                    devLog("playing ison tone");
-                    this.ison = this.playTone(newIsonFreq);
-                }
+                this.handleFrequencyChange(
+                    oldValue,
+                    newValue,
+                    this.ison,
+                    (tone) => (this.ison = tone),
+                );
                 break;
 
             case "melos":
-                const oldMelosFreq = parseFloat(oldValue);
-                const newMelosFreq = parseFloat(newValue);
-                if (this.melos) {
-                    if (newMelosFreq) {
-                        devLog(`changing melos frequency to ${newMelosFreq}`);
-                        this.melos.frequency.value = newMelosFreq;
-                    } else {
-                        devLog("stopping melos tone");
-                        this.stopTone(this.melos);
-                        this.melos = undefined;
-                    }
-                } else {
-                    devLog("playing melos tone");
-                    this.melos = this.playTone(newMelosFreq);
-                }
+                this.handleFrequencyChange(
+                    oldValue,
+                    newValue,
+                    this.melos,
+                    (tone) => (this.melos = tone),
+                );
                 break;
         }
     }
 
-    /** Instantiate and start an oscillator node for the given frequency.
-     * Returns `null` if frequency is out of the range [32, 18000].
-     *
-     * @param {number} freq - Frequency to be played.
-     * @returns {OscillatorNode | null}
-     */
-    private playTone(freq: number): OscillatorNode | undefined {
+    private handleFrequencyChange(
+        oldValue: string | null,
+        newValue: string | null,
+        currentTone: ToneNode | undefined,
+        setTone: (tone: ToneNode | undefined) => void,
+    ): void {
+        const newFreq = newValue ? parseFloat(newValue) : undefined;
+
+        if (currentTone) {
+            if (newFreq) {
+                devLog(`changing frequency to ${newFreq}`);
+                currentTone.oscillator.frequency.value = newFreq;
+            } else {
+                devLog("stopping tone");
+                this.stopTone(currentTone);
+                setTone(undefined);
+            }
+        } else if (newFreq) {
+            devLog("playing new tone");
+            setTone(this.playTone(newFreq));
+        }
+    }
+
+    private playTone(freq: number): ToneNode | undefined {
         if (
             !Number.isFinite(freq) ||
             freq < ChantEngine.minFrequency ||
             freq > ChantEngine.maxFrequency
-        )
+        ) {
             return undefined;
+        }
 
         devLog(`playing ${freq}`);
 
-        const osc = this.audioContext.createOscillator();
-        osc.frequency.value = freq;
-        osc.type = "sine";
-
+        const oscillator = this.audioContext.createOscillator();
+        const gainNode = this.audioContext.createGain();
         const now = this.audioContext.currentTime;
-        const gain = this.audioContext.createGain();
 
-        // consider also exponentialRampToValueAtTime
-        gain.gain.setValueAtTime(0.01, now);
-        gain.gain.exponentialRampToValueAtTime(
+        oscillator.frequency.value = freq;
+        oscillator.type = "sine";
+
+        // Start with near-zero gain and ramp up for smooth start
+        gainNode.gain.setValueAtTime(0.001, now);
+        gainNode.gain.exponentialRampToValueAtTime(
             this.mainGainNode.gain.value,
-            now + crossFadeSeconds,
+            now + AUDIO_CONFIG.crossFadeSeconds,
         );
 
-        osc.connect(gain);
+        oscillator.connect(gainNode);
+        gainNode.connect(this.mainGainNode);
+        oscillator.start();
 
-        gain.connect(this.mainGainNode);
-
-        osc.start();
-        devLog(osc);
-        return osc;
+        return { oscillator, gainNode };
     }
 
-    private stopTone(osc: OscillatorNode | undefined): void {
-        if (osc == null) return;
-        devLog(`stopping ${osc.frequency.value}`);
+    private stopTone(tone?: ToneNode): void {
+        if (!tone) return;
 
+        const { oscillator, gainNode } = tone;
         const now = this.audioContext.currentTime;
-        // const gain = this.audioContext.createGain();
 
-        // gain.gain.setValueAtTime(this.mainGainNode.gain.value, now);
-        // gain.gain.linearRampToValueAtTime(0.01, now + crossFadeSeconds);
+        // Implement proper cross-fade out
+        gainNode.gain.setValueAtTime(gainNode.gain.value, now);
+        gainNode.gain.exponentialRampToValueAtTime(
+            0.001,
+            now + AUDIO_CONFIG.crossFadeSeconds,
+        );
 
-        // osc.connect(gain);
-        // osc.connect(this.audioContext.destination);
-        // gain.connect(this.mainGainNode);
+        // Schedule the complete stop and cleanup
+        oscillator.stop(now + AUDIO_CONFIG.crossFadeSeconds);
 
-        osc.stop(now + crossFadeSeconds);
-
-        // setTimeout(() => {
-        //     devLog("stopping now?")
-        //     osc.stop();
-        // }, crossFadeMilliseconds + 1)
-        // setTimeout
-        osc.disconnect();
-        // gain.disconnect();
-        osc.connect(this.mainGainNode);
-
-        // consider also an equal-power crossfade technique for when a tone changes rather than just stops
+        setTimeout(() => {
+            oscillator.disconnect();
+            gainNode.disconnect();
+        }, AUDIO_CONFIG.crossFadeSeconds * 1000);
     }
 }
 
