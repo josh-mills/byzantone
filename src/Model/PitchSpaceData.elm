@@ -2,7 +2,7 @@ module Model.PitchSpaceData exposing (PitchSpaceData, calculateVisibleRange, ini
 
 import Byzantine.Degree as Degree
 import Byzantine.Pitch as Pitch exposing (Pitch)
-import Model.LayoutData as LayoutData exposing (Layout, LayoutData)
+import Model.LayoutData as LayoutData exposing (Layout(..), LayoutData)
 import Model.ModeSettings exposing (ModeSettings)
 import Model.PitchState exposing (PitchState)
 
@@ -16,8 +16,10 @@ Elements include:
 
   - **`layout`** – the `Layout` based on the layout selection and/or viewport
     size for auto
-  - **`pitchButtonSize`** – a `Float`, representing the size (in px) of the
+  - **`pitchButtonSize`** – a `Float`, representing the size (in pixels) of the
     pitch button based on the viewport.
+  - **`scalingFactor`** – a `Float`, representing the scaling factor for
+    translating pitch positions and interval sizes from moria into pixels.
   - **`visibleRangeStart`** – `Int` representing the pitch position (in moria)
     of the bottom of the visible range, which may expand the default or user-set
     position to include the current pitch.
@@ -25,7 +27,6 @@ Elements include:
 
 Other elements we'll want:
 
-  - scaling factor (float)
   - data for each step interval (each one a separate record, which should
     eliminate the need for the to/from pitches), including:
       - position within visible range (singleton)
@@ -41,6 +42,7 @@ Other elements we'll want:
 type alias PitchSpaceData =
     { layout : Layout
     , pitchButtonSize : Float
+    , scalingFactor : Float
     , visibleRangeStart : Int
     , visibleRangeEnd : Int
     }
@@ -54,9 +56,11 @@ init layoutData modeSettings pitchState =
     in
     { layout = LayoutData.layoutFor layoutData
     , pitchButtonSize = calculatePitchButtonSize layoutData
+    , scalingFactor = 10
     , visibleRangeStart = Pitch.pitchPosition modeSettings.scale visibleRange.start
     , visibleRangeEnd = Pitch.pitchPosition modeSettings.scale visibleRange.end
     }
+        |> setScalingFactor layoutData
 
 
 calculatePitchButtonSize : LayoutData -> Float
@@ -98,3 +102,33 @@ calculateVisibleRange modeSettings pitchState =
             { start = Pitch.natural modeSettings.rangeStart
             , end = Pitch.natural modeSettings.rangeEnd
             }
+
+
+{-| This feels potentially fragile.
+
+TODO: consider some sort of minimum for the portrait to enable scrolling on
+small viewports.
+
+-}
+setScalingFactor : LayoutData -> PitchSpaceData -> PitchSpaceData
+setScalingFactor layoutData pitchSpaceData =
+    let
+        visibleRangeInMoria =
+            pitchSpaceData.visibleRangeEnd - pitchSpaceData.visibleRangeStart
+    in
+    { pitchSpaceData
+        | scalingFactor =
+            case pitchSpaceData.layout of
+                Vertical ->
+                    (layoutData.viewport.viewport.height
+                        - max layoutData.pitchSpace.element.y 128
+                        - pitchSpaceData.pitchButtonSize
+                    )
+                        / toFloat visibleRangeInMoria
+
+                Horizontal ->
+                    (layoutData.pitchSpace.element.width
+                        - pitchSpaceData.pitchButtonSize
+                    )
+                        / toFloat visibleRangeInMoria
+    }

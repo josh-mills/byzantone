@@ -47,8 +47,7 @@ view pitchSpaceData layoutData modeSettings pitchState =
     let
         params : Params
         params =
-            { scalingFactor = calculateScalingFactor pitchSpaceData pitchSpaceData.layout layoutData pitchSpaceData.visibleRangeStart pitchSpaceData.visibleRangeEnd
-            , visibleRange = calculateVisibleRange modeSettings pitchState
+            { visibleRange = calculateVisibleRange modeSettings pitchState
             }
     in
     div
@@ -77,8 +76,7 @@ view pitchSpaceData layoutData modeSettings pitchState =
 values that are calculated from the state.
 -}
 type alias Params =
-    { scalingFactor : Float
-    , visibleRange : { start : Pitch, end : Pitch }
+    { visibleRange : { start : Pitch, end : Pitch }
     }
 
 
@@ -90,33 +88,6 @@ type alias PitchDisplayParams =
     , positionWithinRange : PositionWithinVisibleRange
     , scalingFactor : Float
     }
-
-
-{-| This feels potentially fragile.
-
-TODO: we'll need some sort of minimum for the portrait to enable scrolling on
-small viewports.
-
--}
-calculateScalingFactor : PitchSpaceData -> Layout -> LayoutData -> Int -> Int -> Float
-calculateScalingFactor pitchSpaceData layout layoutData visibleRangeStart visibleRangeEnd =
-    let
-        visibleRangeInMoria =
-            visibleRangeEnd - visibleRangeStart
-    in
-    case layout of
-        Vertical ->
-            (layoutData.viewport.viewport.height
-                - max layoutData.pitchSpace.element.y 128
-                - pitchSpaceData.pitchButtonSize
-            )
-                / toFloat visibleRangeInMoria
-
-        Horizontal ->
-            (layoutData.pitchSpace.element.width
-                - pitchSpaceData.pitchButtonSize
-            )
-                / toFloat visibleRangeInMoria
 
 
 listAttributes : Layout -> List (Html.Attribute Msg)
@@ -183,7 +154,7 @@ viewIntervals : PitchSpaceData -> LayoutData -> ModeSettings -> PitchState -> Pa
 viewIntervals pitchSpaceData layoutData modeSettings pitchState params =
     Html.ol (onMouseLeave (SelectProposedMovement None) :: listAttributes pitchSpaceData.layout)
         (List.map
-            (viewInterval pitchSpaceData.layout layoutData pitchState params)
+            (viewInterval pitchSpaceData.layout layoutData pitchSpaceData.scalingFactor pitchState)
             (intervalsWithVisibility modeSettings pitchState params.visibleRange)
         )
 
@@ -236,8 +207,8 @@ intervalsWithVisibility modeSettings pitchState visibleRange =
         )
 
 
-viewInterval : Layout -> LayoutData -> PitchState -> Params -> ( Interval, PositionWithinVisibleRange ) -> Html Msg
-viewInterval layout layoutData pitchState { scalingFactor } ( interval, position ) =
+viewInterval : Layout -> LayoutData -> Float -> PitchState -> ( Interval, PositionWithinVisibleRange ) -> Html Msg
+viewInterval layout layoutData scalingFactor pitchState ( interval, position ) =
     let
         -- _ =
         --     Debug.log "in viewInterval" interval
@@ -434,9 +405,6 @@ viewPitch pitchSpaceData layoutData modeSettings pitchState ( pitchString, posit
             Pitch.decode modeSettings.scale pitchString
                 |> Result.withDefault (Pitch.natural Degree.Pa)
 
-        scalingFactor =
-            calculateScalingFactor pitchSpaceData pitchSpaceData.layout layoutData pitchSpaceData.visibleRangeStart pitchSpaceData.visibleRangeEnd
-
         degree =
             Pitch.unwrapDegree pitch
 
@@ -467,11 +435,11 @@ viewPitch pitchSpaceData layoutData modeSettings pitchState ( pitchString, posit
             , pitchPositionAbove = pitchPositionAbove
             , pitchPositionBelow = pitchPositionBelow
             , positionWithinRange = positionWithinRange
-            , scalingFactor = scalingFactor
+            , scalingFactor = pitchSpaceData.scalingFactor
             }
 
         scale int =
-            (toFloat int / 2) * scalingFactor
+            (toFloat int / 2) * pitchSpaceData.scalingFactor
 
         size =
             case positionWithinRange of
@@ -489,7 +457,7 @@ viewPitch pitchSpaceData layoutData modeSettings pitchState ( pitchString, posit
                         (\below above ->
                             (toFloat (above - pitchPosition) / 2)
                                 |> (+) (toFloat (pitchPosition - below) / 2)
-                                |> (*) scalingFactor
+                                |> (*) pitchSpaceData.scalingFactor
                         )
                         pitchPositionBelow
                         pitchPositionAbove
