@@ -44,12 +44,6 @@ Consider treating the visibleRange values as two ints (moria pitch positions).
 -}
 view : PitchSpaceData -> LayoutData -> ModeSettings -> PitchState -> Html Msg
 view pitchSpaceData layoutData modeSettings pitchState =
-    let
-        params : Params
-        params =
-            { visibleRange = calculateVisibleRange modeSettings pitchState
-            }
-    in
     div
         ([ Attr.id "pitch-space"
          , Styles.transition
@@ -67,17 +61,9 @@ view pitchSpaceData layoutData modeSettings pitchState =
                         ]
                )
         )
-        [ viewIntervals pitchSpaceData layoutData modeSettings pitchState params
-        , viewPitches pitchSpaceData layoutData modeSettings pitchState params
+        [ viewIntervals pitchSpaceData layoutData modeSettings pitchState
+        , viewPitches pitchSpaceData layoutData modeSettings pitchState
         ]
-
-
-{-| Includes both state elements passed in from the model and also derived
-values that are calculated from the state.
--}
-type alias Params =
-    { visibleRange : { start : Pitch, end : Pitch }
-    }
 
 
 type alias PitchDisplayParams =
@@ -150,12 +136,12 @@ code, these will be new objects with different references. I'm not sure if
 there's a good way to get around that, unless you find a way to encode the
 interval as a primitive.
 -}
-viewIntervals : PitchSpaceData -> LayoutData -> ModeSettings -> PitchState -> Params -> Html Msg
-viewIntervals pitchSpaceData layoutData modeSettings pitchState params =
+viewIntervals : PitchSpaceData -> LayoutData -> ModeSettings -> PitchState -> Html Msg
+viewIntervals pitchSpaceData layoutData modeSettings pitchState =
     Html.ol (onMouseLeave (SelectProposedMovement None) :: listAttributes pitchSpaceData.layout)
         (List.map
             (viewInterval pitchSpaceData.layout layoutData pitchSpaceData.scalingFactor pitchState)
-            (intervalsWithVisibility modeSettings pitchState params.visibleRange)
+            (intervalsWithVisibility modeSettings pitchState (calculateVisibleRange modeSettings pitchState))
         )
 
 
@@ -341,8 +327,8 @@ shouldHighlightInterval { currentPitch, proposedMovement } interval =
 -- PITCH COLUMN
 
 
-viewPitches : PitchSpaceData -> LayoutData -> ModeSettings -> PitchState -> Params -> Html Msg
-viewPitches pitchSpaceData layoutData modeSettings pitchState params =
+viewPitches : PitchSpaceData -> LayoutData -> ModeSettings -> PitchState -> Html Msg
+viewPitches pitchSpaceData layoutData modeSettings pitchState =
     -- let
     --     _ =
     --         Debug.log "in view pitches function" ""
@@ -350,7 +336,7 @@ viewPitches pitchSpaceData layoutData modeSettings pitchState params =
     Html.ol (listAttributes pitchSpaceData.layout)
         (List.map
             (viewPitch pitchSpaceData layoutData modeSettings pitchState)
-            (pitchesWithVisibility pitchState params.visibleRange)
+            (pitchesWithVisibility pitchState (calculateVisibleRange modeSettings pitchState))
         )
 
 
