@@ -1,0 +1,128 @@
+<!doctype html>
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <title>Web Audio API Test</title>
+    </head>
+    <body>
+        <h1>test?</h1>
+
+        <p class="flex"></p>
+
+        <button onclick="play()">Start/Stop</button>
+        <p>
+            <input type="range" min="0" max="1" step="0.01" id="volumeSlider" />
+            <span>gain: </span>
+            <span id="volumeLabel"></span>
+        </p>
+        <p>
+            <input type="range" min="32" max="1600" id="frequencySlider" />
+            <span>frequency: </span>
+            <span id="frequencyLabel"></span>
+        </p>
+
+        <canvas id="canvas" width="500" height="500"></canvas>
+
+        <label for="spectrum">
+            <input type="checkbox" id="spectrum" />
+            Spectrum
+        </label>
+
+        <script>
+            const context = new AudioContext();
+            const tone = context.createOscillator();
+            tone.type = "square";
+            // tone.type = "triangle"
+            // tone.type = "sawtooth"
+            // tone.type = "sine"
+            const volume = new GainNode(context, { gain: 0.05 });
+            tone.start();
+            let connected = false;
+            volume.connect(context.destination);
+            function play() {
+                if (!connected) {
+                    context.resume();
+                    tone.connect(volume);
+                    connected = true;
+                } else {
+                    connected = false;
+                    tone.disconnect(volume);
+                }
+            }
+
+            const volumeControl = document.getElementById("volumeSlider");
+            const volumeLabel = document.getElementById("volumeLabel");
+            volumeControl.oninput = function () {
+                volumeLabel.innerHTML = this.value;
+                volume.gain.value = this.value;
+            };
+
+            const frequencyControl = document.getElementById("frequencySlider");
+            const frequencyLabel = document.getElementById("frequencyLabel");
+            frequencyControl.oninput = function () {
+                frequencyLabel.innerHTML = this.value;
+                tone.frequency.value = this.value;
+            };
+
+            const spectrum = document.getElementById("spectrum");
+
+            const analyser = context.createAnalyser();
+            tone.connect(analyser);
+
+            const canvasContext = document
+                .getElementById("canvas")
+                .getContext("2d");
+            let data = new Uint8Array(analyser.frequencyBinCount);
+
+            function draw() {
+                const canvas = document.getElementById("canvas");
+                const height = canvas.height;
+                const width = canvas.width;
+
+                if (spectrum.checked) analyser.getByteFrequencyData(data);
+                else analyser.getByteTimeDomainData(data);
+
+                canvasContext.clearRect(0, 0, width, height);
+                for (let i = 0; i < data.length; i++) {
+                    if (spectrum.checked) {
+                        canvasContext.fillRect(
+                            i,
+                            height * (1 - data[i] / 256),
+                            1,
+                            (height * data[i]) / 256,
+                        );
+                    } else {
+                        canvasContext.fillRect(
+                            i,
+                            height * (1 - data[i] / 256),
+                            1,
+                            1,
+                        );
+                    }
+                }
+
+                requestAnimationFrame(draw);
+            }
+
+            draw();
+
+            // navigator.mediaDevices.getUserMedia({audio: true})
+            //     .then(stream => {
+            //         // debugger;
+            //         const source = context.createMediaStreamSource(stream)
+            //         // source.connect(volume)
+
+            //         const analyser = context.createAnalyser();
+            //         analyser.fftSize = 64;//2048;
+            //         const bufferLength = analyser.frequencyBinCount;
+            //         const dataArray = new Float32Array(bufferLength);
+            //         console.log(dataArray)
+            //         analyser.getFloatFrequencyData(dataArray);
+            //         console.log(dataArray)
+            //         source.connect(analyser)
+            //         console.log(dataArray)
+            //     })
+            //     .catch(err => console.error(err))
+        </script>
+    </body>
+</html>
