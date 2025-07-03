@@ -66,7 +66,11 @@ view model =
             , Html.Events.on "keydown" keyDecoder
             , Attr.attributeIf model.menuOpen (onClick ToggleMenu)
             ]
-            [ lazy3 PitchSpace.view model.layoutData model.modeSettings model.pitchState
+            [ lazy4 PitchSpace.view
+                model.pitchSpaceData
+                model.layoutData
+                model.modeSettings
+                model.pitchState
             , lazy3 viewControls model.audioSettings model.modeSettings model.pitchState
             ]
         ]

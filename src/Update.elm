@@ -11,6 +11,7 @@ import Model exposing (Modal, Model)
 import Model.AudioSettings exposing (AudioSettings)
 import Model.LayoutData exposing (LayoutData, LayoutSelection)
 import Model.ModeSettings exposing (ModeSettings)
+import Model.PitchSpaceData as PitchSpaceData
 import Model.PitchState as PitchState exposing (IsonStatus(..), PitchState)
 import Movement exposing (Movement)
 import Platform.Cmd as Cmd
@@ -56,6 +57,7 @@ update msg model =
                     updateLayoutData
                         (\layoutData -> { layoutData | pitchSpace = element })
                         model
+                        |> resetPitchSpaceData
 
                 Err _ ->
                     model
@@ -66,6 +68,7 @@ update msg model =
             ( updateLayoutData
                 (\layoutData -> { layoutData | viewport = viewport })
                 model
+                |> resetPitchSpaceData
             , Task.attempt GotPitchSpaceElement (Dom.getElement "pitch-space")
             )
 
@@ -160,6 +163,7 @@ update msg model =
             ( updateLayoutData
                 (\layoutData -> { layoutData | layoutSelection = layoutSelection })
                 model
+                |> resetPitchSpaceData
             , Task.perform GotViewport Dom.getViewport
             )
 
@@ -396,6 +400,17 @@ update msg model =
 
                 _ ->
                     ( model, Cmd.none )
+
+
+resetPitchSpaceData : Model -> Model
+resetPitchSpaceData model =
+    { model
+        | pitchSpaceData =
+            PitchSpaceData.init
+                model.layoutData
+                model.modeSettings
+                model.pitchState
+    }
 
 
 updateAudioSettings : (AudioSettings -> AudioSettings) -> Model -> Model

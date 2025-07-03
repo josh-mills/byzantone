@@ -20,6 +20,7 @@ import Html.Lazy exposing (lazy)
 import Maybe.Extra as Maybe
 import Model.LayoutData as LayoutData exposing (Layout(..), LayoutData)
 import Model.ModeSettings exposing (ModeSettings)
+import Model.PitchSpaceData exposing (PitchSpaceData)
 import Model.PitchState as PitchState exposing (IsonStatus(..), PitchState)
 import Movement exposing (Movement(..))
 import Round
@@ -42,23 +43,20 @@ Layout I think should also be fine), I think we should be able to lazify this.
 Consider treating the visibleRange values as two ints (moria pitch positions).
 
 -}
-view : LayoutData -> ModeSettings -> PitchState -> Html Msg
-view layoutData modeSettings pitchState =
+view : PitchSpaceData -> LayoutData -> ModeSettings -> PitchState -> Html Msg
+view pitchSpaceData layoutData modeSettings pitchState =
     let
-        layout =
-            LayoutData.layoutFor layoutData
-
         visibleRange =
             calculateVisibleRange modeSettings pitchState
 
         params : Params
         params =
-            { layout = layout
+            { layout = pitchSpaceData.layout
             , pitchButtonSize = calculatePitchButtonSize layoutData
             , layoutData = layoutData
             , modeSettings = modeSettings
             , pitchState = pitchState
-            , scalingFactor = calculateScalingFactor layout layoutData modeSettings visibleRange
+            , scalingFactor = calculateScalingFactor pitchSpaceData.layout layoutData modeSettings visibleRange
             , visibleRange = visibleRange
             }
     in
@@ -67,7 +65,7 @@ view layoutData modeSettings pitchState =
          , Styles.transition
          , Attr.attributeIf layoutData.showSpacing Styles.border
          ]
-            ++ (case layout of
+            ++ (case pitchSpaceData.layout of
                     Vertical ->
                         [ Styles.flexRow
                         , class "my-8"
