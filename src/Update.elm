@@ -38,7 +38,6 @@ type Msg
     | SetRegister Register
     | SetScale Scale
     | ToggleMenu
-    | ToggleSpacing
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -229,13 +228,6 @@ update msg model =
 
               else
                 Cmd.none
-            )
-
-        ToggleSpacing ->
-            ( updateLayoutData
-                (\layoutData -> { layoutData | showSpacing = not layoutData.showSpacing })
-                model
-            , Cmd.none
             )
 
         Keydown key ->

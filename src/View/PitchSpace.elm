@@ -17,7 +17,7 @@ import Html.Attributes.Extra as Attr
 import Html.Events exposing (onClick, onFocus, onMouseEnter, onMouseLeave)
 import Html.Extra exposing (viewIf, viewIfLazy)
 import Maybe.Extra as Maybe
-import Model.LayoutData exposing (Layout(..), LayoutData)
+import Model.LayoutData as LayoutData exposing (Layout(..))
 import Model.ModeSettings exposing (ModeSettings)
 import Model.PitchSpaceData exposing (PitchSpaceData, calculateVisibleRange)
 import Model.PitchState as PitchState exposing (IsonStatus(..), PitchState)
@@ -42,12 +42,12 @@ Layout I think should also be fine), I think we should be able to lazify this.
 Consider treating the visibleRange values as two ints (moria pitch positions).
 
 -}
-view : PitchSpaceData -> LayoutData -> ModeSettings -> PitchState -> Html Msg
-view pitchSpaceData layoutData modeSettings pitchState =
+view : PitchSpaceData -> ModeSettings -> PitchState -> Html Msg
+view pitchSpaceData modeSettings pitchState =
     div
         ([ Attr.id "pitch-space"
          , Styles.transition
-         , Attr.attributeIf layoutData.showSpacing Styles.border
+         , Attr.attributeIf LayoutData.showSpacing Styles.border
          ]
             ++ (case pitchSpaceData.layout of
                     Vertical ->
@@ -61,8 +61,8 @@ view pitchSpaceData layoutData modeSettings pitchState =
                         ]
                )
         )
-        [ viewIntervals pitchSpaceData layoutData modeSettings pitchState
-        , viewPitches pitchSpaceData layoutData modeSettings pitchState
+        [ viewIntervals pitchSpaceData modeSettings pitchState
+        , viewPitches pitchSpaceData modeSettings pitchState
         ]
 
 
@@ -136,11 +136,11 @@ code, these will be new objects with different references. I'm not sure if
 there's a good way to get around that, unless you find a way to encode the
 interval as a primitive.
 -}
-viewIntervals : PitchSpaceData -> LayoutData -> ModeSettings -> PitchState -> Html Msg
-viewIntervals pitchSpaceData layoutData modeSettings pitchState =
+viewIntervals : PitchSpaceData -> ModeSettings -> PitchState -> Html Msg
+viewIntervals pitchSpaceData modeSettings pitchState =
     Html.ol (onMouseLeave (SelectProposedMovement None) :: listAttributes pitchSpaceData.layout)
         (List.map
-            (viewInterval pitchSpaceData.layout layoutData pitchSpaceData.scalingFactor pitchState)
+            (viewInterval pitchSpaceData.layout pitchSpaceData.scalingFactor pitchState)
             (intervalsWithVisibility modeSettings pitchState (calculateVisibleRange modeSettings pitchState))
         )
 
@@ -193,8 +193,8 @@ intervalsWithVisibility modeSettings pitchState visibleRange =
         )
 
 
-viewInterval : Layout -> LayoutData -> Float -> PitchState -> ( Interval, PositionWithinVisibleRange ) -> Html Msg
-viewInterval layout layoutData scalingFactor pitchState ( interval, position ) =
+viewInterval : Layout -> Float -> PitchState -> ( Interval, PositionWithinVisibleRange ) -> Html Msg
+viewInterval layout scalingFactor pitchState ( interval, position ) =
     let
         -- _ =
         --     Debug.log "in viewInterval" interval
@@ -215,7 +215,7 @@ viewInterval layout layoutData scalingFactor pitchState ( interval, position ) =
         moria =
             span [ class "text-gray-600" ]
                 [ text (String.fromInt interval.moria)
-                , viewIf layoutData.showSpacing
+                , viewIf LayoutData.showSpacing
                     (text <| " (" ++ Round.round 2 size ++ "px)")
                 ]
 
@@ -327,15 +327,15 @@ shouldHighlightInterval { currentPitch, proposedMovement } interval =
 -- PITCH COLUMN
 
 
-viewPitches : PitchSpaceData -> LayoutData -> ModeSettings -> PitchState -> Html Msg
-viewPitches pitchSpaceData layoutData modeSettings pitchState =
+viewPitches : PitchSpaceData -> ModeSettings -> PitchState -> Html Msg
+viewPitches pitchSpaceData modeSettings pitchState =
     -- let
     --     _ =
     --         Debug.log "in view pitches function" ""
     -- in
     Html.ol (listAttributes pitchSpaceData.layout)
         (List.map
-            (viewPitch pitchSpaceData layoutData modeSettings pitchState)
+            (viewPitch pitchSpaceData modeSettings pitchState)
             (pitchesWithVisibility pitchState (calculateVisibleRange modeSettings pitchState))
         )
 
@@ -381,8 +381,8 @@ pitchesWithVisibility pitchState visibleRange =
         Degree.gamutList
 
 
-viewPitch : PitchSpaceData -> LayoutData -> ModeSettings -> PitchState -> ( String, PositionWithinVisibleRange ) -> Html Msg
-viewPitch pitchSpaceData layoutData modeSettings pitchState ( pitchString, positionWithinRange ) =
+viewPitch : PitchSpaceData -> ModeSettings -> PitchState -> ( String, PositionWithinVisibleRange ) -> Html Msg
+viewPitch pitchSpaceData modeSettings pitchState ( pitchString, positionWithinRange ) =
     let
         _ =
             Debug.log "in viewPitch" pitchString
@@ -459,7 +459,7 @@ viewPitch pitchSpaceData layoutData modeSettings pitchState ( pitchString, posit
                     0
 
         showSpacingDetails =
-            layoutData.showSpacing && positionIsVisible positionWithinRange
+            LayoutData.showSpacing && positionIsVisible positionWithinRange
 
         attributeIfVisible =
             Attr.attributeIf (positionIsVisible positionWithinRange)

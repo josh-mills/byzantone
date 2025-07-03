@@ -1,6 +1,7 @@
 module Model.LayoutData exposing
     ( LayoutData, initialLayoutData
     , LayoutSelection(..), Layout(..), layoutFor, layoutString
+    , showSpacing
     )
 
 {-| Layout data needed for proper rendering of the app, including both browser-
@@ -16,15 +17,24 @@ and user-controlled settings.
 
 @docs LayoutSelection, Layout, layoutFor, layoutString
 
+
+# Dev Constants
+
+@docs showSpacing
+
 -}
 
 import Browser.Dom as Dom
 
 
+showSpacing : Bool
+showSpacing =
+    False
+
+
 type alias LayoutData =
     { layoutSelection : LayoutSelection
     , pitchSpace : Dom.Element
-    , showSpacing : Bool
     , viewport : Dom.Viewport
     }
 
@@ -33,7 +43,6 @@ initialLayoutData : LayoutData
 initialLayoutData =
     { layoutSelection = Auto
     , pitchSpace = defaultElement
-    , showSpacing = False
     , viewport = defaultViewport
     }
 
