@@ -45,16 +45,10 @@ Consider treating the visibleRange values as two ints (moria pitch positions).
 view : PitchSpaceData -> LayoutData -> ModeSettings -> PitchState -> Html Msg
 view pitchSpaceData layoutData modeSettings pitchState =
     let
-        visibleRange =
-            calculateVisibleRange modeSettings pitchState
-
         params : Params
         params =
-            { layoutData = layoutData
-            , modeSettings = modeSettings
-            , pitchState = pitchState
-            , scalingFactor = calculateScalingFactor pitchSpaceData pitchSpaceData.layout layoutData pitchSpaceData.visibleRangeStart pitchSpaceData.visibleRangeEnd
-            , visibleRange = visibleRange
+            { scalingFactor = calculateScalingFactor pitchSpaceData pitchSpaceData.layout layoutData pitchSpaceData.visibleRangeStart pitchSpaceData.visibleRangeEnd
+            , visibleRange = calculateVisibleRange modeSettings pitchState
             }
     in
     div
@@ -83,10 +77,7 @@ view pitchSpaceData layoutData modeSettings pitchState =
 values that are calculated from the state.
 -}
 type alias Params =
-    { layoutData : LayoutData
-    , modeSettings : ModeSettings
-    , pitchState : PitchState
-    , scalingFactor : Float
+    { scalingFactor : Float
     , visibleRange : { start : Pitch, end : Pitch }
     }
 
@@ -192,7 +183,7 @@ viewIntervals : PitchSpaceData -> LayoutData -> ModeSettings -> PitchState -> Pa
 viewIntervals pitchSpaceData layoutData modeSettings pitchState params =
     Html.ol (onMouseLeave (SelectProposedMovement None) :: listAttributes pitchSpaceData.layout)
         (List.map
-            (viewInterval pitchSpaceData.layout layoutData params)
+            (viewInterval pitchSpaceData.layout layoutData pitchState params)
             (intervalsWithVisibility modeSettings pitchState params.visibleRange)
         )
 
@@ -245,8 +236,8 @@ intervalsWithVisibility modeSettings pitchState visibleRange =
         )
 
 
-viewInterval : Layout -> LayoutData -> Params -> ( Interval, PositionWithinVisibleRange ) -> Html Msg
-viewInterval layout layoutData { pitchState, scalingFactor } ( interval, position ) =
+viewInterval : Layout -> LayoutData -> PitchState -> Params -> ( Interval, PositionWithinVisibleRange ) -> Html Msg
+viewInterval layout layoutData pitchState { scalingFactor } ( interval, position ) =
     let
         -- _ =
         --     Debug.log "in viewInterval" interval
@@ -443,17 +434,8 @@ viewPitch pitchSpaceData layoutData modeSettings pitchState ( pitchString, posit
             Pitch.decode modeSettings.scale pitchString
                 |> Result.withDefault (Pitch.natural Degree.Pa)
 
-        visibleRange =
-            calculateVisibleRange modeSettings pitchState
-
-        params : Params
-        params =
-            { layoutData = layoutData
-            , modeSettings = modeSettings
-            , pitchState = pitchState
-            , scalingFactor = calculateScalingFactor pitchSpaceData pitchSpaceData.layout layoutData pitchSpaceData.visibleRangeStart pitchSpaceData.visibleRangeEnd
-            , visibleRange = visibleRange
-            }
+        scalingFactor =
+            calculateScalingFactor pitchSpaceData pitchSpaceData.layout layoutData pitchSpaceData.visibleRangeStart pitchSpaceData.visibleRangeEnd
 
         degree =
             Pitch.unwrapDegree pitch
@@ -485,11 +467,11 @@ viewPitch pitchSpaceData layoutData modeSettings pitchState ( pitchString, posit
             , pitchPositionAbove = pitchPositionAbove
             , pitchPositionBelow = pitchPositionBelow
             , positionWithinRange = positionWithinRange
-            , scalingFactor = params.scalingFactor
+            , scalingFactor = scalingFactor
             }
 
         scale int =
-            (toFloat int / 2) * params.scalingFactor
+            (toFloat int / 2) * scalingFactor
 
         size =
             case positionWithinRange of
@@ -507,7 +489,7 @@ viewPitch pitchSpaceData layoutData modeSettings pitchState ( pitchString, posit
                         (\below above ->
                             (toFloat (above - pitchPosition) / 2)
                                 |> (+) (toFloat (pitchPosition - below) / 2)
-                                |> (*) params.scalingFactor
+                                |> (*) scalingFactor
                         )
                         pitchPositionBelow
                         pitchPositionAbove
@@ -553,7 +535,8 @@ viewPitch pitchSpaceData layoutData modeSettings pitchState ( pitchString, posit
                 pitchButton
                     pitchSpaceData.layout
                     pitchSpaceData.pitchButtonSize
-                    params
+                    modeSettings
+                    pitchState
                     pitchDisplayParams
             )
         , viewIfLazy isIson
@@ -568,8 +551,8 @@ viewPitch pitchSpaceData layoutData modeSettings pitchState ( pitchString, posit
         ]
 
 
-pitchButton : Layout -> Float -> Params -> PitchDisplayParams -> Html Msg
-pitchButton layout pitchButtonSize ({ modeSettings, pitchState } as params) ({ pitch } as pitchDisplayParams) =
+pitchButton : Layout -> Float -> ModeSettings -> PitchState -> PitchDisplayParams -> Html Msg
+pitchButton layout pitchButtonSize modeSettings pitchState ({ pitch } as pitchDisplayParams) =
     let
         isCurrentDegree =
             Just (Pitch.unwrapDegree pitch) == Maybe.map Pitch.unwrapDegree pitchState.currentPitch
@@ -593,7 +576,7 @@ pitchButton layout pitchButtonSize ({ modeSettings, pitchState } as params) ({ p
             Maybe.map
                 (\accidental ->
                     Pitch.isValidInflection
-                        params.modeSettings.scale
+                        modeSettings.scale
                         accidental
                         (Pitch.unwrapDegree pitch)
                 )
