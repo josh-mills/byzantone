@@ -104,6 +104,7 @@ update msg model =
                     }
                 )
                 model
+                |> resetPitchSpaceData
             , Cmd.none
             )
 
@@ -156,6 +157,7 @@ update msg model =
             ( updatePitchState
                 (\pitchState -> { pitchState | ison = ison })
                 model
+                |> resetPitchSpaceData
             , Cmd.none
             )
 
@@ -185,6 +187,7 @@ update msg model =
                     }
                 )
                 model
+                |> resetPitchSpaceData
             , Cmd.none
             )
 
@@ -199,6 +202,7 @@ update msg model =
                     }
                 )
                 model
+                |> resetPitchSpaceData
             , Cmd.none
             )
 
@@ -214,6 +218,7 @@ update msg model =
                 (\modeSettings -> { modeSettings | scale = scale })
                 -- , currentPitch = Nothing -- consider this.
                 model
+                |> resetPitchSpaceData
             , Cmd.none
             )
 
@@ -459,6 +464,7 @@ moveAndFocus model interval =
             }
         )
         model
+        |> resetPitchSpaceData
     , Maybe.unwrap Cmd.none
         (\pitch_ ->
             Pitch.unwrapDegree pitch_
@@ -478,6 +484,7 @@ setAndFocus model degree =
             updatePitchState
                 (\pitchState -> { pitchState | ison = PitchState.Selected degree })
                 model
+                |> resetPitchSpaceData
 
         _ ->
             updatePitchState
@@ -494,6 +501,7 @@ setAndFocus model degree =
                     }
                 )
                 model
+                |> resetPitchSpaceData
     , Degree.toString degree |> (++) "p_" |> Dom.focus |> Task.attempt DomResult
     )
 

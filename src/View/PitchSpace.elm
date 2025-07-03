@@ -19,7 +19,7 @@ import Html.Extra exposing (viewIf, viewIfLazy)
 import Maybe.Extra as Maybe
 import Model.LayoutData exposing (Layout(..), LayoutData)
 import Model.ModeSettings exposing (ModeSettings)
-import Model.PitchSpaceData exposing (PitchSpaceData)
+import Model.PitchSpaceData exposing (PitchSpaceData, calculateVisibleRange)
 import Model.PitchState as PitchState exposing (IsonStatus(..), PitchState)
 import Movement exposing (Movement(..))
 import Round
@@ -53,7 +53,7 @@ view pitchSpaceData layoutData modeSettings pitchState =
             { layoutData = layoutData
             , modeSettings = modeSettings
             , pitchState = pitchState
-            , scalingFactor = calculateScalingFactor pitchSpaceData pitchSpaceData.layout layoutData modeSettings visibleRange
+            , scalingFactor = calculateScalingFactor pitchSpaceData pitchSpaceData.layout layoutData pitchSpaceData.visibleRangeStart pitchSpaceData.visibleRangeEnd
             , visibleRange = visibleRange
             }
     in
@@ -107,12 +107,11 @@ TODO: we'll need some sort of minimum for the portrait to enable scrolling on
 small viewports.
 
 -}
-calculateScalingFactor : PitchSpaceData -> Layout -> LayoutData -> ModeSettings -> { start : Pitch, end : Pitch } -> Float
-calculateScalingFactor pitchSpaceData layout layoutData modeSettings visibleRange =
+calculateScalingFactor : PitchSpaceData -> Layout -> LayoutData -> Int -> Int -> Float
+calculateScalingFactor pitchSpaceData layout layoutData visibleRangeStart visibleRangeEnd =
     let
         visibleRangeInMoria =
-            Pitch.pitchPosition modeSettings.scale visibleRange.end
-                - Pitch.pitchPosition modeSettings.scale visibleRange.start
+            visibleRangeEnd - visibleRangeStart
     in
     case layout of
         Vertical ->
@@ -150,38 +149,6 @@ pitchButtonSizeClass =
 
 
 -- VISIBILITY
-
-
-{-| What is the visible range of the pitch space? This expands the default (or
-user-set) start and stop positions to include the current pitch. (We may want to
-consider additional limits as well.)
--}
-calculateVisibleRange : ModeSettings -> PitchState -> { start : Pitch, end : Pitch }
-calculateVisibleRange modeSettings pitchState =
-    case pitchState.currentPitch of
-        Just currentPitch ->
-            let
-                currentDegree =
-                    Pitch.unwrapDegree currentPitch
-            in
-            { start =
-                if Degree.indexOf currentDegree < Degree.indexOf modeSettings.rangeStart then
-                    currentPitch
-
-                else
-                    Pitch.natural modeSettings.rangeStart
-            , end =
-                if Degree.indexOf currentDegree > Degree.indexOf modeSettings.rangeEnd then
-                    currentPitch
-
-                else
-                    Pitch.natural modeSettings.rangeEnd
-            }
-
-        Nothing ->
-            { start = Pitch.natural modeSettings.rangeStart
-            , end = Pitch.natural modeSettings.rangeEnd
-            }
 
 
 type PositionWithinVisibleRange
@@ -484,7 +451,7 @@ viewPitch pitchSpaceData layoutData modeSettings pitchState ( pitchString, posit
             { layoutData = layoutData
             , modeSettings = modeSettings
             , pitchState = pitchState
-            , scalingFactor = calculateScalingFactor pitchSpaceData pitchSpaceData.layout layoutData modeSettings visibleRange
+            , scalingFactor = calculateScalingFactor pitchSpaceData pitchSpaceData.layout layoutData pitchSpaceData.visibleRangeStart pitchSpaceData.visibleRangeEnd
             , visibleRange = visibleRange
             }
 
