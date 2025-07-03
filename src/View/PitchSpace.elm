@@ -16,9 +16,8 @@ import Html.Attributes as Attr exposing (class, classList)
 import Html.Attributes.Extra as Attr
 import Html.Events exposing (onClick, onFocus, onMouseEnter, onMouseLeave)
 import Html.Extra exposing (viewIf, viewIfLazy)
-import Html.Lazy exposing (lazy)
 import Maybe.Extra as Maybe
-import Model.LayoutData as LayoutData exposing (Layout(..), LayoutData)
+import Model.LayoutData exposing (Layout(..), LayoutData)
 import Model.ModeSettings exposing (ModeSettings)
 import Model.PitchSpaceData exposing (PitchSpaceData)
 import Model.PitchState as PitchState exposing (IsonStatus(..), PitchState)
@@ -51,12 +50,10 @@ view pitchSpaceData layoutData modeSettings pitchState =
 
         params : Params
         params =
-            { layout = pitchSpaceData.layout
-            , pitchButtonSize = calculatePitchButtonSize layoutData
-            , layoutData = layoutData
+            { layoutData = layoutData
             , modeSettings = modeSettings
             , pitchState = pitchState
-            , scalingFactor = calculateScalingFactor pitchSpaceData.layout layoutData modeSettings visibleRange
+            , scalingFactor = calculateScalingFactor pitchSpaceData pitchSpaceData.layout layoutData modeSettings visibleRange
             , visibleRange = visibleRange
             }
     in
@@ -77,8 +74,8 @@ view pitchSpaceData layoutData modeSettings pitchState =
                         ]
                )
         )
-        [ viewIntervals layoutData modeSettings pitchState params
-        , viewPitches layoutData modeSettings pitchState params
+        [ viewIntervals pitchSpaceData layoutData modeSettings pitchState params
+        , viewPitches pitchSpaceData layoutData modeSettings pitchState params
         ]
 
 
@@ -86,10 +83,8 @@ view pitchSpaceData layoutData modeSettings pitchState =
 values that are calculated from the state.
 -}
 type alias Params =
-    { layout : Layout
-    , layoutData : LayoutData
+    { layoutData : LayoutData
     , modeSettings : ModeSettings
-    , pitchButtonSize : Float
     , pitchState : PitchState
     , scalingFactor : Float
     , visibleRange : { start : Pitch, end : Pitch }
@@ -112,27 +107,24 @@ TODO: we'll need some sort of minimum for the portrait to enable scrolling on
 small viewports.
 
 -}
-calculateScalingFactor : Layout -> LayoutData -> ModeSettings -> { start : Pitch, end : Pitch } -> Float
-calculateScalingFactor layout layoutData modeSettings visibleRange =
+calculateScalingFactor : PitchSpaceData -> Layout -> LayoutData -> ModeSettings -> { start : Pitch, end : Pitch } -> Float
+calculateScalingFactor pitchSpaceData layout layoutData modeSettings visibleRange =
     let
         visibleRangeInMoria =
             Pitch.pitchPosition modeSettings.scale visibleRange.end
                 - Pitch.pitchPosition modeSettings.scale visibleRange.start
-
-        marginForButton =
-            calculatePitchButtonSize layoutData
     in
     case layout of
         Vertical ->
             (layoutData.viewport.viewport.height
                 - max layoutData.pitchSpace.element.y 128
-                - marginForButton
+                - pitchSpaceData.pitchButtonSize
             )
                 / toFloat visibleRangeInMoria
 
         Horizontal ->
             (layoutData.pitchSpace.element.width
-                - marginForButton
+                - pitchSpaceData.pitchButtonSize
             )
                 / toFloat visibleRangeInMoria
 
@@ -154,15 +146,6 @@ listAttributes layout =
 pitchButtonSizeClass : Html.Attribute msg
 pitchButtonSizeClass =
     class "w-12 h-12 sm:w-16 sm:h-16 text-xl sm:text-3xl"
-
-
-calculatePitchButtonSize : LayoutData -> Float
-calculatePitchButtonSize layoutData =
-    if layoutData.viewport.viewport.width < 640 then
-        48
-
-    else
-        64
 
 
 
@@ -238,11 +221,11 @@ code, these will be new objects with different references. I'm not sure if
 there's a good way to get around that, unless you find a way to encode the
 interval as a primitive.
 -}
-viewIntervals : LayoutData -> ModeSettings -> PitchState -> Params -> Html Msg
-viewIntervals layoutData modeSettings pitchState params =
-    Html.ol (onMouseLeave (SelectProposedMovement None) :: listAttributes params.layout)
+viewIntervals : PitchSpaceData -> LayoutData -> ModeSettings -> PitchState -> Params -> Html Msg
+viewIntervals pitchSpaceData layoutData modeSettings pitchState params =
+    Html.ol (onMouseLeave (SelectProposedMovement None) :: listAttributes pitchSpaceData.layout)
         (List.map
-            (viewInterval layoutData params)
+            (viewInterval pitchSpaceData.layout layoutData params)
             (intervalsWithVisibility modeSettings pitchState params.visibleRange)
         )
 
@@ -295,8 +278,8 @@ intervalsWithVisibility modeSettings pitchState visibleRange =
         )
 
 
-viewInterval : LayoutData -> Params -> ( Interval, PositionWithinVisibleRange ) -> Html Msg
-viewInterval layoutData { layout, pitchState, scalingFactor } ( interval, position ) =
+viewInterval : Layout -> LayoutData -> Params -> ( Interval, PositionWithinVisibleRange ) -> Html Msg
+viewInterval layout layoutData { pitchState, scalingFactor } ( interval, position ) =
     let
         -- _ =
         --     Debug.log "in viewInterval" interval
@@ -429,15 +412,15 @@ shouldHighlightInterval { currentPitch, proposedMovement } interval =
 -- PITCH COLUMN
 
 
-viewPitches : LayoutData -> ModeSettings -> PitchState -> Params -> Html Msg
-viewPitches layoutData modeSettings pitchState params =
+viewPitches : PitchSpaceData -> LayoutData -> ModeSettings -> PitchState -> Params -> Html Msg
+viewPitches pitchSpaceData layoutData modeSettings pitchState params =
     -- let
     --     _ =
     --         Debug.log "in view pitches function" ""
     -- in
-    Html.ol (listAttributes params.layout)
+    Html.ol (listAttributes pitchSpaceData.layout)
         (List.map
-            (viewPitch layoutData modeSettings pitchState)
+            (viewPitch pitchSpaceData layoutData modeSettings pitchState)
             (pitchesWithVisibility pitchState params.visibleRange)
         )
 
@@ -483,8 +466,8 @@ pitchesWithVisibility pitchState visibleRange =
         Degree.gamutList
 
 
-viewPitch : LayoutData -> ModeSettings -> PitchState -> ( String, PositionWithinVisibleRange ) -> Html Msg
-viewPitch layoutData modeSettings pitchState ( pitchString, positionWithinRange ) =
+viewPitch : PitchSpaceData -> LayoutData -> ModeSettings -> PitchState -> ( String, PositionWithinVisibleRange ) -> Html Msg
+viewPitch pitchSpaceData layoutData modeSettings pitchState ( pitchString, positionWithinRange ) =
     let
         _ =
             Debug.log "in viewPitch" pitchString
@@ -493,20 +476,15 @@ viewPitch layoutData modeSettings pitchState ( pitchString, positionWithinRange 
             Pitch.decode modeSettings.scale pitchString
                 |> Result.withDefault (Pitch.natural Degree.Pa)
 
-        layout =
-            LayoutData.layoutFor layoutData
-
         visibleRange =
             calculateVisibleRange modeSettings pitchState
 
         params : Params
         params =
-            { layout = layout
-            , pitchButtonSize = calculatePitchButtonSize layoutData
-            , layoutData = layoutData
+            { layoutData = layoutData
             , modeSettings = modeSettings
             , pitchState = pitchState
-            , scalingFactor = calculateScalingFactor layout layoutData modeSettings visibleRange
+            , scalingFactor = calculateScalingFactor pitchSpaceData pitchSpaceData.layout layoutData modeSettings visibleRange
             , visibleRange = visibleRange
             }
 
@@ -591,7 +569,7 @@ viewPitch layoutData modeSettings pitchState ( pitchString, positionWithinRange 
          , Styles.transition
          , Attr.attributeIf showSpacingDetails Styles.border
          ]
-            ++ (case layout of
+            ++ (case pitchSpaceData.layout of
                     Vertical ->
                         [ Styles.height size
                         , attributeIfVisible Styles.flexRow
@@ -604,16 +582,27 @@ viewPitch layoutData modeSettings pitchState ( pitchString, positionWithinRange 
                )
         )
         [ viewIfLazy (positionIsVisible positionWithinRange)
-            (\_ -> pitchButton params pitchDisplayParams)
+            (\_ ->
+                pitchButton
+                    pitchSpaceData.layout
+                    pitchSpaceData.pitchButtonSize
+                    params
+                    pitchDisplayParams
+            )
         , viewIfLazy isIson
-            (\_ -> isonIndicator params pitchDisplayParams)
+            (\_ ->
+                isonIndicator
+                    pitchSpaceData.layout
+                    pitchSpaceData.pitchButtonSize
+                    pitchDisplayParams
+            )
         , viewIf showSpacingDetails
             (text (" (" ++ Round.round 2 size ++ "px)"))
         ]
 
 
-pitchButton : Params -> PitchDisplayParams -> Html Msg
-pitchButton ({ layout, modeSettings, pitchState } as params) ({ pitch } as pitchDisplayParams) =
+pitchButton : Layout -> Float -> Params -> PitchDisplayParams -> Html Msg
+pitchButton layout pitchButtonSize ({ modeSettings, pitchState } as params) ({ pitch } as pitchDisplayParams) =
     let
         isCurrentDegree =
             Just (Pitch.unwrapDegree pitch) == Maybe.map Pitch.unwrapDegree pitchState.currentPitch
@@ -631,7 +620,7 @@ pitchButton ({ layout, modeSettings, pitchState } as params) ({ pitch } as pitch
                     False
 
         position =
-            pitchElementPosition params pitchDisplayParams PitchButton
+            pitchElementPosition layout pitchButtonSize pitchDisplayParams PitchButton
 
         degreeCanSupportProposedAccidental =
             Maybe.map
@@ -717,11 +706,11 @@ pitchButton ({ layout, modeSettings, pitchState } as params) ({ pitch } as pitch
         ]
 
 
-isonIndicator : Params -> PitchDisplayParams -> Html Msg
-isonIndicator ({ layout } as params) ({ pitch } as pitchDisplayParams) =
+isonIndicator : Layout -> Float -> PitchDisplayParams -> Html Msg
+isonIndicator layout pitchButtonSize ({ pitch } as pitchDisplayParams) =
     let
         position =
-            pitchElementPosition params pitchDisplayParams IsonIndicator
+            pitchElementPosition layout pitchButtonSize pitchDisplayParams IsonIndicator
     in
     div
         (class "relative text-lg sm:text-2xl text-blue-700 text-greek"
@@ -746,11 +735,12 @@ type PitchElementTarget
 
 
 pitchElementPosition :
-    Params
+    Layout
+    -> Float
     -> PitchDisplayParams
     -> PitchElementTarget
     -> Float
-pitchElementPosition { layout, pitchButtonSize } { pitchPosition, pitchPositionAbove, pitchPositionBelow, positionWithinRange, scalingFactor } target =
+pitchElementPosition layout pitchButtonSize { pitchPosition, pitchPositionAbove, pitchPositionBelow, positionWithinRange, scalingFactor } target =
     let
         scale int =
             (toFloat int / 2)

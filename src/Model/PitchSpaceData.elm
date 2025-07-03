@@ -13,7 +13,6 @@ record should be singletons or primitives to support lazy rendering.
 Other elements we'll want:
 
   - scaling factor (float)
-  - pitch button size (float)
   - data for each step interval (each one a separate record, which should
     eliminate the need for the to/from pitches), including:
       - position within visible range (singleton)
@@ -26,10 +25,21 @@ Other elements we'll want:
 -}
 type alias PitchSpaceData =
     { layout : Layout
+    , pitchButtonSize : Float
     }
 
 
 init : LayoutData -> ModeSettings -> PitchState -> PitchSpaceData
 init layoutData _ _ =
     { layout = LayoutData.layoutFor layoutData
+    , pitchButtonSize = calculatePitchButtonSize layoutData
     }
+
+
+calculatePitchButtonSize : LayoutData -> Float
+calculatePitchButtonSize layoutData =
+    if layoutData.viewport.viewport.width < 640 then
+        48
+
+    else
+        64
