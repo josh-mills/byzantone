@@ -1,4 +1,4 @@
-module Model.PitchSpaceData exposing (PitchSpaceData, calculateVisibleRange, init)
+module Model.PitchSpaceData exposing (PitchSpaceData, PositionWithinVisibleRange(..), calculateVisibleRange, init, positionIsVisible)
 
 import Byzantine.Degree as Degree
 import Byzantine.Pitch as Pitch exposing (Pitch)
@@ -132,3 +132,34 @@ setScalingFactor layoutData pitchSpaceData =
                     )
                         / toFloat visibleRangeInMoria
     }
+
+
+
+-- VISIBILITY
+
+
+type PositionWithinVisibleRange
+    = Below
+    | LowerBoundary
+    | Within
+    | UpperBoundary
+    | Above
+
+
+positionIsVisible : PositionWithinVisibleRange -> Bool
+positionIsVisible position =
+    case position of
+        Below ->
+            False
+
+        LowerBoundary ->
+            True
+
+        Within ->
+            True
+
+        UpperBoundary ->
+            True
+
+        Above ->
+            False

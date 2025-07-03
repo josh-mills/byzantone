@@ -19,7 +19,7 @@ import Html.Extra exposing (viewIf, viewIfLazy)
 import Maybe.Extra as Maybe
 import Model.LayoutData as LayoutData exposing (Layout(..))
 import Model.ModeSettings exposing (ModeSettings)
-import Model.PitchSpaceData exposing (PitchSpaceData, calculateVisibleRange)
+import Model.PitchSpaceData as PitchSpaceData exposing (PitchSpaceData, PositionWithinVisibleRange(..), calculateVisibleRange)
 import Model.PitchState as PitchState exposing (IsonStatus(..), PitchState)
 import Movement exposing (Movement(..))
 import Round
@@ -93,37 +93,6 @@ listAttributes layout =
 pitchButtonSizeClass : Html.Attribute msg
 pitchButtonSizeClass =
     class "w-12 h-12 sm:w-16 sm:h-16 text-xl sm:text-3xl"
-
-
-
--- VISIBILITY
-
-
-type PositionWithinVisibleRange
-    = Below
-    | LowerBoundary
-    | Within
-    | UpperBoundary
-    | Above
-
-
-positionIsVisible : PositionWithinVisibleRange -> Bool
-positionIsVisible position =
-    case position of
-        Below ->
-            False
-
-        LowerBoundary ->
-            True
-
-        Within ->
-            True
-
-        UpperBoundary ->
-            True
-
-        Above ->
-            False
 
 
 
@@ -246,7 +215,7 @@ viewInterval layout scalingFactor pitchState ( interval, position ) =
             Horizontal ->
                 Styles.width size
         , Styles.transition
-        , Attr.attributeIf (positionIsVisible position) Styles.border
+        , Attr.attributeIf (PitchSpaceData.positionIsVisible position) Styles.border
         , case layout of
             Vertical ->
                 class "border-r-0"
@@ -277,7 +246,7 @@ viewInterval layout scalingFactor pitchState ( interval, position ) =
                 div [ class "content-center" ]
                     [ moria ]
           )
-            |> viewIf (positionIsVisible position)
+            |> viewIf (PitchSpaceData.positionIsVisible position)
         ]
 
 
@@ -458,11 +427,14 @@ viewPitch pitchSpaceData modeSettings pitchState ( pitchString, positionWithinRa
                 Above ->
                     0
 
+        positionIsVisible =
+            PitchSpaceData.positionIsVisible positionWithinRange
+
         showSpacingDetails =
-            LayoutData.showSpacing && positionIsVisible positionWithinRange
+            LayoutData.showSpacing && positionIsVisible
 
         attributeIfVisible =
-            Attr.attributeIf (positionIsVisible positionWithinRange)
+            Attr.attributeIf positionIsVisible
 
         isIson =
             PitchState.ison pitchState.ison == Just (Pitch.natural degree)
@@ -484,7 +456,7 @@ viewPitch pitchSpaceData modeSettings pitchState ( pitchString, positionWithinRa
                         ]
                )
         )
-        [ viewIfLazy (positionIsVisible positionWithinRange)
+        [ viewIfLazy positionIsVisible
             (\_ ->
                 pitchButton
                     pitchSpaceData.layout
