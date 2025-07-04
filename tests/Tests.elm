@@ -7,6 +7,7 @@ import Byzantine.Pitch as Pitch
 import Byzantine.Scale as Scale exposing (Scale(..))
 import Expect
 import List.Extra
+import Model.DegreeDataDict as DegreeDataDict
 import Test exposing (Test, describe, test)
 
 
@@ -161,6 +162,56 @@ accidentalBuilder =
                     accidentals
     in
     next [] |> List.reverse
+
+
+degreeDataDictTests : Test
+degreeDataDictTests =
+    describe "DegreeDataDict Tests"
+        [ describe "init with identity maps degrees to themselves" <|
+            let
+                dict =
+                    DegreeDataDict.init identity
+            in
+            List.map
+                (\degree ->
+                    test (Degree.toString degree ++ " maps to itself") <|
+                        \_ ->
+                            Expect.equal degree (DegreeDataDict.get degree dict)
+                )
+                Degree.gamutList
+        , test "init creates dict with correct values" <|
+            \_ ->
+                let
+                    dict =
+                        DegreeDataDict.init (Degree.indexOf >> String.fromInt)
+                in
+                Expect.equal "5" (DegreeDataDict.get Pa dict)
+        , test "set updates correct degree" <|
+            \_ ->
+                let
+                    dict =
+                        DegreeDataDict.init (always 0)
+                            |> DegreeDataDict.set Di 42
+                in
+                Expect.all
+                    [ \d -> Expect.equal 42 (DegreeDataDict.get Di d)
+                    , \d -> Expect.equal 0 (DegreeDataDict.get Pa d)
+                    ]
+                    dict
+        , test "get returns correct values for all degrees" <|
+            \_ ->
+                let
+                    dict =
+                        DegreeDataDict.init Degree.toString
+                in
+                Expect.all
+                    [ \d -> Expect.equal "GA" (DegreeDataDict.get GA d)
+                    , \d -> Expect.equal "Zo" (DegreeDataDict.get Zo d)
+                    , \d -> Expect.equal "Pa" (DegreeDataDict.get Pa d)
+                    , \d -> Expect.equal "Ga_" (DegreeDataDict.get Ga_ d)
+                    ]
+                    dict
+        ]
 
 
 pitchTests : Test
