@@ -17,6 +17,7 @@ import Html.Attributes.Extra as Attr
 import Html.Events exposing (onClick, onFocus, onMouseEnter, onMouseLeave)
 import Html.Extra exposing (viewIf, viewIfLazy)
 import Maybe.Extra as Maybe
+import Model.DegreeDataDict as DegreeDataDict
 import Model.LayoutData as LayoutData exposing (Layout(..))
 import Model.ModeSettings exposing (ModeSettings)
 import Model.PitchSpaceData as PitchSpaceData exposing (PitchSpaceData, PositionWithinVisibleRange(..), calculateVisibleRange)
@@ -298,60 +299,29 @@ shouldHighlightInterval { currentPitch, proposedMovement } interval =
 
 viewPitches : PitchSpaceData -> ModeSettings -> PitchState -> Html Msg
 viewPitches pitchSpaceData modeSettings pitchState =
-    -- let
-    --     _ =
-    --         Debug.log "in view pitches function" ""
-    -- in
-    Html.ol (listAttributes pitchSpaceData.layout)
-        (List.map
-            (viewPitch pitchSpaceData modeSettings pitchState)
-            (pitchesWithVisibility pitchState (calculateVisibleRange modeSettings pitchState))
-        )
-
-
-pitchesWithVisibility :
-    PitchState
-    -> { start : Pitch, end : Pitch }
-    -> List ( String, PositionWithinVisibleRange )
-pitchesWithVisibility pitchState visibleRange =
     let
-        lowerBoundIndex =
-            Degree.indexOf (Pitch.unwrapDegree visibleRange.start)
-
-        upperBoundIndex =
-            Degree.indexOf (Pitch.unwrapDegree visibleRange.end)
-
-        visibility pitchIndex =
-            if pitchIndex < lowerBoundIndex then
-                Below
-
-            else if pitchIndex > upperBoundIndex then
-                Above
-
-            else if pitchIndex == lowerBoundIndex then
-                LowerBoundary
-
-            else if pitchIndex == upperBoundIndex then
-                UpperBoundary
-
-            else
-                Within
-
+        --     _ =
+        --         Debug.log "in view pitches function" ""
         proposedMovementTo =
             Movement.unwrapTargetPitch pitchState.proposedMovement
     in
-    List.map
-        (\degree ->
-            ( Pitch.wrapDegree pitchState.currentPitch proposedMovementTo degree
-                |> Pitch.encode
-            , visibility (Degree.indexOf degree)
+    Html.ol (listAttributes pitchSpaceData.layout)
+        (List.map
+            (\degree ->
+                viewPitch pitchSpaceData
+                    modeSettings
+                    pitchState
+                    (Pitch.wrapDegree pitchState.currentPitch proposedMovementTo degree
+                        |> Pitch.encode
+                    )
+                    (DegreeDataDict.get degree pitchSpaceData.pitchVisibility)
             )
+            Degree.gamutList
         )
-        Degree.gamutList
 
 
-viewPitch : PitchSpaceData -> ModeSettings -> PitchState -> ( String, PositionWithinVisibleRange ) -> Html Msg
-viewPitch pitchSpaceData modeSettings pitchState ( pitchString, positionWithinRange ) =
+viewPitch : PitchSpaceData -> ModeSettings -> PitchState -> String -> PositionWithinVisibleRange -> Html Msg
+viewPitch pitchSpaceData modeSettings pitchState pitchString positionWithinRange =
     let
         _ =
             Debug.log "in viewPitch" pitchString

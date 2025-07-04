@@ -1,7 +1,8 @@
 module Model.PitchSpaceData exposing (PitchSpaceData, PositionWithinVisibleRange(..), calculateVisibleRange, init, positionIsVisible)
 
-import Byzantine.Degree as Degree
+import Byzantine.Degree as Degree exposing (Degree)
 import Byzantine.Pitch as Pitch exposing (Pitch)
+import Model.DegreeDataDict as DegreeDataDict exposing (DegreeDataDict)
 import Model.LayoutData as LayoutData exposing (Layout(..), LayoutData)
 import Model.ModeSettings exposing (ModeSettings)
 import Model.PitchState exposing (PitchState)
@@ -18,6 +19,8 @@ Elements include:
     size for auto
   - **`pitchButtonSize`** – a `Float`, representing the size (in pixels) of the
     pitch button based on the viewport.
+  - **`pitchVisibility`** – a `DegreeDataDict PositionWithinVisibleRange`,
+    indicating the visibility of each degree in the current pitch space.
   - **`scalingFactor`** – a `Float`, representing the scaling factor for
     translating pitch positions and interval sizes from moria into pixels.
   - **`visibleRangeStart`** – `Int` representing the pitch position (in moria)
@@ -29,7 +32,6 @@ Other elements we'll want:
 
   - data for each step interval (each one a separate record, which should
     eliminate the need for the to/from pitches), including:
-      - position within visible range (singleton)
       - moria (int)
   - data for each degree, including:
       - full pitch, including accidental as appropriate (encoded as a string)
@@ -42,6 +44,7 @@ Other elements we'll want:
 type alias PitchSpaceData =
     { layout : Layout
     , pitchButtonSize : Float
+    , pitchVisibility : DegreeDataDict PositionWithinVisibleRange
     , scalingFactor : Float
     , visibleRangeStart : Int
     , visibleRangeEnd : Int
@@ -53,9 +56,15 @@ init layoutData modeSettings pitchState =
     let
         visibleRange =
             calculateVisibleRange modeSettings pitchState
+
+        visibleRangeIndexes =
+            { startDegreeIndex = Degree.indexOf (Pitch.unwrapDegree visibleRange.start)
+            , endDegreeIndex = Degree.indexOf (Pitch.unwrapDegree visibleRange.end)
+            }
     in
     { layout = LayoutData.layoutFor layoutData
     , pitchButtonSize = calculatePitchButtonSize layoutData
+    , pitchVisibility = DegreeDataDict.init (visibility visibleRangeIndexes)
     , scalingFactor = 10
     , visibleRangeStart = Pitch.pitchPosition modeSettings.scale visibleRange.start
     , visibleRangeEnd = Pitch.pitchPosition modeSettings.scale visibleRange.end
@@ -163,3 +172,25 @@ positionIsVisible position =
 
         Above ->
             False
+
+
+visibility : { startDegreeIndex : Int, endDegreeIndex : Int } -> Degree -> PositionWithinVisibleRange
+visibility { startDegreeIndex, endDegreeIndex } degree =
+    let
+        degreeIndex =
+            Degree.indexOf degree
+    in
+    if degreeIndex < startDegreeIndex then
+        Below
+
+    else if degreeIndex > endDegreeIndex then
+        Above
+
+    else if degreeIndex == startDegreeIndex then
+        LowerBoundary
+
+    else if degreeIndex == endDegreeIndex then
+        UpperBoundary
+
+    else
+        Within
