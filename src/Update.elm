@@ -142,6 +142,7 @@ update msg model =
                     }
                 )
                 model
+                |> resetPitchSpaceData
             , Cmd.none
             )
 

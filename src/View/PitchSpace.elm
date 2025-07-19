@@ -3,6 +3,7 @@ module View.PitchSpace exposing (view)
 {-| View logic for pitch space (i.e., the intervalic space and positioned pitches)
 -}
 
+import Basics.Extra exposing (flip)
 import Byzantine.Accidental as Accidental
 import Byzantine.ByzHtml.Accidental as Accidental
 import Byzantine.ByzHtml.Interval as ByzHtmlInterval
@@ -304,6 +305,14 @@ viewPitches pitchSpaceData modeSettings pitchState =
         --         Debug.log "in view pitches function" ""
         proposedMovementTo =
             Movement.unwrapTargetPitch pitchState.proposedMovement
+
+        positionAbove degree =
+            Maybe.map (flip DegreeDataDict.get pitchSpaceData.pitchPositions)
+                (Degree.step degree 1)
+
+        positionBelow degree =
+            Maybe.map (flip DegreeDataDict.get pitchSpaceData.pitchPositions)
+                (Degree.step degree -1)
     in
     Html.ol (listAttributes pitchSpaceData.layout)
         (List.map
@@ -311,6 +320,9 @@ viewPitches pitchSpaceData modeSettings pitchState =
                 viewPitch pitchSpaceData
                     modeSettings
                     pitchState
+                    (DegreeDataDict.get degree pitchSpaceData.pitchPositions)
+                    (positionAbove degree)
+                    (positionBelow degree)
                     (Pitch.wrapDegree pitchState.currentPitch proposedMovementTo degree
                         |> Pitch.encode
                     )
@@ -320,38 +332,26 @@ viewPitches pitchSpaceData modeSettings pitchState =
         )
 
 
-viewPitch : PitchSpaceData -> ModeSettings -> PitchState -> String -> PositionWithinVisibleRange -> Html Msg
-viewPitch pitchSpaceData modeSettings pitchState pitchString positionWithinRange =
+viewPitch :
+    PitchSpaceData
+    -> ModeSettings
+    -> PitchState
+    -> Int
+    -> Maybe Int
+    -> Maybe Int
+    -> String
+    -> PositionWithinVisibleRange
+    -> Html Msg
+viewPitch pitchSpaceData modeSettings pitchState pitchPosition pitchPositionAbove pitchPositionBelow pitchString positionWithinRange =
     let
         _ =
             Debug.log "in viewPitch" pitchString
 
         pitch =
-            Pitch.decode modeSettings.scale pitchString
-                |> Result.withDefault (Pitch.natural Degree.Pa)
+            Pitch.decodeWithDefault modeSettings.scale pitchString
 
         degree =
             Pitch.unwrapDegree pitch
-
-        pitchPosition : Int
-        pitchPosition =
-            Pitch.pitchPosition modeSettings.scale pitch
-
-        inflectedPitchPosition : Degree -> Int
-        inflectedPitchPosition =
-            Pitch.wrapDegree pitchState.currentPitch
-                (Movement.unwrapTargetPitch pitchState.proposedMovement)
-                >> Pitch.pitchPosition modeSettings.scale
-
-        pitchPositionAbove : Maybe Int
-        pitchPositionAbove =
-            Degree.step degree 1
-                |> Maybe.map inflectedPitchPosition
-
-        pitchPositionBelow : Maybe Int
-        pitchPositionBelow =
-            Degree.step degree -1
-                |> Maybe.map inflectedPitchPosition
 
         pitchDisplayParams : PitchDisplayParams
         pitchDisplayParams =

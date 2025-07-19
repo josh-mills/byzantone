@@ -1,7 +1,7 @@
 module Byzantine.Pitch exposing
     ( Pitch
     , natural, inflected, from, wrapDegree, applyAccidental
-    , encode, decode
+    , encode, decode, decodeWithDefault
     , unwrapDegree, unwrapAccidental
     , isInflected, isValidInflection, toString
     , pitchPosition, pitchPositions
@@ -31,7 +31,7 @@ attractions and inflections.
 
 ## Encode
 
-@docs encode, decode
+@docs encode, decode, decodeWithDefault
 
 
 ## Unwrap
@@ -125,6 +125,15 @@ decode scale str =
 
         _ ->
             Err ("Invalid pitch format: " ++ str)
+
+
+{-| Convenience function that defaults to `Natural Pa`. Unsafe to use except
+where encoding accuracy is ensured.
+-}
+decodeWithDefault : Scale -> String -> Pitch
+decodeWithDefault scale str =
+    decode scale str
+        |> Result.withDefault (Natural Degree.Pa)
 
 
 

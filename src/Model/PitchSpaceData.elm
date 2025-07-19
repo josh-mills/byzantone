@@ -6,6 +6,7 @@ import Model.DegreeDataDict as DegreeDataDict exposing (DegreeDataDict)
 import Model.LayoutData as LayoutData exposing (Layout(..), LayoutData)
 import Model.ModeSettings exposing (ModeSettings)
 import Model.PitchState exposing (PitchState)
+import Movement
 
 
 {-| Derived data for rendering pitch space. Everything in this is derived from
@@ -44,6 +45,7 @@ Other elements we'll want:
 type alias PitchSpaceData =
     { layout : Layout
     , pitchButtonSize : Float
+    , pitchPositions : DegreeDataDict Int
     , pitchVisibility : DegreeDataDict PositionWithinVisibleRange
     , scalingFactor : Float
     , visibleRangeStart : Int
@@ -64,6 +66,13 @@ init layoutData modeSettings pitchState =
     in
     { layout = LayoutData.layoutFor layoutData
     , pitchButtonSize = calculatePitchButtonSize layoutData
+    , pitchPositions =
+        DegreeDataDict.init
+            (Pitch.wrapDegree
+                pitchState.currentPitch
+                (Movement.unwrapTargetPitch pitchState.proposedMovement)
+                >> Pitch.pitchPosition modeSettings.scale
+            )
     , pitchVisibility = DegreeDataDict.init (visibility visibleRangeIndexes)
     , scalingFactor = 10
     , visibleRangeStart = Pitch.pitchPosition modeSettings.scale visibleRange.start
