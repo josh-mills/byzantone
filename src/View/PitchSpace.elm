@@ -12,6 +12,7 @@ import Byzantine.Degree as Degree exposing (Degree)
 import Byzantine.IntervalCharacter as IntervalCharacter
 import Byzantine.Martyria as Martyria
 import Byzantine.Pitch as Pitch exposing (Interval, Pitch)
+import Byzantine.Scale exposing (Scale)
 import Html exposing (Html, button, div, li, span, text)
 import Html.Attributes as Attr exposing (class, classList)
 import Html.Attributes.Extra as Attr
@@ -317,8 +318,11 @@ viewPitches pitchSpaceData modeSettings pitchState =
     Html.ol (listAttributes pitchSpaceData.layout)
         (List.map
             (\degree ->
-                viewPitch pitchSpaceData
-                    modeSettings
+                viewPitch
+                    pitchSpaceData.layout
+                    pitchSpaceData.scalingFactor
+                    pitchSpaceData.pitchButtonSize
+                    modeSettings.scale
                     pitchState
                     (DegreeDataDict.get degree pitchSpaceData.pitchPositions)
                     (positionAbove degree)
@@ -332,9 +336,40 @@ viewPitches pitchSpaceData modeSettings pitchState =
         )
 
 
+{-| Renders a single pitch element in the pitch space.
+
+
+## Layout Parameters
+
+  - `layout`: Determines if the pitch space is arranged vertically or horizontally
+  - `scalingFactor`: Scaling factor for pitch element spacing
+  - `pitchButtonSize`: Size of the pitch button element
+
+
+## Mode and State
+
+  - `modeSettings`: Current mode/scale configuration
+  - `pitchState`: Current state of the pitch system (selected pitches, ison, etc.)
+
+
+## Position Parameters
+
+  - `pitchPosition`: Position index of this pitch in the overall pitch space
+  - `pitchPositionAbove`: Position index of the next pitch above (if any)
+  - `pitchPositionBelow`: Position index of the next pitch below (if any)
+  - `positionWithinRange`: Whether this pitch is within the visible range
+
+
+## Pitch Data
+
+  - `pitchString`: String representation of the pitch to display
+
+-}
 viewPitch :
-    PitchSpaceData
-    -> ModeSettings
+    Layout
+    -> Float
+    -> Float
+    -> Scale
     -> PitchState
     -> Int
     -> Maybe Int
@@ -342,13 +377,13 @@ viewPitch :
     -> String
     -> PositionWithinVisibleRange
     -> Html Msg
-viewPitch pitchSpaceData modeSettings pitchState pitchPosition pitchPositionAbove pitchPositionBelow pitchString positionWithinRange =
+viewPitch layout scalingFactor pitchButtonSize scale pitchState pitchPosition pitchPositionAbove pitchPositionBelow pitchString positionWithinRange =
     let
         _ =
             Debug.log "in viewPitch" pitchString
 
         pitch =
-            Pitch.decodeWithDefault modeSettings.scale pitchString
+            Pitch.decodeWithDefault scale pitchString
 
         degree =
             Pitch.unwrapDegree pitch
@@ -360,11 +395,11 @@ viewPitch pitchSpaceData modeSettings pitchState pitchPosition pitchPositionAbov
             , pitchPositionAbove = pitchPositionAbove
             , pitchPositionBelow = pitchPositionBelow
             , positionWithinRange = positionWithinRange
-            , scalingFactor = pitchSpaceData.scalingFactor
+            , scalingFactor = scalingFactor
             }
 
-        scale int =
-            (toFloat int / 2) * pitchSpaceData.scalingFactor
+        scale_ int =
+            (toFloat int / 2) * scalingFactor
 
         size =
             case positionWithinRange of
@@ -373,7 +408,7 @@ viewPitch pitchSpaceData modeSettings pitchState pitchPosition pitchPositionAbov
 
                 LowerBoundary ->
                     Maybe.map
-                        (\above -> scale (above - pitchPosition))
+                        (\above -> scale_ (above - pitchPosition))
                         pitchPositionAbove
                         |> Maybe.withDefault 0
 
@@ -382,7 +417,7 @@ viewPitch pitchSpaceData modeSettings pitchState pitchPosition pitchPositionAbov
                         (\below above ->
                             (toFloat (above - pitchPosition) / 2)
                                 |> (+) (toFloat (pitchPosition - below) / 2)
-                                |> (*) pitchSpaceData.scalingFactor
+                                |> (*) scalingFactor
                         )
                         pitchPositionBelow
                         pitchPositionAbove
@@ -390,7 +425,7 @@ viewPitch pitchSpaceData modeSettings pitchState pitchPosition pitchPositionAbov
 
                 UpperBoundary ->
                     Maybe.map
-                        (\below -> scale (pitchPosition - below))
+                        (\below -> scale_ (pitchPosition - below))
                         pitchPositionBelow
                         |> Maybe.withDefault 0
 
@@ -414,7 +449,7 @@ viewPitch pitchSpaceData modeSettings pitchState pitchPosition pitchPositionAbov
          , Styles.transition
          , Attr.attributeIf showSpacingDetails Styles.border
          ]
-            ++ (case pitchSpaceData.layout of
+            ++ (case layout of
                     Vertical ->
                         [ Styles.height size
                         , attributeIfVisible Styles.flexRow
@@ -429,17 +464,17 @@ viewPitch pitchSpaceData modeSettings pitchState pitchPosition pitchPositionAbov
         [ viewIfLazy positionIsVisible
             (\_ ->
                 pitchButton
-                    pitchSpaceData.layout
-                    pitchSpaceData.pitchButtonSize
-                    modeSettings
+                    layout
+                    pitchButtonSize
+                    scale
                     pitchState
                     pitchDisplayParams
             )
         , viewIfLazy isIson
             (\_ ->
                 isonIndicator
-                    pitchSpaceData.layout
-                    pitchSpaceData.pitchButtonSize
+                    layout
+                    pitchButtonSize
                     pitchDisplayParams
             )
         , viewIf showSpacingDetails
@@ -447,8 +482,8 @@ viewPitch pitchSpaceData modeSettings pitchState pitchPosition pitchPositionAbov
         ]
 
 
-pitchButton : Layout -> Float -> ModeSettings -> PitchState -> PitchDisplayParams -> Html Msg
-pitchButton layout pitchButtonSize modeSettings pitchState ({ pitch } as pitchDisplayParams) =
+pitchButton : Layout -> Float -> Scale -> PitchState -> PitchDisplayParams -> Html Msg
+pitchButton layout pitchButtonSize scale pitchState ({ pitch } as pitchDisplayParams) =
     let
         isCurrentDegree =
             Just (Pitch.unwrapDegree pitch) == Maybe.map Pitch.unwrapDegree pitchState.currentPitch
@@ -472,7 +507,7 @@ pitchButton layout pitchButtonSize modeSettings pitchState ({ pitch } as pitchDi
             Maybe.map
                 (\accidental ->
                     Pitch.isValidInflection
-                        modeSettings.scale
+                        scale
                         accidental
                         (Pitch.unwrapDegree pitch)
                 )
@@ -484,21 +519,21 @@ pitchButton layout pitchButtonSize modeSettings pitchState ({ pitch } as pitchDi
             pitchState.proposedAccidental
                 |> Maybe.andThen
                     (\accidental ->
-                        Pitch.inflected modeSettings.scale
+                        Pitch.inflected scale
                             accidental
                             (Pitch.unwrapDegree pitch)
                             |> Result.toMaybe
                     )
                 |> Maybe.map2
-                    (Pitch.getInterval modeSettings.scale)
+                    (Pitch.getInterval scale)
                     pitchState.currentPitch
                 |> Maybe.map (Movement.ofInterval pitchState.currentPitch)
-                |> Maybe.map2 (Movement.isValid modeSettings.scale) pitchState.currentPitch
+                |> Maybe.map2 (Movement.isValid scale) pitchState.currentPitch
                 |> Maybe.withDefault True
 
         proposedPitch =
             if degreeCanSupportProposedAccidental && movementWouldBeValid then
-                Pitch.applyAccidental modeSettings.scale pitchState.proposedAccidental pitch
+                Pitch.applyAccidental scale pitchState.proposedAccidental pitch
 
             else
                 pitch
@@ -513,7 +548,7 @@ pitchButton layout pitchButtonSize modeSettings pitchState ({ pitch } as pitchDi
 
             else if isCurrentDegree then
                 if isCurrentPitch && Pitch.isInflected proposedPitch then
-                    SelectPitch (Just (Pitch.applyAccidental modeSettings.scale Nothing pitch)) Nothing
+                    SelectPitch (Just (Pitch.applyAccidental scale Nothing pitch)) Nothing
 
                 else if not isCurrentPitch && Pitch.isInflected proposedPitch then
                     SelectPitch (Just proposedPitch) Nothing
@@ -548,7 +583,7 @@ pitchButton layout pitchButtonSize modeSettings pitchState ({ pitch } as pitchDi
             (Pitch.unwrapAccidental pitch)
         , ByzHtmlMartyria.viewWithAttributes
             [ Styles.left -3, Styles.top -3 ]
-            (Martyria.for modeSettings.scale (Pitch.unwrapDegree pitch))
+            (Martyria.for scale (Pitch.unwrapDegree pitch))
         ]
 
 
