@@ -1,7 +1,9 @@
-module Model.PitchSpaceData exposing (PitchSpaceData, PositionWithinVisibleRange(..), calculateVisibleRange, init, positionIsVisible)
+module Model.PitchSpaceData exposing (PitchSpaceData, PositionWithinVisibleRange(..), calculateVisibleRange, decodePitchPositionContext, encodePitchPositionContext, init, positionIsVisible)
 
+import Basics.Extra exposing (flip)
 import Byzantine.Degree as Degree exposing (Degree)
 import Byzantine.Pitch as Pitch exposing (Pitch)
+import Maybe.Extra
 import Model.DegreeDataDict as DegreeDataDict exposing (DegreeDataDict)
 import Model.LayoutData as LayoutData exposing (Layout(..), LayoutData)
 import Model.ModeSettings exposing (ModeSettings)
@@ -203,3 +205,102 @@ visibility { startDegreeIndex, endDegreeIndex } degree =
 
     else
         Within
+
+
+{-| Encodes the pitch positions of a degree and its adjacent degrees into a
+string format. Takes a `PitchSpaceData` record and a `Degree` and returns a
+pipe-separated string containing three values:
+
+1.  The pitch position of the degree one step below the given degree
+2.  The pitch position of the given degree
+3.  The pitch position of the degree one step above the given degree
+
+If any degree's pitch position is not available in the `pitchPositions`
+dictionary, its value in the string will be "\_".
+
+Example: "72|84|96" would represent a degree with position 84 (Di), where the
+degree below it is at position 72 and the degree above it is at position 96.
+
+Example: "136|144|_" would represent a degree at the upper bound of the diatonic
+scale with position 144, where the degree below it is at position 136 and there
+is no degree above it (represented by "_").
+
+-}
+encodePitchPositionContext : PitchSpaceData -> Degree -> String
+encodePitchPositionContext { pitchPositions } degree =
+    let
+        getAndEncode =
+            Maybe.Extra.unwrap "_"
+                (flip DegreeDataDict.get pitchPositions >> String.fromInt)
+    in
+    [ getAndEncode (Degree.step degree -1)
+    , getAndEncode (Just degree)
+    , getAndEncode (Degree.step degree 1)
+    ]
+        |> String.join "|"
+
+
+{-| Decodes a string created by `encodePitchPositionContext` into a record with
+pitch positions for the current degree and adjacent degrees.
+
+The string format is "belowPosition|currentPosition|abovePosition", where each
+position is either an integer or "\_" for missing positions.
+
+Example: "72|84|96" decodes to:
+
+  - pitchPosition = 84
+  - pitchPositionBelow = Just 72
+  - pitchPositionAbove = Just 96
+
+Example: "136|144|\_" decodes to:
+
+  - pitchPosition = 144
+  - pitchPositionBelow = Just 136
+  - pitchPositionAbove = Nothing
+
+The function returns a Result type, with an error message if parsing fails.
+
+-}
+decodePitchPositionContext :
+    String
+    ->
+        Result
+            String
+            { pitchPosition : Int
+            , pitchPositionAbove : Maybe Int
+            , pitchPositionBelow : Maybe Int
+            }
+decodePitchPositionContext string =
+    let
+        parts =
+            String.split "|" string
+
+        parsePosition pos =
+            if pos == "_" then
+                Ok Nothing
+
+            else
+                String.toInt pos
+                    |> Maybe.map Ok
+                    |> Maybe.withDefault (Err <| "Invalid pitch position: " ++ pos)
+                    |> Result.map Just
+    in
+    case parts of
+        [ below, current, above ] ->
+            case String.toInt current of
+                Just position ->
+                    Result.map2
+                        (\belowPos abovePos ->
+                            { pitchPosition = position
+                            , pitchPositionBelow = belowPos
+                            , pitchPositionAbove = abovePos
+                            }
+                        )
+                        (parsePosition below)
+                        (parsePosition above)
+
+                Nothing ->
+                    Err <| "Invalid current pitch position: " ++ current
+
+        _ ->
+            Err <| "Invalid pitch position context format: " ++ string

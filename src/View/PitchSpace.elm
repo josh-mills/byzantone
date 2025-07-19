@@ -306,14 +306,6 @@ viewPitches pitchSpaceData modeSettings pitchState =
         --         Debug.log "in view pitches function" ""
         proposedMovementTo =
             Movement.unwrapTargetPitch pitchState.proposedMovement
-
-        positionAbove degree =
-            Maybe.map (flip DegreeDataDict.get pitchSpaceData.pitchPositions)
-                (Degree.step degree 1)
-
-        positionBelow degree =
-            Maybe.map (flip DegreeDataDict.get pitchSpaceData.pitchPositions)
-                (Degree.step degree -1)
     in
     Html.ol (listAttributes pitchSpaceData.layout)
         (List.map
@@ -324,9 +316,7 @@ viewPitches pitchSpaceData modeSettings pitchState =
                     pitchSpaceData.pitchButtonSize
                     modeSettings.scale
                     pitchState
-                    (DegreeDataDict.get degree pitchSpaceData.pitchPositions)
-                    (positionAbove degree)
-                    (positionBelow degree)
+                    (PitchSpaceData.encodePitchPositionContext pitchSpaceData degree)
                     (Pitch.wrapDegree pitchState.currentPitch proposedMovementTo degree
                         |> Pitch.encode
                     )
@@ -354,9 +344,7 @@ viewPitches pitchSpaceData modeSettings pitchState =
 
 ## Position Parameters
 
-  - `pitchPosition`: Position index of this pitch in the overall pitch space
-  - `pitchPositionAbove`: Position index of the next pitch above (if any)
-  - `pitchPositionBelow`: Position index of the next pitch below (if any)
+  - `pitchPositions`: String-encoded pitch positions of the degree, the degree above, and the degree below
   - `positionWithinRange`: Whether this pitch is within the visible range
 
 
@@ -371,13 +359,11 @@ viewPitch :
     -> Float
     -> Scale
     -> PitchState
-    -> Int
-    -> Maybe Int
-    -> Maybe Int
+    -> String
     -> String
     -> PositionWithinVisibleRange
     -> Html Msg
-viewPitch layout scalingFactor pitchButtonSize scale pitchState pitchPosition pitchPositionAbove pitchPositionBelow pitchString positionWithinRange =
+viewPitch layout scalingFactor pitchButtonSize scale pitchState pitchPositions pitchString positionWithinRange =
     let
         _ =
             Debug.log "in viewPitch" pitchString
@@ -387,6 +373,14 @@ viewPitch layout scalingFactor pitchButtonSize scale pitchState pitchPosition pi
 
         degree =
             Pitch.unwrapDegree pitch
+
+        { pitchPosition, pitchPositionAbove, pitchPositionBelow } =
+            Result.withDefault
+                { pitchPosition = -1
+                , pitchPositionBelow = Nothing
+                , pitchPositionAbove = Nothing
+                }
+                (PitchSpaceData.decodePitchPositionContext pitchPositions)
 
         pitchDisplayParams : PitchDisplayParams
         pitchDisplayParams =
