@@ -355,9 +355,8 @@ viewPitch :
     -> Html Msg
 viewPitch layout scalingFactor pitchButtonSize scale pitchState pitchPositions pitchString positionWithinRange =
     let
-        _ =
-            Debug.log "in viewPitch" pitchString
-
+        -- _ =
+        --     Debug.log "in viewPitch" pitchString
         pitch =
             Pitch.decodeWithDefault scale pitchString
 
@@ -444,21 +443,17 @@ viewPitch layout scalingFactor pitchButtonSize scale pitchState pitchPositions p
                     scale
                     pitchState
                     pitch
-                    pitchPosition
-                    pitchPositionAbove
-                    pitchPositionBelow
+                    pitchPositions
                     positionWithinRange
             )
         , viewIfLazy isIson
             (\_ ->
-                isonIndicator
+                Html.Lazy.lazy6 isonIndicator
                     layout
                     scalingFactor
                     pitchButtonSize
-                    pitch
-                    pitchPosition
-                    pitchPositionAbove
-                    pitchPositionBelow
+                    (Pitch.unwrapDegree pitch)
+                    pitchPositions
                     positionWithinRange
             )
         , viewIf showSpacingDetails
@@ -466,8 +461,8 @@ viewPitch layout scalingFactor pitchButtonSize scale pitchState pitchPositions p
         ]
 
 
-pitchButton : Layout -> Float -> Float -> Scale -> PitchState -> Pitch -> Int -> Maybe Int -> Maybe Int -> PositionWithinVisibleRange -> Html Msg
-pitchButton layout scalingFactor pitchButtonSize scale pitchState pitch pitchPosition pitchPositionAbove pitchPositionBelow positionWithinRange =
+pitchButton : Layout -> Float -> Float -> Scale -> PitchState -> Pitch -> String -> PositionWithinVisibleRange -> Html Msg
+pitchButton layout scalingFactor pitchButtonSize scale pitchState pitch pitchPositions positionWithinRange =
     let
         isCurrentDegree =
             Just (Pitch.unwrapDegree pitch) == Maybe.map Pitch.unwrapDegree pitchState.currentPitch
@@ -488,9 +483,7 @@ pitchButton layout scalingFactor pitchButtonSize scale pitchState pitch pitchPos
             pitchElementPosition layout
                 scalingFactor
                 pitchButtonSize
-                pitchPosition
-                pitchPositionAbove
-                pitchPositionBelow
+                pitchPositions
                 positionWithinRange
                 PitchButton
 
@@ -578,16 +571,17 @@ pitchButton layout scalingFactor pitchButtonSize scale pitchState pitch pitchPos
         ]
 
 
-isonIndicator : Layout -> Float -> Float -> Pitch -> Int -> Maybe Int -> Maybe Int -> PositionWithinVisibleRange -> Html Msg
-isonIndicator layout scalingFactor pitchButtonSize pitch pitchPosition pitchPositionAbove pitchPositionBelow positionWithinRange =
+isonIndicator : Layout -> Float -> Float -> Degree -> String -> PositionWithinVisibleRange -> Html Msg
+isonIndicator layout scalingFactor pitchButtonSize degree pitchPositions positionWithinRange =
     let
+        _ =
+            Debug.log "in isonIndicator" degree
+
         position =
             pitchElementPosition layout
                 scalingFactor
                 pitchButtonSize
-                pitchPosition
-                pitchPositionAbove
-                pitchPositionBelow
+                pitchPositions
                 positionWithinRange
                 IsonIndicator
     in
@@ -605,7 +599,7 @@ isonIndicator layout scalingFactor pitchButtonSize pitch pitchPosition pitchPosi
                         ]
                )
         )
-        [ text "(", Degree.text (Pitch.unwrapDegree pitch), text ")" ]
+        [ text "(", Degree.text degree, text ")" ]
 
 
 type PitchElementTarget
@@ -617,14 +611,20 @@ pitchElementPosition :
     Layout
     -> Float
     -> Float
-    -> Int
-    -> Maybe Int
-    -> Maybe Int
+    -> String
     -> PositionWithinVisibleRange
     -> PitchElementTarget
     -> Float
-pitchElementPosition layout scalingFactor pitchButtonSize pitchPosition pitchPositionAbove pitchPositionBelow positionWithinRange target =
+pitchElementPosition layout scalingFactor pitchButtonSize pitchPositions positionWithinRange target =
     let
+        { pitchPosition, pitchPositionAbove, pitchPositionBelow } =
+            Result.withDefault
+                { pitchPosition = -1
+                , pitchPositionBelow = Nothing
+                , pitchPositionAbove = Nothing
+                }
+                (PitchSpaceData.decodePitchPositionContext pitchPositions)
+
         scale int =
             (toFloat int / 2)
                 |> (*) scalingFactor
