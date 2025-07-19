@@ -17,6 +17,7 @@ import Html.Attributes as Attr exposing (class, classList)
 import Html.Attributes.Extra as Attr
 import Html.Events exposing (onClick, onFocus, onMouseEnter, onMouseLeave)
 import Html.Extra exposing (viewIf, viewIfLazy)
+import Html.Lazy
 import Maybe.Extra as Maybe
 import Model.DegreeDataDict as DegreeDataDict
 import Model.LayoutData as LayoutData exposing (Layout(..))
@@ -66,16 +67,6 @@ view pitchSpaceData modeSettings pitchState =
         [ viewIntervals pitchSpaceData modeSettings pitchState
         , viewPitches pitchSpaceData modeSettings pitchState
         ]
-
-
-type alias PitchDisplayParams =
-    { pitch : Pitch
-    , pitchPosition : Int
-    , pitchPositionAbove : Maybe Int
-    , pitchPositionBelow : Maybe Int
-    , positionWithinRange : PositionWithinVisibleRange
-    , scalingFactor : Float
-    }
 
 
 listAttributes : Layout -> List (Html.Attribute Msg)
@@ -309,7 +300,7 @@ viewPitches pitchSpaceData modeSettings pitchState =
     Html.ol (listAttributes pitchSpaceData.layout)
         (List.map
             (\degree ->
-                viewPitch
+                Html.Lazy.lazy8 viewPitch
                     pitchSpaceData.layout
                     pitchSpaceData.scalingFactor
                     pitchSpaceData.pitchButtonSize
@@ -381,16 +372,6 @@ viewPitch layout scalingFactor pitchButtonSize scale pitchState pitchPositions p
                 }
                 (PitchSpaceData.decodePitchPositionContext pitchPositions)
 
-        pitchDisplayParams : PitchDisplayParams
-        pitchDisplayParams =
-            { pitch = pitch
-            , pitchPosition = pitchPosition
-            , pitchPositionAbove = pitchPositionAbove
-            , pitchPositionBelow = pitchPositionBelow
-            , positionWithinRange = positionWithinRange
-            , scalingFactor = scalingFactor
-            }
-
         scale_ int =
             (toFloat int / 2) * scalingFactor
 
@@ -458,25 +439,35 @@ viewPitch layout scalingFactor pitchButtonSize scale pitchState pitchPositions p
             (\_ ->
                 pitchButton
                     layout
+                    scalingFactor
                     pitchButtonSize
                     scale
                     pitchState
-                    pitchDisplayParams
+                    pitch
+                    pitchPosition
+                    pitchPositionAbove
+                    pitchPositionBelow
+                    positionWithinRange
             )
         , viewIfLazy isIson
             (\_ ->
                 isonIndicator
                     layout
+                    scalingFactor
                     pitchButtonSize
-                    pitchDisplayParams
+                    pitch
+                    pitchPosition
+                    pitchPositionAbove
+                    pitchPositionBelow
+                    positionWithinRange
             )
         , viewIf showSpacingDetails
             (text (" (" ++ Round.round 2 size ++ "px)"))
         ]
 
 
-pitchButton : Layout -> Float -> Scale -> PitchState -> PitchDisplayParams -> Html Msg
-pitchButton layout pitchButtonSize scale pitchState ({ pitch } as pitchDisplayParams) =
+pitchButton : Layout -> Float -> Float -> Scale -> PitchState -> Pitch -> Int -> Maybe Int -> Maybe Int -> PositionWithinVisibleRange -> Html Msg
+pitchButton layout scalingFactor pitchButtonSize scale pitchState pitch pitchPosition pitchPositionAbove pitchPositionBelow positionWithinRange =
     let
         isCurrentDegree =
             Just (Pitch.unwrapDegree pitch) == Maybe.map Pitch.unwrapDegree pitchState.currentPitch
@@ -494,7 +485,14 @@ pitchButton layout pitchButtonSize scale pitchState ({ pitch } as pitchDisplayPa
                     False
 
         position =
-            pitchElementPosition layout pitchButtonSize pitchDisplayParams PitchButton
+            pitchElementPosition layout
+                scalingFactor
+                pitchButtonSize
+                pitchPosition
+                pitchPositionAbove
+                pitchPositionBelow
+                positionWithinRange
+                PitchButton
 
         degreeCanSupportProposedAccidental =
             Maybe.map
@@ -580,11 +578,18 @@ pitchButton layout pitchButtonSize scale pitchState ({ pitch } as pitchDisplayPa
         ]
 
 
-isonIndicator : Layout -> Float -> PitchDisplayParams -> Html Msg
-isonIndicator layout pitchButtonSize ({ pitch } as pitchDisplayParams) =
+isonIndicator : Layout -> Float -> Float -> Pitch -> Int -> Maybe Int -> Maybe Int -> PositionWithinVisibleRange -> Html Msg
+isonIndicator layout scalingFactor pitchButtonSize pitch pitchPosition pitchPositionAbove pitchPositionBelow positionWithinRange =
     let
         position =
-            pitchElementPosition layout pitchButtonSize pitchDisplayParams IsonIndicator
+            pitchElementPosition layout
+                scalingFactor
+                pitchButtonSize
+                pitchPosition
+                pitchPositionAbove
+                pitchPositionBelow
+                positionWithinRange
+                IsonIndicator
     in
     div
         (class "relative text-lg sm:text-2xl text-blue-700 text-greek"
@@ -611,10 +616,14 @@ type PitchElementTarget
 pitchElementPosition :
     Layout
     -> Float
-    -> PitchDisplayParams
+    -> Float
+    -> Int
+    -> Maybe Int
+    -> Maybe Int
+    -> PositionWithinVisibleRange
     -> PitchElementTarget
     -> Float
-pitchElementPosition layout pitchButtonSize { pitchPosition, pitchPositionAbove, pitchPositionBelow, positionWithinRange, scalingFactor } target =
+pitchElementPosition layout scalingFactor pitchButtonSize pitchPosition pitchPositionAbove pitchPositionBelow positionWithinRange target =
     let
         scale int =
             (toFloat int / 2)
