@@ -3,7 +3,6 @@ module View.PitchSpace exposing (view)
 {-| View logic for pitch space (i.e., the intervalic space and positioned pitches)
 -}
 
-import Basics.Extra exposing (flip)
 import Byzantine.Accidental as Accidental
 import Byzantine.ByzHtml.Accidental as Accidental
 import Byzantine.ByzHtml.Interval as ByzHtmlInterval

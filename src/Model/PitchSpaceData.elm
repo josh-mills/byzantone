@@ -22,6 +22,10 @@ Elements include:
     size for auto
   - **`pitchButtonSize`** – a `Float`, representing the size (in pixels) of the
     pitch button based on the viewport.
+  - **`pitchPositions`** – a `DegreeDataDict Int`, representing the pitch
+    position (in moria) of each degree with respect to the given scale, current
+    pitch, and proposed movement with proposed accidental applied as
+    appropriate.
   - **`pitchVisibility`** – a `DegreeDataDict PositionWithinVisibleRange`,
     indicating the visibility of each degree in the current pitch space.
   - **`scalingFactor`** – a `Float`, representing the scaling factor for
@@ -38,10 +42,6 @@ Other elements we'll want:
       - moria (int)
   - data for each degree, including:
       - full pitch, including accidental as appropriate (encoded as a string)
-      - pitch position (int)
-      - pitch position above (int? maybe int?)
-      - pitch position below (int? maybe int?)
-      - position within visible range (singleton)
 
 -}
 type alias PitchSpaceData =
