@@ -1,4 +1,35 @@
-module Model.PitchSpaceData exposing (PitchSpaceData, PositionWithinVisibleRange(..), calculateVisibleRange, decodePitchPositionContext, encodePitchPositionContext, init, positionIsVisible)
+module Model.PitchSpaceData exposing
+    ( PitchSpaceData, init
+    , PositionWithinVisibleRange(..), calculateVisibleRange, positionIsVisible
+    , encodePitchPositionContext, decodePitchPositionContext
+    , IsonSelectionIndicator, isCurrentIson, canBeSelectedAsIson
+    )
+
+{-| Derived data for view logic. All values in here should be primitives,
+singletons, or types that can be ensured to be referentially equivalenent
+as a result of model updates.
+
+
+# Pitch Space Data
+
+@docs PitchSpaceData, init
+
+
+# Visibility
+
+@docs PositionWithinVisibleRange, calculateVisibleRange, positionIsVisible
+
+
+# Pitch Positions
+
+@docs encodePitchPositionContext, decodePitchPositionContext
+
+
+# Ison
+
+@docs IsonSelectionIndicator, isCurrentIson, canBeSelectedAsIson
+
+-}
 
 import Basics.Extra exposing (flip)
 import Byzantine.Degree as Degree exposing (Degree)
@@ -7,7 +38,7 @@ import Maybe.Extra
 import Model.DegreeDataDict as DegreeDataDict exposing (DegreeDataDict)
 import Model.LayoutData as LayoutData exposing (Layout(..), LayoutData)
 import Model.ModeSettings exposing (ModeSettings)
-import Model.PitchState exposing (PitchState)
+import Model.PitchState as PitchState exposing (PitchState)
 import Movement
 
 
@@ -45,7 +76,8 @@ Other elements we'll want:
 
 -}
 type alias PitchSpaceData =
-    { layout : Layout
+    { isonIndicators : DegreeDataDict IsonSelectionIndicator
+    , layout : Layout
     , pitchButtonSize : Float
     , pitchPositions : DegreeDataDict Int
     , pitchVisibility : DegreeDataDict PositionWithinVisibleRange
@@ -55,6 +87,11 @@ type alias PitchSpaceData =
     }
 
 
+{-| Clean reset of data. If we wind up keeping anything more complex than
+primitives or singletons in here, we will need to construct targeted updates
+that preserve referential equality for values that don't change. Targeted
+updates wouldn't be a bad idea for performance, anyway.
+-}
 init : LayoutData -> ModeSettings -> PitchState -> PitchSpaceData
 init layoutData modeSettings pitchState =
     let
@@ -66,7 +103,8 @@ init layoutData modeSettings pitchState =
             , endDegreeIndex = Degree.indexOf (Pitch.unwrapDegree visibleRange.end)
             }
     in
-    { layout = LayoutData.layoutFor layoutData
+    { isonIndicators = DegreeDataDict.init (isonSelectionIndicator modeSettings pitchState)
+    , layout = LayoutData.layoutFor layoutData
     , pitchButtonSize = calculatePitchButtonSize layoutData
     , pitchPositions =
         DegreeDataDict.init
@@ -207,6 +245,10 @@ visibility { startDegreeIndex, endDegreeIndex } degree =
         Within
 
 
+
+-- PITCH POSITION
+
+
 {-| Encodes the pitch positions of a degree and its adjacent degrees into a
 string format. Takes a `PitchSpaceData` record and a `Degree` and returns a
 pipe-separated string containing three values:
@@ -304,3 +346,75 @@ decodePitchPositionContext string =
 
         _ ->
             Err <| "Invalid pitch position context format: " ++ string
+
+
+
+-- ISON
+
+
+type IsonSelectionIndicator
+    = CurrentIson
+    | CanBeSelected_IsCurrent
+    | CanBeSelected_NotCurrent
+    | NotIson
+    | SelectingNotEligible
+
+
+{-| TODO: we'll need to get modal logic actually built out.
+-}
+isonSelectionIndicator : ModeSettings -> PitchState -> Degree -> IsonSelectionIndicator
+isonSelectionIndicator _ pitchState degree =
+    let
+        degreeIsEligible =
+            Degree.indexOf degree <= 12
+    in
+    case pitchState.ison of
+        PitchState.NoIson ->
+            NotIson
+
+        PitchState.SelectingIson (Just currentIson) ->
+            if currentIson == degree then
+                CanBeSelected_IsCurrent
+
+            else
+                CanBeSelected_NotCurrent
+
+        PitchState.SelectingIson Nothing ->
+            if degreeIsEligible then
+                CanBeSelected_NotCurrent
+
+            else
+                SelectingNotEligible
+
+        PitchState.Selected currentIson ->
+            if currentIson == degree then
+                CurrentIson
+
+            else
+                NotIson
+
+
+isCurrentIson : IsonSelectionIndicator -> Bool
+isCurrentIson indicator =
+    case indicator of
+        CurrentIson ->
+            True
+
+        CanBeSelected_IsCurrent ->
+            True
+
+        _ ->
+            False
+
+
+canBeSelectedAsIson : IsonSelectionIndicator -> Bool
+canBeSelectedAsIson indicator =
+    case indicator of
+        CanBeSelected_IsCurrent ->
+            True
+
+        CanBeSelected_NotCurrent ->
+            True
+
+        _ ->
+            False

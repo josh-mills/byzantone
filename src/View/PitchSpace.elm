@@ -22,7 +22,7 @@ import Maybe.Extra as Maybe
 import Model.DegreeDataDict as DegreeDataDict
 import Model.LayoutData as LayoutData exposing (Layout(..))
 import Model.ModeSettings exposing (ModeSettings)
-import Model.PitchSpaceData as PitchSpaceData exposing (PitchSpaceData, PositionWithinVisibleRange(..), calculateVisibleRange)
+import Model.PitchSpaceData as PitchSpaceData exposing (IsonSelectionIndicator, PitchSpaceData, PositionWithinVisibleRange(..), calculateVisibleRange)
 import Model.PitchState as PitchState exposing (IsonStatus(..), PitchState)
 import Movement exposing (Movement(..))
 import Round
@@ -300,7 +300,8 @@ viewPitches pitchSpaceData modeSettings pitchState =
     Html.ol (listAttributes pitchSpaceData.layout)
         (List.map
             (\degree ->
-                Html.Lazy.lazy8 viewPitch
+                -- Html.Lazy.lazy8
+                viewPitch
                     pitchSpaceData.layout
                     pitchSpaceData.scalingFactor
                     pitchSpaceData.pitchButtonSize
@@ -311,6 +312,7 @@ viewPitches pitchSpaceData modeSettings pitchState =
                         |> Pitch.encode
                     )
                     (DegreeDataDict.get degree pitchSpaceData.pitchVisibility)
+                    (DegreeDataDict.get degree pitchSpaceData.isonIndicators)
             )
             Degree.gamutList
         )
@@ -352,8 +354,9 @@ viewPitch :
     -> String
     -> String
     -> PositionWithinVisibleRange
+    -> IsonSelectionIndicator
     -> Html Msg
-viewPitch layout scalingFactor pitchButtonSize scale pitchState pitchPositions pitchString positionWithinRange =
+viewPitch layout scalingFactor pitchButtonSize scale pitchState pitchPositions pitchString positionWithinRange isonStatusIndicator =
     let
         -- _ =
         --     Debug.log "in viewPitch" pitchString
@@ -415,7 +418,7 @@ viewPitch layout scalingFactor pitchButtonSize scale pitchState pitchPositions p
             Attr.attributeIf positionIsVisible
 
         isIson =
-            PitchState.ison pitchState.ison == Just (Pitch.natural degree)
+            PitchSpaceData.isCurrentIson isonStatusIndicator
     in
     li
         ([ Attr.id ("pitch-" ++ Degree.toString degree)
@@ -442,9 +445,10 @@ viewPitch layout scalingFactor pitchButtonSize scale pitchState pitchPositions p
                     pitchButtonSize
                     scale
                     pitchState
-                    pitch
+                    pitchString
                     pitchPositions
                     positionWithinRange
+                    isonStatusIndicator
             )
         , viewIfLazy isIson
             (\_ ->
@@ -452,7 +456,7 @@ viewPitch layout scalingFactor pitchButtonSize scale pitchState pitchPositions p
                     layout
                     scalingFactor
                     pitchButtonSize
-                    (Pitch.unwrapDegree pitch)
+                    degree
                     pitchPositions
                     positionWithinRange
             )
@@ -461,9 +465,22 @@ viewPitch layout scalingFactor pitchButtonSize scale pitchState pitchPositions p
         ]
 
 
-pitchButton : Layout -> Float -> Float -> Scale -> PitchState -> Pitch -> String -> PositionWithinVisibleRange -> Html Msg
-pitchButton layout scalingFactor pitchButtonSize scale pitchState pitch pitchPositions positionWithinRange =
+{-| TODO: we still need to get the PitchState deconstructed or encoded into
+primitives or referentially equivalent arguments. This means that if we store
+the relevant data in a dict in PitchSpaceData, we'll need to ensure that updates
+to the dict record are handled in a targeted manner rather than a blanket
+re-init.
+
+How much of the movement or pitch selection validation can we push off into the
+pitch space data? This does seem closer to derived state rather than pure view.
+
+-}
+pitchButton : Layout -> Float -> Float -> Scale -> PitchState -> String -> String -> PositionWithinVisibleRange -> IsonSelectionIndicator -> Html Msg
+pitchButton layout scalingFactor pitchButtonSize scale pitchState pitchString pitchPositions positionWithinRange isonStatusIndicator =
     let
+        pitch =
+            Pitch.decodeWithDefault scale pitchString
+
         isCurrentDegree =
             Just (Pitch.unwrapDegree pitch) == Maybe.map Pitch.unwrapDegree pitchState.currentPitch
 
@@ -471,13 +488,7 @@ pitchButton layout scalingFactor pitchButtonSize scale pitchState pitch pitchPos
             Just proposedPitch == pitchState.currentPitch
 
         canBeSelectedAsIson =
-            -- this should be made a bit more robust once modal logic gets built out.
-            case pitchState.ison of
-                SelectingIson _ ->
-                    True
-
-                _ ->
-                    False
+            PitchSpaceData.canBeSelectedAsIson isonStatusIndicator
 
         position =
             pitchElementPosition layout
@@ -571,12 +582,11 @@ pitchButton layout scalingFactor pitchButtonSize scale pitchState pitch pitchPos
         ]
 
 
+{-| Prepared for lazy rendering.
+-}
 isonIndicator : Layout -> Float -> Float -> Degree -> String -> PositionWithinVisibleRange -> Html Msg
 isonIndicator layout scalingFactor pitchButtonSize degree pitchPositions positionWithinRange =
     let
-        _ =
-            Debug.log "in isonIndicator" degree
-
         position =
             pitchElementPosition layout
                 scalingFactor
