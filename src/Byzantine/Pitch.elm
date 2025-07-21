@@ -1,7 +1,7 @@
 module Byzantine.Pitch exposing
     ( Pitch
     , natural, inflected, from, wrapDegree, applyAccidental
-    , encode, decode, decodeWithDefault
+    , encode, encodeWithScale, decode, decodeWithScale, decodeWithDefault
     , unwrapDegree, unwrapAccidental
     , isInflected, isValidInflection, toString
     , pitchPosition, pitchPositions
@@ -31,7 +31,7 @@ attractions and inflections.
 
 ## Encode
 
-@docs encode, decode, decodeWithDefault
+@docs encode, encodeWithScale, decode, decodeWithScale, decodeWithDefault
 
 
 ## Unwrap
@@ -87,6 +87,8 @@ type Pitch
 -- ENCODE
 
 
+{-| Encode a pitch into a string representation.
+-}
 encode : Pitch -> String
 encode pitch =
     case pitch of
@@ -95,6 +97,14 @@ encode pitch =
 
         Inflected accidental degree ->
             "i|" ++ Degree.toString degree ++ "|" ++ Accidental.toString accidental
+
+
+{-| Encode both a scale and pitch into a combined string representation. This
+allows decoding without a separate scale argument.
+-}
+encodeWithScale : Scale -> Pitch -> String
+encodeWithScale scale pitch =
+    Scale.encode scale ++ "|" ++ encode pitch
 
 
 {-| Decode a string representation of a Pitch. The string must be in one of two
@@ -125,6 +135,34 @@ decode scale str =
 
         _ ->
             Err ("Invalid pitch format: " ++ str)
+
+
+{-| Decode a string representation that contains both scale and pitch
+information. The string must be in the format:
+
+  - "<scale\_code>|n|<degree>" for natural pitches
+
+  - "<scale\_code>|i|<degree>|<accidental>" for inflected pitches
+
+Where <scale\_code> is one of the codes defined in Scale.encode.
+
+-}
+decodeWithScale : String -> Result String Pitch
+decodeWithScale str =
+    let
+        parts =
+            String.split "|" str
+    in
+    case parts of
+        scaleCode :: rest ->
+            Scale.decode scaleCode
+                |> Result.andThen
+                    (\scale ->
+                        decode scale (String.join "|" rest)
+                    )
+
+        _ ->
+            Err ("Invalid format for scale and pitch: " ++ str)
 
 
 {-| Convenience function that defaults to `Natural Pa`. Unsafe to use except

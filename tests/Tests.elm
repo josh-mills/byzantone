@@ -8,6 +8,7 @@ import Byzantine.Scale as Scale exposing (Scale(..))
 import Expect
 import List.Extra
 import Model.DegreeDataDict as DegreeDataDict
+import Result
 import Test exposing (Test, describe, test)
 
 
@@ -263,5 +264,125 @@ pitchTests =
                     )
                     Scale.all
                 )
+            ]
+        , describe "Scale Encode/Decode Tests"
+            [ test "Scale.encode/decode roundtrip for Diatonic" <|
+                \_ ->
+                    Diatonic
+                        |> Scale.encode
+                        |> Scale.decode
+                        |> Expect.equal (Ok Diatonic)
+            , test "Scale.encode/decode roundtrip for Enharmonic" <|
+                \_ ->
+                    Enharmonic
+                        |> Scale.encode
+                        |> Scale.decode
+                        |> Expect.equal (Ok Enharmonic)
+            , test "Scale.encode/decode roundtrip for SoftChromatic" <|
+                \_ ->
+                    SoftChromatic
+                        |> Scale.encode
+                        |> Scale.decode
+                        |> Expect.equal (Ok SoftChromatic)
+            , test "Scale.encode/decode roundtrip for HardChromatic" <|
+                \_ ->
+                    HardChromatic
+                        |> Scale.encode
+                        |> Scale.decode
+                        |> Expect.equal (Ok HardChromatic)
+            , test "Scale.decode returns error for invalid input" <|
+                \_ ->
+                    Scale.decode "invalid"
+                        |> Result.toMaybe
+                        |> Expect.equal Nothing
+            , test "Scale.encode produces the expected string for each scale" <|
+                \_ ->
+                    Expect.all
+                        [ \_ -> Expect.equal "ds" (Scale.encode Diatonic)
+                        , \_ -> Expect.equal "dh" (Scale.encode Enharmonic)
+                        , \_ -> Expect.equal "cs" (Scale.encode SoftChromatic)
+                        , \_ -> Expect.equal "ch" (Scale.encode HardChromatic)
+                        ]
+                        ()
+            ]
+        , describe "EncodeWithScale/DecodeWithScale Roundtrip Tests"
+            [ describe "Natural Pitches With Scale"
+                (List.concatMap
+                    (\scale ->
+                        List.map
+                            (\degree ->
+                                let
+                                    pitch =
+                                        Pitch.natural degree
+                                in
+                                test (Scale.name scale ++ " " ++ "Natural " ++ Pitch.toString pitch) <|
+                                    \_ ->
+                                        pitch
+                                            |> Pitch.encodeWithScale scale
+                                            |> Pitch.decodeWithScale
+                                            |> Expect.equal (Ok pitch)
+                            )
+                            Degree.gamutList
+                    )
+                    Scale.all
+                )
+            , describe "Inflected Pitches With Scale"
+                (List.concatMap
+                    (\scale ->
+                        List.concatMap
+                            (\degree ->
+                                List.filterMap
+                                    (\accidental ->
+                                        Pitch.inflected scale accidental degree
+                                            |> Result.toMaybe
+                                            |> Maybe.map
+                                                (\pitch ->
+                                                    test (Scale.name scale ++ " " ++ Pitch.toString pitch) <|
+                                                        \_ ->
+                                                            pitch
+                                                                |> Pitch.encodeWithScale scale
+                                                                |> Pitch.decodeWithScale
+                                                                |> Expect.equal (Ok pitch)
+                                                )
+                                    )
+                                    Accidental.all
+                            )
+                            Degree.gamutList
+                    )
+                    Scale.all
+                )
+            ]
+        , describe "DecodeWithScale Error Cases"
+            [ test "DecodeWithScale returns error for invalid scale code" <|
+                \_ ->
+                    "invalid|n|Pa"
+                        |> Pitch.decodeWithScale
+                        |> Result.toMaybe
+                        |> Expect.equal Nothing
+            , test "DecodeWithScale returns error for invalid format" <|
+                \_ ->
+                    "ds"
+                        |> Pitch.decodeWithScale
+                        |> Result.toMaybe
+                        |> Expect.equal Nothing
+            , test "DecodeWithScale returns error for invalid degree in pitch" <|
+                \_ ->
+                    "ds|n|invalid"
+                        |> Pitch.decodeWithScale
+                        |> Result.toMaybe
+                        |> Expect.equal Nothing
+            , test "DecodeWithScale returns error for invalid accidental in pitch" <|
+                \_ ->
+                    "ds|i|Pa|invalid"
+                        |> Pitch.decodeWithScale
+                        |> Result.toMaybe
+                        |> Expect.equal Nothing
+            , test "DecodeWithScale returns error for incompatible accidental" <|
+                \_ ->
+                    -- Attempting to use an accidental that isn't valid for the scale/degree
+                    "ds|i|Pa|f8"
+                        |> Pitch.decodeWithScale
+                        |> Result.toMaybe
+                        |> Expect.equal Nothing
             ]
         ]
