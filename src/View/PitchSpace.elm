@@ -300,12 +300,10 @@ viewPitches pitchSpaceData modeSettings pitchState =
     Html.ol (listAttributes pitchSpaceData.layout)
         (List.map
             (\degree ->
-                -- Html.Lazy.lazy8
-                viewPitch
+                Html.Lazy.lazy8 viewPitch
                     pitchSpaceData.layout
                     pitchSpaceData.scalingFactor
                     pitchSpaceData.pitchButtonSize
-                    modeSettings.scale
                     pitchState
                     (PitchSpaceData.encodePitchPositionContext pitchSpaceData degree)
                     (Pitch.wrapDegree pitchState.currentPitch proposedMovementTo degree
@@ -349,22 +347,21 @@ viewPitch :
     Layout
     -> Float
     -> Float
-    -> Scale
     -> PitchState
     -> String
     -> String
     -> PositionWithinVisibleRange
     -> IsonSelectionIndicator
     -> Html Msg
-viewPitch layout scalingFactor pitchButtonSize scale pitchState pitchPositions pitchString positionWithinRange isonStatusIndicator =
+viewPitch layout scalingFactor pitchButtonSize pitchState pitchPositions pitchString positionWithinRange isonStatusIndicator =
     let
         -- _ =
         --     Debug.log "in viewPitch" pitchString
-        pitch =
-            Pitch.decodeWithDefault pitchString
-
         degree =
-            Pitch.unwrapDegree pitch
+            pitchString
+                |> Pitch.decodeWithDefault
+                |> Tuple.second
+                |> Pitch.unwrapDegree
 
         { pitchPosition, pitchPositionAbove, pitchPositionBelow } =
             Result.withDefault
@@ -443,7 +440,6 @@ viewPitch layout scalingFactor pitchButtonSize scale pitchState pitchPositions p
                     layout
                     scalingFactor
                     pitchButtonSize
-                    scale
                     pitchState
                     pitchString
                     pitchPositions
@@ -475,10 +471,10 @@ How much of the movement or pitch selection validation can we push off into the
 pitch space data? This does seem closer to derived state rather than pure view.
 
 -}
-pitchButton : Layout -> Float -> Float -> Scale -> PitchState -> String -> String -> PositionWithinVisibleRange -> IsonSelectionIndicator -> Html Msg
-pitchButton layout scalingFactor pitchButtonSize scale pitchState pitchString pitchPositions positionWithinRange isonStatusIndicator =
+pitchButton : Layout -> Float -> Float -> PitchState -> String -> String -> PositionWithinVisibleRange -> IsonSelectionIndicator -> Html Msg
+pitchButton layout scalingFactor pitchButtonSize pitchState pitchString pitchPositions positionWithinRange isonStatusIndicator =
     let
-        pitch =
+        ( scale, pitch ) =
             Pitch.decodeWithDefault pitchString
 
         isCurrentDegree =

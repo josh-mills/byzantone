@@ -143,14 +143,12 @@ decode str =
             Err ("Invalid format for scale and pitch: " ++ str)
 
 
-{-| Convenience function that defaults to `Natural Pa`. Unsafe to use except
-where encoding accuracy is ensured.
+{-| Convenience function that defaults to `( Diatonic, Natural Pa )`. Unsafe to
+use except where encoding accuracy is ensured.
 -}
-decodeWithDefault : String -> Pitch
+decodeWithDefault : String -> ( Scale, Pitch )
 decodeWithDefault str =
-    decode str
-        |> Result.map Tuple.second
-        |> Result.withDefault (Natural Degree.Pa)
+    Result.withDefault ( Diatonic, Natural Degree.Pa ) (decode str)
 
 
 
