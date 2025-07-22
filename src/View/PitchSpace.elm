@@ -10,8 +10,7 @@ import Byzantine.ByzHtml.Martyria as ByzHtmlMartyria
 import Byzantine.Degree as Degree exposing (Degree)
 import Byzantine.IntervalCharacter as IntervalCharacter
 import Byzantine.Martyria as Martyria
-import Byzantine.Pitch as Pitch exposing (Interval, Pitch)
-import Byzantine.Scale exposing (Scale)
+import Byzantine.Pitch as Pitch exposing (Interval, Pitch, PitchString)
 import Html exposing (Html, button, div, li, span, text)
 import Html.Attributes as Attr exposing (class, classList)
 import Html.Attributes.Extra as Attr
@@ -22,8 +21,8 @@ import Maybe.Extra as Maybe
 import Model.DegreeDataDict as DegreeDataDict
 import Model.LayoutData as LayoutData exposing (Layout(..))
 import Model.ModeSettings exposing (ModeSettings)
-import Model.PitchSpaceData as PitchSpaceData exposing (IsonSelectionIndicator, PitchSpaceData, PositionWithinVisibleRange(..), calculateVisibleRange)
-import Model.PitchState as PitchState exposing (IsonStatus(..), PitchState)
+import Model.PitchSpaceData as PitchSpaceData exposing (IsonSelectionIndicator, PitchPositionContextString, PitchSpaceData, PositionWithinVisibleRange(..), calculateVisibleRange)
+import Model.PitchState exposing (IsonStatus(..), PitchState)
 import Movement exposing (Movement(..))
 import Round
 import Styles
@@ -359,7 +358,7 @@ viewPitch layout scalingFactor pitchButtonSize pitchState pitchPositions pitchSt
         --     Debug.log "in viewPitch" pitchString
         degree =
             pitchString
-                |> Pitch.decodeWithDefault
+                |> Pitch.decodeWithDefault_DEPRECATED
                 |> Tuple.second
                 |> Pitch.unwrapDegree
 
@@ -471,11 +470,20 @@ How much of the movement or pitch selection validation can we push off into the
 pitch space data? This does seem closer to derived state rather than pure view.
 
 -}
-pitchButton : Layout -> Float -> Float -> PitchState -> String -> String -> PositionWithinVisibleRange -> IsonSelectionIndicator -> Html Msg
+pitchButton :
+    Layout
+    -> Float
+    -> Float
+    -> PitchState
+    -> PitchString
+    -> PitchPositionContextString
+    -> PositionWithinVisibleRange
+    -> IsonSelectionIndicator
+    -> Html Msg
 pitchButton layout scalingFactor pitchButtonSize pitchState pitchString pitchPositions positionWithinRange isonStatusIndicator =
     let
         ( scale, pitch ) =
-            Pitch.decodeWithDefault pitchString
+            Pitch.decodeWithDefault_DEPRECATED pitchString
 
         isCurrentDegree =
             Just (Pitch.unwrapDegree pitch) == Maybe.map Pitch.unwrapDegree pitchState.currentPitch

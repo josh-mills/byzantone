@@ -1,7 +1,7 @@
 module Model.PitchSpaceData exposing
     ( PitchSpaceData, init
     , PositionWithinVisibleRange(..), calculateVisibleRange, positionIsVisible
-    , encodePitchPositionContext, decodePitchPositionContext
+    , PitchPositionContextString, encodePitchPositionContext, decodePitchPositionContext
     , IsonSelectionIndicator, isCurrentIson, canBeSelectedAsIson
     )
 
@@ -22,7 +22,7 @@ as a result of model updates.
 
 # Pitch Positions
 
-@docs encodePitchPositionContext, decodePitchPositionContext
+@docs PitchPositionContextString, encodePitchPositionContext, decodePitchPositionContext
 
 
 # Ison
@@ -249,6 +249,14 @@ visibility { startDegreeIndex, endDegreeIndex } degree =
 -- PITCH POSITION
 
 
+{-| String-encoded representation of the position (in moria) of a pitch,
+the pitch one degree below that pitch, and the pitch one degree above that
+pitch.
+-}
+type alias PitchPositionContextString =
+    String
+
+
 {-| Encodes the pitch positions of a degree and its adjacent degrees into a
 string format. Takes a `PitchSpaceData` record and a `Degree` and returns a
 pipe-separated string containing three values:
@@ -268,7 +276,7 @@ scale with position 144, where the degree below it is at position 136 and there
 is no degree above it (represented by "_").
 
 -}
-encodePitchPositionContext : PitchSpaceData -> Degree -> String
+encodePitchPositionContext : PitchSpaceData -> Degree -> PitchPositionContextString
 encodePitchPositionContext { pitchPositions } degree =
     let
         getAndEncode =
@@ -304,7 +312,7 @@ The function returns a Result type, with an error message if parsing fails.
 
 -}
 decodePitchPositionContext :
-    String
+    PitchPositionContextString
     ->
         Result
             String

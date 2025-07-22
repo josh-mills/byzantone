@@ -1,7 +1,7 @@
 module Byzantine.Pitch exposing
     ( Pitch
     , natural, inflected, from, wrapDegree, applyAccidental
-    , encode, decode, decodeWithDefault
+    , PitchString, encode, decode, decodeWithDefault_DEPRECATED
     , unwrapDegree, unwrapAccidental
     , isInflected, isValidInflection, toString
     , pitchPosition, pitchPositions
@@ -31,7 +31,7 @@ attractions and inflections.
 
 ## Encode
 
-@docs encode, encodeWithScale, decode, decodeWithScale, decodeWithDefault
+@docs PitchString, encode, encodeWithScale, decode, decodeWithScale, decodeWithDefault_DEPRECATED
 
 
 ## Unwrap
@@ -88,10 +88,16 @@ type Pitch
 -- ENCODE
 
 
+{-| String-encoded representation of a pitch within a scale.
+-}
+type alias PitchString =
+    String
+
+
 {-| Encode both a scale and pitch into a combined string representation. This
 allows decoding without a separate scale argument.
 -}
-encode : Scale -> Pitch -> String
+encode : Scale -> Pitch -> PitchString
 encode scale pitch =
     (case pitch of
         Natural degree ->
@@ -107,18 +113,18 @@ encode scale pitch =
 {-| Decode a string representation that contains both scale and pitch
 information. The string must be in the format:
 
-  - "<scale\_code>|n|<degree>" for natural pitches
+  - "<scale>|n|<degree>" for natural pitches
 
-  - "<scale\_code>|i|<degree>|<accidental>" for inflected pitches
+  - "<scale>|i|<degree>|<accidental>" for inflected pitches
 
-Where <scale\_code> is one of the codes defined in Scale.encode.
+where <scale> is one of the codes defined in Scale.encode.
 
 -}
-decode : String -> Result String ( Scale, Pitch )
-decode str =
+decode : PitchString -> Result String ( Scale, Pitch )
+decode pitchString =
     let
         parts =
-            String.split "|" str
+            String.split "|" pitchString
     in
     case parts of
         [ scaleCode, "n", degreeStr ] ->
@@ -140,15 +146,15 @@ decode str =
                     )
 
         _ ->
-            Err ("Invalid format for scale and pitch: " ++ str)
+            Err ("Invalid format for scale and pitch: " ++ pitchString)
 
 
 {-| Convenience function that defaults to `( Diatonic, Natural Pa )`. Unsafe to
-use except where encoding accuracy is ensured.
+use except where encoding accuracy is ensured.œ
 -}
-decodeWithDefault : String -> ( Scale, Pitch )
-decodeWithDefault str =
-    Result.withDefault ( Diatonic, Natural Degree.Pa ) (decode str)
+decodeWithDefault_DEPRECATED : PitchString -> ( Scale, Pitch )
+decodeWithDefault_DEPRECATED pitchString =
+    Result.withDefault ( Diatonic, Natural Degree.Pa ) (decode pitchString)
 
 
 
