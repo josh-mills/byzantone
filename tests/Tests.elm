@@ -3,7 +3,7 @@ module Tests exposing (..)
 import Array
 import Byzantine.Accidental as Accidental exposing (Accidental(..))
 import Byzantine.Degree as Degree exposing (Degree(..))
-import Byzantine.Pitch as Pitch
+import Byzantine.Pitch as Pitch exposing (Pitch(..))
 import Byzantine.Scale as Scale exposing (Scale(..))
 import Expect
 import List.Extra
@@ -218,54 +218,7 @@ degreeDataDictTests =
 pitchTests : Test
 pitchTests =
     describe "Pitch Tests"
-        [ describe "Encode/Decode Roundtrip Tests"
-            [ describe "Natural Pitches"
-                (List.concatMap
-                    (\scale ->
-                        List.map
-                            (\degree ->
-                                let
-                                    pitch =
-                                        Pitch.natural degree
-                                in
-                                test (Scale.name scale ++ " " ++ "Natural " ++ Pitch.toString pitch) <|
-                                    \_ ->
-                                        pitch
-                                            |> Pitch.encode
-                                            |> Pitch.decode scale
-                                            |> Expect.equal (Ok pitch)
-                            )
-                            Degree.gamutList
-                    )
-                    Scale.all
-                )
-            , describe "Inflected Pitches"
-                (List.concatMap
-                    (\scale ->
-                        List.concatMap
-                            (\degree ->
-                                List.filterMap
-                                    (\accidental ->
-                                        Pitch.inflected scale accidental degree
-                                            |> Result.toMaybe
-                                            |> Maybe.map
-                                                (\pitch ->
-                                                    test (Scale.name scale ++ " " ++ Pitch.toString pitch) <|
-                                                        \_ ->
-                                                            pitch
-                                                                |> Pitch.encode
-                                                                |> Pitch.decode scale
-                                                                |> Expect.equal (Ok pitch)
-                                                )
-                                    )
-                                    Accidental.all
-                            )
-                            Degree.gamutList
-                    )
-                    Scale.all
-                )
-            ]
-        , describe "Scale Encode/Decode Tests"
+        [ describe "Scale Encode/Decode Tests"
             [ test "Scale.encode/decode roundtrip for Diatonic" <|
                 \_ ->
                     Diatonic
@@ -318,9 +271,9 @@ pitchTests =
                                 test (Scale.name scale ++ " " ++ "Natural " ++ Pitch.toString pitch) <|
                                     \_ ->
                                         pitch
-                                            |> Pitch.encodeWithScale scale
-                                            |> Pitch.decodeWithScale
-                                            |> Expect.equal (Ok pitch)
+                                            |> Pitch.encode scale
+                                            |> Pitch.decode
+                                            |> Expect.equal (Ok ( scale, pitch ))
                             )
                             Degree.gamutList
                     )
@@ -340,9 +293,9 @@ pitchTests =
                                                     test (Scale.name scale ++ " " ++ Pitch.toString pitch) <|
                                                         \_ ->
                                                             pitch
-                                                                |> Pitch.encodeWithScale scale
-                                                                |> Pitch.decodeWithScale
-                                                                |> Expect.equal (Ok pitch)
+                                                                |> Pitch.encode scale
+                                                                |> Pitch.decode
+                                                                |> Expect.equal (Ok ( scale, pitch ))
                                                 )
                                     )
                                     Accidental.all
@@ -352,36 +305,64 @@ pitchTests =
                     Scale.all
                 )
             ]
-        , describe "DecodeWithScale Error Cases"
-            [ test "DecodeWithScale returns error for invalid scale code" <|
+        , describe "Decode Tests - Scale and Pitch Recovery"
+            [ test "Decode correctly extracts both scale and pitch" <|
+                \_ ->
+                    let
+                        scale =
+                            Diatonic
+
+                        pitch =
+                            Pitch.natural Degree.Pa
+                    in
+                    pitch
+                        |> Pitch.encode scale
+                        |> Pitch.decode
+                        |> Expect.equal (Ok ( scale, pitch ))
+            , test "Decode preserves both scale and pitch when inflected" <|
+                \_ ->
+                    let
+                        scale =
+                            SoftChromatic
+
+                        pitch =
+                            Pitch.inflected scale Sharp4 Degree.Di |> Result.withDefault (Pitch.natural Degree.Di)
+                    in
+                    pitch
+                        |> Pitch.encode scale
+                        |> Pitch.decode
+                        |> Expect.equal (Ok ( scale, pitch ))
+            ]
+        , describe "Decode Error Cases"
+            [ test "Decode returns error for invalid scale code" <|
                 \_ ->
                     "invalid|n|Pa"
-                        |> Pitch.decodeWithScale
+                        |> Pitch.decode
                         |> Result.toMaybe
                         |> Expect.equal Nothing
-            , test "DecodeWithScale returns error for invalid format" <|
+            , test "Decode returns error for invalid format" <|
                 \_ ->
                     "ds"
-                        |> Pitch.decodeWithScale
+                        |> Pitch.decode
                         |> Result.toMaybe
                         |> Expect.equal Nothing
-            , test "DecodeWithScale returns error for invalid degree in pitch" <|
+            , test "Decode returns error for invalid degree in pitch" <|
                 \_ ->
                     "ds|n|invalid"
-                        |> Pitch.decodeWithScale
+                        |> Pitch.decode
                         |> Result.toMaybe
                         |> Expect.equal Nothing
-            , test "DecodeWithScale returns error for invalid accidental in pitch" <|
+            , test "Decode returns error for invalid accidental in pitch" <|
                 \_ ->
                     "ds|i|Pa|invalid"
-                        |> Pitch.decodeWithScale
+                        |> Pitch.decode
                         |> Result.toMaybe
                         |> Expect.equal Nothing
-            , test "DecodeWithScale returns error for incompatible accidental" <|
+            , test "Decode returns error for incompatible accidental" <|
                 \_ ->
                     -- Attempting to use an accidental that isn't valid for the scale/degree
                     "ds|i|Pa|f8"
-                        |> Pitch.decodeWithScale
+                        |> Pitch.decode
                         |> Result.toMaybe
                         |> Expect.equal Nothing
             ]

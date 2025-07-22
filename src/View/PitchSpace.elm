@@ -309,7 +309,7 @@ viewPitches pitchSpaceData modeSettings pitchState =
                     pitchState
                     (PitchSpaceData.encodePitchPositionContext pitchSpaceData degree)
                     (Pitch.wrapDegree pitchState.currentPitch proposedMovementTo degree
-                        |> Pitch.encode
+                        |> Pitch.encode modeSettings.scale
                     )
                     (DegreeDataDict.get degree pitchSpaceData.pitchVisibility)
                     (DegreeDataDict.get degree pitchSpaceData.isonIndicators)
@@ -361,7 +361,7 @@ viewPitch layout scalingFactor pitchButtonSize scale pitchState pitchPositions p
         -- _ =
         --     Debug.log "in viewPitch" pitchString
         pitch =
-            Pitch.decodeWithDefault scale pitchString
+            Pitch.decodeWithDefault pitchString
 
         degree =
             Pitch.unwrapDegree pitch
@@ -479,7 +479,7 @@ pitchButton : Layout -> Float -> Float -> Scale -> PitchState -> String -> Strin
 pitchButton layout scalingFactor pitchButtonSize scale pitchState pitchString pitchPositions positionWithinRange isonStatusIndicator =
     let
         pitch =
-            Pitch.decodeWithDefault scale pitchString
+            Pitch.decodeWithDefault pitchString
 
         isCurrentDegree =
             Just (Pitch.unwrapDegree pitch) == Maybe.map Pitch.unwrapDegree pitchState.currentPitch

@@ -1,7 +1,7 @@
 module Byzantine.Pitch exposing
     ( Pitch
     , natural, inflected, from, wrapDegree, applyAccidental
-    , encode, encodeWithScale, decode, decodeWithScale, decodeWithDefault
+    , encode, decode, decodeWithDefault
     , unwrapDegree, unwrapAccidental
     , isInflected, isValidInflection, toString
     , pitchPosition, pitchPositions
@@ -76,6 +76,7 @@ import Byzantine.Degree as Degree exposing (Degree)
 import Byzantine.Scale as Scale exposing (Scale(..))
 import Maybe.Extra
 import Result exposing (Result)
+import Tuple.Trio as Trio
 
 
 type Pitch
@@ -87,54 +88,20 @@ type Pitch
 -- ENCODE
 
 
-{-| Encode a pitch into a string representation.
--}
-encode : Pitch -> String
-encode pitch =
-    case pitch of
-        Natural degree ->
-            "n|" ++ Degree.toString degree
-
-        Inflected accidental degree ->
-            "i|" ++ Degree.toString degree ++ "|" ++ Accidental.toString accidental
-
-
 {-| Encode both a scale and pitch into a combined string representation. This
 allows decoding without a separate scale argument.
 -}
-encodeWithScale : Scale -> Pitch -> String
-encodeWithScale scale pitch =
-    Scale.encode scale ++ "|" ++ encode pitch
+encode : Scale -> Pitch -> String
+encode scale pitch =
+    (case pitch of
+        Natural degree ->
+            [ "n", Degree.toString degree ]
 
-
-{-| Decode a string representation of a Pitch. The string must be in one of two
-formats:
-
-  - "n|<degree>" for natural pitches
-
-  - "i|<degree>|<accidental>" for inflected pitches
-
-Scale argument is required for validating inflected pitches.
-
--}
-decode : Scale -> String -> Result String Pitch
-decode scale str =
-    case String.split "|" str of
-        [ "n", degreeStr ] ->
-            Degree.fromString degreeStr
-                |> Result.map Natural
-
-        [ "i", degreeStr, accidentalStr ] ->
-            Result.map2 Tuple.pair
-                (Accidental.fromString accidentalStr)
-                (Degree.fromString degreeStr)
-                |> Result.andThen
-                    (\( accidental, degree ) ->
-                        inflected scale accidental degree
-                    )
-
-        _ ->
-            Err ("Invalid pitch format: " ++ str)
+        Inflected accidental degree ->
+            [ "i", Degree.toString degree, Accidental.toString accidental ]
+    )
+        |> (::) (Scale.encode scale)
+        |> String.join "|"
 
 
 {-| Decode a string representation that contains both scale and pitch
@@ -147,18 +114,29 @@ information. The string must be in the format:
 Where <scale\_code> is one of the codes defined in Scale.encode.
 
 -}
-decodeWithScale : String -> Result String Pitch
-decodeWithScale str =
+decode : String -> Result String ( Scale, Pitch )
+decode str =
     let
         parts =
             String.split "|" str
     in
     case parts of
-        scaleCode :: rest ->
-            Scale.decode scaleCode
+        [ scaleCode, "n", degreeStr ] ->
+            Result.map2 Tuple.pair
+                (Scale.decode scaleCode)
+                (Degree.fromString degreeStr
+                    |> Result.map Natural
+                )
+
+        [ scaleCode, "i", degreeStr, accidentalStr ] ->
+            Result.map3 Trio.intrine
+                (Scale.decode scaleCode)
+                (Degree.fromString degreeStr)
+                (Accidental.fromString accidentalStr)
                 |> Result.andThen
-                    (\scale ->
-                        decode scale (String.join "|" rest)
+                    (\( scale, degree, accidental ) ->
+                        inflected scale accidental degree
+                            |> Result.map (Tuple.pair scale)
                     )
 
         _ ->
@@ -168,9 +146,10 @@ decodeWithScale str =
 {-| Convenience function that defaults to `Natural Pa`. Unsafe to use except
 where encoding accuracy is ensured.
 -}
-decodeWithDefault : Scale -> String -> Pitch
-decodeWithDefault scale str =
-    decode scale str
+decodeWithDefault : String -> Pitch
+decodeWithDefault str =
+    decode str
+        |> Result.map Tuple.second
         |> Result.withDefault (Natural Degree.Pa)
 
 
