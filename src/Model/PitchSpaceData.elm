@@ -1,5 +1,6 @@
 module Model.PitchSpaceData exposing
     ( PitchSpaceData, init
+    , Display, displayToLayout, isVertical, pitchButtonSize
     , PositionWithinVisibleRange(..), calculateVisibleRange, positionIsVisible
     , PitchPositionContextString, encodePitchPositionContext, decodePitchPositionContext
     , IsonSelectionIndicator, isCurrentIson, canBeSelectedAsIson
@@ -13,6 +14,11 @@ as a result of model updates.
 # Pitch Space Data
 
 @docs PitchSpaceData, init
+
+
+# Display
+
+@docs Display, displayToLayout, isVertical, pitchButtonSize
 
 
 # Visibility
@@ -49,10 +55,9 @@ record should be singletons or primitives to support lazy rendering.
 
 Elements include:
 
-  - **`layout`** – the `Layout` based on the layout selection and/or viewport
-    size for auto
-  - **`pitchButtonSize`** – a `Float`, representing the size (in pixels) of the
-    pitch button based on the viewport.
+  - **`display`** – a `Display` value that encapsulates both the layout and the
+    pitch button size, based on the layout selection and/or viewport size for
+    auto.
   - **`pitchPositions`** – a `DegreeDataDict Int`, representing the pitch
     position (in moria) of each degree with respect to the given scale, current
     pitch, and proposed movement with proposed accidental applied as
@@ -74,11 +79,15 @@ Other elements we'll want:
   - data for each degree, including:
       - full pitch, including accidental as appropriate (encoded as a string)
 
+To consider:
+
+  - visible range boundaries could be encoded as Degrees rather than Ints if
+    that would help anything.
+
 -}
 type alias PitchSpaceData =
-    { isonIndicators : DegreeDataDict IsonSelectionIndicator
-    , layout : Layout
-    , pitchButtonSize : Float
+    { display : Display
+    , isonIndicators : DegreeDataDict IsonSelectionIndicator
     , pitchPositions : DegreeDataDict Int
     , pitchVisibility : DegreeDataDict PositionWithinVisibleRange
     , scalingFactor : Float
@@ -103,9 +112,8 @@ init layoutData modeSettings pitchState =
             , endDegreeIndex = Degree.indexOf (Pitch.unwrapDegree visibleRange.end)
             }
     in
-    { isonIndicators = DegreeDataDict.init (isonSelectionIndicator modeSettings pitchState)
-    , layout = LayoutData.layoutFor layoutData
-    , pitchButtonSize = calculatePitchButtonSize layoutData
+    { display = determineDisplay layoutData
+    , isonIndicators = DegreeDataDict.init (isonSelectionIndicator modeSettings pitchState)
     , pitchPositions =
         DegreeDataDict.init
             (Pitch.wrapDegree
@@ -119,15 +127,6 @@ init layoutData modeSettings pitchState =
     , visibleRangeEnd = Pitch.pitchPosition modeSettings.scale visibleRange.end
     }
         |> setScalingFactor layoutData
-
-
-calculatePitchButtonSize : LayoutData -> Float
-calculatePitchButtonSize layoutData =
-    if layoutData.viewport.viewport.width < 640 then
-        48
-
-    else
-        64
 
 
 {-| What is the visible range of the pitch space? This expands the default (or
@@ -162,6 +161,85 @@ calculateVisibleRange modeSettings pitchState =
             }
 
 
+
+-- DISPLAY
+
+
+type Display
+    = VerticalSmall
+    | VerticalLarge
+    | HorizontalSmall
+    | HorizontalLarge
+
+
+displayToLayout : Display -> Layout
+displayToLayout display =
+    case display of
+        VerticalSmall ->
+            Vertical
+
+        VerticalLarge ->
+            Vertical
+
+        HorizontalSmall ->
+            Horizontal
+
+        HorizontalLarge ->
+            Horizontal
+
+
+determineDisplay : LayoutData -> Display
+determineDisplay layoutData =
+    let
+        isSmall =
+            layoutData.viewport.viewport.width < 640
+    in
+    case ( LayoutData.layoutFor layoutData, isSmall ) of
+        ( Vertical, True ) ->
+            VerticalSmall
+
+        ( Vertical, False ) ->
+            VerticalLarge
+
+        ( Horizontal, True ) ->
+            HorizontalSmall
+
+        ( Horizontal, False ) ->
+            HorizontalLarge
+
+
+isVertical : Display -> Bool
+isVertical display =
+    case display of
+        VerticalSmall ->
+            True
+
+        VerticalLarge ->
+            True
+
+        HorizontalSmall ->
+            False
+
+        HorizontalLarge ->
+            False
+
+
+pitchButtonSize : Display -> Float
+pitchButtonSize display =
+    case display of
+        VerticalSmall ->
+            48
+
+        VerticalLarge ->
+            64
+
+        HorizontalSmall ->
+            48
+
+        HorizontalLarge ->
+            64
+
+
 {-| This feels potentially fragile.
 
 TODO: consider some sort of minimum for the portrait to enable scrolling on
@@ -176,19 +254,18 @@ setScalingFactor layoutData pitchSpaceData =
     in
     { pitchSpaceData
         | scalingFactor =
-            case pitchSpaceData.layout of
-                Vertical ->
-                    (layoutData.viewport.viewport.height
-                        - max layoutData.pitchSpace.element.y 128
-                        - pitchSpaceData.pitchButtonSize
-                    )
-                        / toFloat visibleRangeInMoria
+            if isVertical pitchSpaceData.display then
+                (layoutData.viewport.viewport.height
+                    - max layoutData.pitchSpace.element.y 128
+                    - pitchButtonSize pitchSpaceData.display
+                )
+                    / toFloat visibleRangeInMoria
 
-                Horizontal ->
-                    (layoutData.pitchSpace.element.width
-                        - pitchSpaceData.pitchButtonSize
-                    )
-                        / toFloat visibleRangeInMoria
+            else
+                (layoutData.pitchSpace.element.width
+                    - pitchButtonSize pitchSpaceData.display
+                )
+                    / toFloat visibleRangeInMoria
     }
 
 

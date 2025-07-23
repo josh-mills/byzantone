@@ -21,7 +21,15 @@ import Maybe.Extra as Maybe
 import Model.DegreeDataDict as DegreeDataDict
 import Model.LayoutData as LayoutData exposing (Layout(..))
 import Model.ModeSettings exposing (ModeSettings)
-import Model.PitchSpaceData as PitchSpaceData exposing (IsonSelectionIndicator, PitchPositionContextString, PitchSpaceData, PositionWithinVisibleRange(..), calculateVisibleRange)
+import Model.PitchSpaceData as PitchSpaceData
+    exposing
+        ( Display
+        , IsonSelectionIndicator
+        , PitchPositionContextString
+        , PitchSpaceData
+        , PositionWithinVisibleRange(..)
+        , calculateVisibleRange
+        )
 import Model.PitchState exposing (IsonStatus(..), PitchState)
 import Movement exposing (Movement(..))
 import Round
@@ -51,16 +59,11 @@ view pitchSpaceData modeSettings pitchState =
          , Styles.transition
          , Attr.attributeIf LayoutData.showSpacing Styles.border
          ]
-            ++ (case pitchSpaceData.layout of
-                    Vertical ->
-                        [ Styles.flexRow
-                        , class "my-8"
-                        ]
+            ++ (if PitchSpaceData.isVertical pitchSpaceData.display then
+                    [ Styles.flexRow, class "my-8" ]
 
-                    Horizontal ->
-                        [ Styles.flexCol
-                        , class "mx-8"
-                        ]
+                else
+                    [ Styles.flexCol, class "mx-8" ]
                )
         )
         [ viewIntervals pitchSpaceData modeSettings pitchState
@@ -68,16 +71,15 @@ view pitchSpaceData modeSettings pitchState =
         ]
 
 
-listAttributes : Layout -> List (Html.Attribute Msg)
-listAttributes layout =
-    case layout of
-        Vertical ->
-            [ class "flex flex-col-reverse justify-end w-36 mx-4" ]
+listAttributes : Display -> List (Html.Attribute Msg)
+listAttributes display =
+    if PitchSpaceData.isVertical display then
+        [ class "flex flex-col-reverse justify-end w-36 mx-4" ]
 
-        Horizontal ->
-            [ Styles.flexRowCentered
-            , class "h-24 w-full my-4"
-            ]
+    else
+        [ Styles.flexRowCentered
+        , class "h-24 w-full my-4"
+        ]
 
 
 {-| 64px default, 48px below the sm breakpoint.
@@ -99,9 +101,9 @@ interval as a primitive.
 -}
 viewIntervals : PitchSpaceData -> ModeSettings -> PitchState -> Html Msg
 viewIntervals pitchSpaceData modeSettings pitchState =
-    Html.ol (onMouseLeave (SelectProposedMovement None) :: listAttributes pitchSpaceData.layout)
+    Html.ol (onMouseLeave (SelectProposedMovement None) :: listAttributes pitchSpaceData.display)
         (List.map
-            (viewInterval pitchSpaceData.layout pitchSpaceData.scalingFactor pitchState)
+            (viewInterval pitchSpaceData.display pitchSpaceData.scalingFactor pitchState)
             (intervalsWithVisibility modeSettings pitchState (calculateVisibleRange modeSettings pitchState))
         )
 
@@ -154,8 +156,8 @@ intervalsWithVisibility modeSettings pitchState visibleRange =
         )
 
 
-viewInterval : Layout -> Float -> PitchState -> ( Interval, PositionWithinVisibleRange ) -> Html Msg
-viewInterval layout scalingFactor pitchState ( interval, position ) =
+viewInterval : Display -> Float -> PitchState -> ( Interval, PositionWithinVisibleRange ) -> Html Msg
+viewInterval display scalingFactor pitchState ( interval, position ) =
     let
         -- _ =
         --     Debug.log "in viewInterval" interval
@@ -200,20 +202,18 @@ viewInterval layout scalingFactor pitchState ( interval, position ) =
                 ++ Degree.toString (Pitch.unwrapDegree interval.to)
             )
         , Styles.flexRowCentered
-        , case layout of
-            Vertical ->
-                Styles.height size
+        , if PitchSpaceData.isVertical display then
+            Styles.height size
 
-            Horizontal ->
-                Styles.width size
+          else
+            Styles.width size
         , Styles.transition
         , Attr.attributeIf (PitchSpaceData.positionIsVisible position) Styles.border
-        , case layout of
-            Vertical ->
-                class "border-r-0"
+        , if PitchSpaceData.isVertical display then
+            class "border-r-0"
 
-            Horizontal ->
-                class "border-b-0"
+          else
+            class "border-b-0"
         ]
         [ (case movement of
             AscendTo pitch ->
@@ -296,13 +296,12 @@ viewPitches pitchSpaceData modeSettings pitchState =
         proposedMovementTo =
             Movement.unwrapTargetPitch pitchState.proposedMovement
     in
-    Html.ol (listAttributes pitchSpaceData.layout)
+    Html.ol (listAttributes pitchSpaceData.display)
         (List.map
             (\degree ->
-                Html.Lazy.lazy8 viewPitch
-                    pitchSpaceData.layout
+                Html.Lazy.lazy7 viewPitch
+                    pitchSpaceData.display
                     pitchSpaceData.scalingFactor
-                    pitchSpaceData.pitchButtonSize
                     pitchState
                     (PitchSpaceData.encodePitchPositionContext pitchSpaceData degree)
                     (Pitch.wrapDegree pitchState.currentPitch proposedMovementTo degree
@@ -343,16 +342,15 @@ viewPitches pitchSpaceData modeSettings pitchState =
 
 -}
 viewPitch :
-    Layout
-    -> Float
+    Display
     -> Float
     -> PitchState
-    -> String
-    -> String
+    -> PitchPositionContextString
+    -> PitchString
     -> PositionWithinVisibleRange
     -> IsonSelectionIndicator
     -> Html Msg
-viewPitch layout scalingFactor pitchButtonSize pitchState pitchPositions pitchString positionWithinRange isonStatusIndicator =
+viewPitch display scalingFactor pitchState pitchPositions pitchString positionWithinRange isonStatusIndicator =
     let
         -- _ =
         --     Debug.log "in viewPitch" pitchString
@@ -421,24 +419,22 @@ viewPitch layout scalingFactor pitchButtonSize pitchState pitchPositions pitchSt
          , Styles.transition
          , Attr.attributeIf showSpacingDetails Styles.border
          ]
-            ++ (case layout of
-                    Vertical ->
-                        [ Styles.height size
-                        , attributeIfVisible Styles.flexRow
-                        ]
+            ++ (if PitchSpaceData.isVertical display then
+                    [ Styles.height size
+                    , attributeIfVisible Styles.flexRow
+                    ]
 
-                    Horizontal ->
-                        [ Styles.width size
-                        , attributeIfVisible Styles.flexCol
-                        ]
+                else
+                    [ Styles.width size
+                    , attributeIfVisible Styles.flexCol
+                    ]
                )
         )
         [ viewIfLazy positionIsVisible
             (\_ ->
                 pitchButton
-                    layout
+                    display
                     scalingFactor
-                    pitchButtonSize
                     pitchState
                     pitchString
                     pitchPositions
@@ -447,10 +443,9 @@ viewPitch layout scalingFactor pitchButtonSize pitchState pitchPositions pitchSt
             )
         , viewIfLazy isIson
             (\_ ->
-                Html.Lazy.lazy6 isonIndicator
-                    layout
+                Html.Lazy.lazy5 isonIndicator
+                    display
                     scalingFactor
-                    pitchButtonSize
                     degree
                     pitchPositions
                     positionWithinRange
@@ -471,8 +466,7 @@ pitch space data? This does seem closer to derived state rather than pure view.
 
 -}
 pitchButton :
-    Layout
-    -> Float
+    Display
     -> Float
     -> PitchState
     -> PitchString
@@ -480,7 +474,7 @@ pitchButton :
     -> PositionWithinVisibleRange
     -> IsonSelectionIndicator
     -> Html Msg
-pitchButton layout scalingFactor pitchButtonSize pitchState pitchString pitchPositions positionWithinRange isonStatusIndicator =
+pitchButton display scalingFactor pitchState pitchString pitchPositions positionWithinRange isonStatusIndicator =
     let
         ( scale, pitch ) =
             Pitch.decodeWithDefault_DEPRECATED pitchString
@@ -495,9 +489,8 @@ pitchButton layout scalingFactor pitchButtonSize pitchState pitchString pitchPos
             PitchSpaceData.canBeSelectedAsIson isonStatusIndicator
 
         position =
-            pitchElementPosition layout
+            pitchElementPosition display
                 scalingFactor
-                pitchButtonSize
                 pitchPositions
                 positionWithinRange
                 PitchButton
@@ -560,12 +553,11 @@ pitchButton layout scalingFactor pitchButtonSize pitchState pitchString pitchPos
         , pitchButtonSizeClass
         , class "rounded-full hover:z-20 cursor-pointer relative pb-8"
         , Styles.transition
-        , case layout of
-            Vertical ->
-                Styles.top position
+        , if PitchSpaceData.isVertical display then
+            Styles.top position
 
-            Horizontal ->
-                Styles.left position
+          else
+            Styles.left position
         , classList
             [ ( "bg-red-200 z-10", isCurrentPitch )
             , ( "hover:text-green-700 bg-slate-200 hover:bg-slate-300 opacity-75 hover:opacity-90", not isCurrentPitch )
@@ -588,29 +580,23 @@ pitchButton layout scalingFactor pitchButtonSize pitchState pitchString pitchPos
 
 {-| Prepared for lazy rendering.
 -}
-isonIndicator : Layout -> Float -> Float -> Degree -> String -> PositionWithinVisibleRange -> Html Msg
-isonIndicator layout scalingFactor pitchButtonSize degree pitchPositions positionWithinRange =
+isonIndicator : Display -> Float -> Degree -> PitchPositionContextString -> PositionWithinVisibleRange -> Html Msg
+isonIndicator display scalingFactor degree pitchPositions positionWithinRange =
     let
         position =
-            pitchElementPosition layout
+            pitchElementPosition display
                 scalingFactor
-                pitchButtonSize
                 pitchPositions
                 positionWithinRange
                 IsonIndicator
     in
     div
         (class "relative text-lg sm:text-2xl text-blue-700 text-greek"
-            :: (case layout of
-                    Vertical ->
-                        [ class "ml-3"
-                        , Styles.top position
-                        ]
+            :: (if PitchSpaceData.isVertical display then
+                    [ class "ml-3", Styles.top position ]
 
-                    Horizontal ->
-                        [ class "mt-1"
-                        , Styles.left position
-                        ]
+                else
+                    [ class "mt-1", Styles.left position ]
                )
         )
         [ text "(", Degree.text degree, text ")" ]
@@ -622,14 +608,13 @@ type PitchElementTarget
 
 
 pitchElementPosition :
-    Layout
+    Display
     -> Float
-    -> Float
-    -> String
+    -> PitchPositionContextString
     -> PositionWithinVisibleRange
     -> PitchElementTarget
     -> Float
-pitchElementPosition layout scalingFactor pitchButtonSize pitchPositions positionWithinRange target =
+pitchElementPosition display scalingFactor pitchPositions positionWithinRange target =
     let
         { pitchPosition, pitchPositionAbove, pitchPositionBelow } =
             Result.withDefault
@@ -647,12 +632,12 @@ pitchElementPosition layout scalingFactor pitchButtonSize pitchPositions positio
         pitchButtonSizeValue =
             case target of
                 PitchButton ->
-                    pitchButtonSize / 2
+                    PitchSpaceData.pitchButtonSize display / 2
 
                 IsonIndicator ->
-                    pitchButtonSize / 4
+                    PitchSpaceData.pitchButtonSize display / 4
     in
-    case ( layout, positionWithinRange ) of
+    case ( PitchSpaceData.displayToLayout display, positionWithinRange ) of
         ( _, Below ) ->
             0
 
