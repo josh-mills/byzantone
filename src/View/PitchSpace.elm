@@ -32,6 +32,7 @@ import Model.PitchSpaceData as PitchSpaceData
         )
 import Model.PitchState exposing (IsonStatus(..), PitchState)
 import Movement exposing (Movement(..))
+import Result.Extra
 import Round
 import Styles
 import Update exposing (Msg(..))
@@ -355,10 +356,8 @@ viewPitch display scalingFactor pitchState pitchPositions pitchString positionWi
         -- _ =
         --     Debug.log "in viewPitch" pitchString
         degree =
-            pitchString
-                |> Pitch.decodeWithDefault_DEPRECATED
-                |> Tuple.second
-                |> Pitch.unwrapDegree
+            Pitch.decode pitchString
+                |> Result.map (Tuple.second >> Pitch.unwrapDegree)
 
         { pitchPosition, pitchPositionAbove, pitchPositionBelow } =
             Result.withDefault
@@ -415,7 +414,7 @@ viewPitch display scalingFactor pitchState pitchPositions pitchString positionWi
             PitchSpaceData.isCurrentIson isonStatusIndicator
     in
     li
-        ([ Attr.id ("pitch-" ++ Degree.toString degree)
+        ([ Attr.id ("pitch-" ++ Result.Extra.unwrap "err" Degree.toString degree)
          , Styles.transition
          , Attr.attributeIf showSpacingDetails Styles.border
          ]
@@ -443,12 +442,16 @@ viewPitch display scalingFactor pitchState pitchPositions pitchString positionWi
             )
         , viewIfLazy isIson
             (\_ ->
-                Html.Lazy.lazy5 isonIndicator
-                    display
-                    scalingFactor
+                Result.Extra.unwrap Html.Extra.nothing
+                    (\degree_ ->
+                        Html.Lazy.lazy5 isonIndicator
+                            display
+                            scalingFactor
+                            degree_
+                            pitchPositions
+                            positionWithinRange
+                    )
                     degree
-                    pitchPositions
-                    positionWithinRange
             )
         , viewIf showSpacingDetails
             (text (" (" ++ Round.round 2 size ++ "px)"))
@@ -476,14 +479,16 @@ pitchButton :
     -> Html Msg
 pitchButton display scalingFactor pitchState pitchString pitchPositions positionWithinRange isonStatusIndicator =
     let
-        ( scale, pitch ) =
-            Pitch.decodeWithDefault_DEPRECATED pitchString
+        ( decodedScale, decodedPitch, decodedDegree ) =
+            Result.Extra.unwrap ( Nothing, Nothing, Nothing )
+                (\( s, p ) -> ( Just s, Just p, Just (Pitch.unwrapDegree p) ))
+                (Pitch.decode pitchString)
 
         isCurrentDegree =
-            Just (Pitch.unwrapDegree pitch) == Maybe.map Pitch.unwrapDegree pitchState.currentPitch
+            decodedDegree == Maybe.map Pitch.unwrapDegree pitchState.currentPitch
 
         isCurrentPitch =
-            Just proposedPitch == pitchState.currentPitch
+            proposedPitch == pitchState.currentPitch
 
         canBeSelectedAsIson =
             PitchSpaceData.canBeSelectedAsIson isonStatusIndicator
@@ -496,60 +501,61 @@ pitchButton display scalingFactor pitchState pitchString pitchPositions position
                 PitchButton
 
         degreeCanSupportProposedAccidental =
-            Maybe.map
-                (\accidental ->
-                    Pitch.isValidInflection
-                        scale
-                        accidental
-                        (Pitch.unwrapDegree pitch)
-                )
+            Maybe.map3 Pitch.isValidInflection
+                decodedScale
                 pitchState.proposedAccidental
+                decodedDegree
                 |> Maybe.withDefault False
                 |> (&&) movementWouldBeValid
 
         movementWouldBeValid =
-            pitchState.proposedAccidental
-                |> Maybe.andThen
-                    (\accidental ->
-                        Pitch.inflected scale
-                            accidental
-                            (Pitch.unwrapDegree pitch)
-                            |> Result.toMaybe
-                    )
-                |> Maybe.map2
-                    (Pitch.getInterval scale)
+            Maybe.map3 Pitch.inflected
+                decodedScale
+                pitchState.proposedAccidental
+                decodedDegree
+                |> Maybe.andThen Result.toMaybe
+                |> Maybe.map3 Pitch.getInterval
+                    decodedScale
                     pitchState.currentPitch
                 |> Maybe.map (Movement.ofInterval pitchState.currentPitch)
-                |> Maybe.map2 (Movement.isValid scale) pitchState.currentPitch
+                |> Maybe.map3 Movement.isValid decodedScale pitchState.currentPitch
                 |> Maybe.withDefault True
+
+        applyAccidental maybeAccidental =
+            Maybe.map2 (\scale pitch -> Pitch.applyAccidental scale pitch maybeAccidental)
+                decodedScale
+                decodedPitch
 
         proposedPitch =
             if degreeCanSupportProposedAccidental && movementWouldBeValid then
-                Pitch.applyAccidental scale pitchState.proposedAccidental pitch
+                applyAccidental pitchState.proposedAccidental
 
             else
-                pitch
+                decodedPitch
 
         shouldHighlight =
             canBeSelectedAsIson || degreeCanSupportProposedAccidental
+
+        proposedPitchIsInflected =
+            Maybe.unwrap False Pitch.isInflected proposedPitch
     in
     button
         [ onClick <|
             if canBeSelectedAsIson then
-                SetIson (Selected (Pitch.unwrapDegree pitch))
+                SetIson (Maybe.unwrap NoIson Selected decodedDegree)
 
             else if isCurrentDegree then
-                if isCurrentPitch && Pitch.isInflected proposedPitch then
-                    SelectPitch (Just (Pitch.applyAccidental scale Nothing pitch)) Nothing
+                if isCurrentPitch && proposedPitchIsInflected then
+                    SelectPitch (applyAccidental Nothing) Nothing
 
-                else if not isCurrentPitch && Pitch.isInflected proposedPitch then
-                    SelectPitch (Just proposedPitch) Nothing
+                else if not isCurrentPitch && proposedPitchIsInflected then
+                    SelectPitch proposedPitch Nothing
 
                 else
                     SelectPitch Nothing Nothing
 
             else
-                SelectPitch (Just proposedPitch) Nothing
+                SelectPitch proposedPitch Nothing
         , pitchButtonSizeClass
         , class "rounded-full hover:z-20 cursor-pointer relative pb-8"
         , Styles.transition
@@ -561,7 +567,7 @@ pitchButton display scalingFactor pitchState pitchString pitchPositions position
         , classList
             [ ( "bg-red-200 z-10", isCurrentPitch )
             , ( "hover:text-green-700 bg-slate-200 hover:bg-slate-300 opacity-75 hover:opacity-90", not isCurrentPitch )
-            , ( "text-green-700 bg-slate-300 z-10", Movement.unwrapTargetPitch pitchState.proposedMovement == Just pitch )
+            , ( "text-green-700 bg-slate-300 z-10", Movement.unwrapTargetPitch pitchState.proposedMovement == decodedPitch )
             , ( "border-2 border-blue-700", shouldHighlight )
             , ( "border-2 border-transparent", not shouldHighlight )
             ]
@@ -571,10 +577,16 @@ pitchButton display scalingFactor pitchState pitchString pitchPositions position
                 span [ class "absolute mt-2 md:mt-4", Styles.left 12 ]
                     [ Accidental.view Accidental.Red accidental ]
             )
-            (Pitch.unwrapAccidental pitch)
-        , ByzHtmlMartyria.viewWithAttributes
-            [ Styles.left -3, Styles.top -3 ]
-            (Martyria.for scale (Pitch.unwrapDegree pitch))
+            (Maybe.andThen Pitch.unwrapAccidental decodedPitch)
+        , Maybe.map2
+            (\scale pitch ->
+                ByzHtmlMartyria.viewWithAttributes
+                    [ Styles.left -3, Styles.top -3 ]
+                    (Martyria.for scale (Pitch.unwrapDegree pitch))
+            )
+            decodedScale
+            decodedPitch
+            |> Maybe.withDefault Html.Extra.nothing
         ]
 
 

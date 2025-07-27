@@ -1,7 +1,7 @@
 module Byzantine.Pitch exposing
     ( Pitch
     , natural, inflected, from, wrapDegree, applyAccidental
-    , PitchString, encode, decode, decodeWithDefault_DEPRECATED
+    , PitchString, encode, decode
     , unwrapDegree, unwrapAccidental
     , isInflected, isValidInflection, toString
     , pitchPosition, pitchPositions
@@ -31,7 +31,7 @@ attractions and inflections.
 
 ## Encode
 
-@docs PitchString, encode, encodeWithScale, decode, decodeWithScale, decodeWithDefault_DEPRECATED
+@docs PitchString, encode, decode
 
 
 ## Unwrap
@@ -149,14 +149,6 @@ decode pitchString =
             Err ("Invalid format for scale and pitch: " ++ pitchString)
 
 
-{-| Convenience function that defaults to `( Diatonic, Natural Pa )`. Unsafe to
-use except where encoding accuracy is ensured.œ
--}
-decodeWithDefault_DEPRECATED : PitchString -> ( Scale, Pitch )
-decodeWithDefault_DEPRECATED pitchString =
-    Result.withDefault ( Diatonic, Natural Degree.Pa ) (decode pitchString)
-
-
 
 -- CONSTRUCT
 
@@ -223,8 +215,8 @@ wrapDegree currentPitch proposedMovementTo degree =
 if the accidental is not valid for that degree within the given scale, or if
 it is `Nothing`.
 -}
-applyAccidental : Scale -> Maybe Accidental -> Pitch -> Pitch
-applyAccidental scale maybeAccidental pitch =
+applyAccidental : Scale -> Pitch -> Maybe Accidental -> Pitch
+applyAccidental scale pitch maybeAccidental =
     let
         degree =
             unwrapDegree pitch
