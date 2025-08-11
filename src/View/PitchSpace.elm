@@ -300,13 +300,16 @@ viewPitches pitchSpaceData modeSettings pitchState =
     Html.ol (listAttributes pitchSpaceData.display)
         (List.map
             (\degree ->
-                Html.Lazy.lazy7 viewPitch
+                Html.Lazy.lazy8 viewPitch
                     pitchSpaceData.display
                     pitchSpaceData.scalingFactor
-                    pitchState
+                    (Just degree == Maybe.map Pitch.unwrapDegree pitchState.currentPitch)
                     (PitchSpaceData.encodePitchPositionContext pitchSpaceData degree)
                     (Pitch.wrapDegree pitchState.currentPitch proposedMovementTo degree
                         |> Pitch.encode modeSettings.scale
+                    )
+                    (DegreeDataDict.get degree pitchSpaceData.pitchToSelect
+                        |> Maybe.unwrap "nothing" (Pitch.encode modeSettings.scale)
                     )
                     (DegreeDataDict.get degree pitchSpaceData.pitchVisibility)
                     (DegreeDataDict.get degree pitchSpaceData.isonIndicators)
@@ -315,46 +318,25 @@ viewPitches pitchSpaceData modeSettings pitchState =
         )
 
 
-{-| Renders a single pitch element in the pitch space.
+{-| Renders a single pitch element in the pitch space. Prepared for lazy
+rendering.
 
-
-## Layout Parameters
-
-  - `layout`: Determines if the pitch space is arranged vertically or horizontally
-  - `scalingFactor`: Scaling factor for pitch element spacing
-  - `pitchButtonSize`: Size of the pitch button element
-
-
-## Mode and State
-
-  - `modeSettings`: Current mode/scale configuration
-  - `pitchState`: Current state of the pitch system (selected pitches, ison, etc.)
-
-
-## Position Parameters
-
-  - `pitchPositions`: String-encoded pitch positions of the degree, the degree above, and the degree below
-  - `positionWithinRange`: Whether this pitch is within the visible range
-
-
-## Pitch Data
-
-  - `pitchString`: String representation of the pitch to display
+TODO: standardize argument ordering. Lazy rendering also introduces string type
+unsafety.
 
 -}
 viewPitch :
     Display
     -> Float
-    -> PitchState
+    -> Bool
     -> PitchPositionContextString
+    -> PitchString
     -> PitchString
     -> PositionWithinVisibleRange
     -> IsonSelectionIndicator
     -> Html Msg
-viewPitch display scalingFactor pitchState pitchPositions pitchString positionWithinRange isonStatusIndicator =
+viewPitch display scalingFactor isCurrentDegree pitchPositions pitchString pitchToSelect positionWithinRange isonStatusIndicator =
     let
-        -- _ =
-        --     Debug.log "in viewPitch" pitchString
         degree =
             Pitch.decode pitchString
                 |> Result.map (Tuple.second >> Pitch.unwrapDegree)
@@ -431,11 +413,13 @@ viewPitch display scalingFactor pitchState pitchPositions pitchString positionWi
         )
         [ viewIfLazy positionIsVisible
             (\_ ->
+                -- lazy rundering not needed; this is covered by the lazy check on `viewPitch`.
                 pitchButton
                     display
                     scalingFactor
-                    pitchState
+                    isCurrentDegree
                     pitchString
+                    pitchToSelect
                     pitchPositions
                     positionWithinRange
                     isonStatusIndicator
@@ -458,37 +442,35 @@ viewPitch display scalingFactor pitchState pitchPositions pitchString positionWi
         ]
 
 
-{-| TODO: we still need to get the PitchState deconstructed or encoded into
-primitives or referentially equivalent arguments. This means that if we store
-the relevant data in a dict in PitchSpaceData, we'll need to ensure that updates
-to the dict record are handled in a targeted manner rather than a blanket
-re-init.
+{-| Prepared for lazy rendering.
 
-How much of the movement or pitch selection validation can we push off into the
-pitch space data? This does seem closer to derived state rather than pure view.
+TODO? : To enable lazy rendering, we're dropping the proposed movement argument
+(previously included with the PitchState argument), which means that the pitch
+won't highlight when it is the target of the proposed movement. If this behavior
+is still desirable, we'll need a way of getting this back in.
 
 -}
 pitchButton :
     Display
     -> Float
-    -> PitchState
+    -> Bool
+    -> PitchString
     -> PitchString
     -> PitchPositionContextString
     -> PositionWithinVisibleRange
     -> IsonSelectionIndicator
     -> Html Msg
-pitchButton display scalingFactor pitchState pitchString pitchPositions positionWithinRange isonStatusIndicator =
+pitchButton display scalingFactor isCurrentDegree pitchString pitchToSelect pitchPositions positionWithinRange isonStatusIndicator =
     let
         ( decodedScale, decodedPitch, decodedDegree ) =
             Result.Extra.unwrap ( Nothing, Nothing, Nothing )
                 (\( s, p ) -> ( Just s, Just p, Just (Pitch.unwrapDegree p) ))
                 (Pitch.decode pitchString)
 
-        isCurrentDegree =
-            decodedDegree == Maybe.map Pitch.unwrapDegree pitchState.currentPitch
-
-        isCurrentPitch =
-            proposedPitch == pitchState.currentPitch
+        decodedPitchToSelect =
+            Pitch.decode pitchToSelect
+                |> Result.toMaybe
+                |> Maybe.map Tuple.second
 
         canBeSelectedAsIson =
             PitchSpaceData.canBeSelectedAsIson isonStatusIndicator
@@ -500,62 +482,16 @@ pitchButton display scalingFactor pitchState pitchString pitchPositions position
                 positionWithinRange
                 PitchButton
 
-        degreeCanSupportProposedAccidental =
-            Maybe.map3 Pitch.isValidInflection
-                decodedScale
-                pitchState.proposedAccidental
-                decodedDegree
-                |> Maybe.withDefault False
-                |> (&&) movementWouldBeValid
-
-        movementWouldBeValid =
-            Maybe.map3 Pitch.inflected
-                decodedScale
-                pitchState.proposedAccidental
-                decodedDegree
-                |> Maybe.andThen Result.toMaybe
-                |> Maybe.map3 Pitch.getInterval
-                    decodedScale
-                    pitchState.currentPitch
-                |> Maybe.map (Movement.ofInterval pitchState.currentPitch)
-                |> Maybe.map3 Movement.isValid decodedScale pitchState.currentPitch
-                |> Maybe.withDefault True
-
-        applyAccidental maybeAccidental =
-            Maybe.map2 (\scale pitch -> Pitch.applyAccidental scale pitch maybeAccidental)
-                decodedScale
-                decodedPitch
-
-        proposedPitch =
-            if degreeCanSupportProposedAccidental && movementWouldBeValid then
-                applyAccidental pitchState.proposedAccidental
-
-            else
-                decodedPitch
-
         shouldHighlight =
-            canBeSelectedAsIson || degreeCanSupportProposedAccidental
-
-        proposedPitchIsInflected =
-            Maybe.unwrap False Pitch.isInflected proposedPitch
+            canBeSelectedAsIson || Maybe.unwrap False Pitch.isInflected decodedPitchToSelect
     in
     button
         [ onClick <|
             if canBeSelectedAsIson then
                 SetIson (Maybe.unwrap NoIson Selected decodedDegree)
 
-            else if isCurrentDegree then
-                if isCurrentPitch && proposedPitchIsInflected then
-                    SelectPitch (applyAccidental Nothing) Nothing
-
-                else if not isCurrentPitch && proposedPitchIsInflected then
-                    SelectPitch proposedPitch Nothing
-
-                else
-                    SelectPitch Nothing Nothing
-
             else
-                SelectPitch proposedPitch Nothing
+                SelectPitch decodedPitchToSelect Nothing
         , pitchButtonSizeClass
         , class "rounded-full hover:z-20 cursor-pointer relative pb-8"
         , Styles.transition
@@ -565,9 +501,10 @@ pitchButton display scalingFactor pitchState pitchString pitchPositions position
           else
             Styles.left position
         , classList
-            [ ( "bg-red-200 z-10", isCurrentPitch )
-            , ( "hover:text-green-700 bg-slate-200 hover:bg-slate-300 opacity-75 hover:opacity-90", not isCurrentPitch )
-            , ( "text-green-700 bg-slate-300 z-10", Movement.unwrapTargetPitch pitchState.proposedMovement == decodedPitch )
+            [ ( "bg-red-200 z-10", isCurrentDegree )
+            , ( "hover:text-green-700 bg-slate-200 hover:bg-slate-300 opacity-75 hover:opacity-90", not isCurrentDegree )
+
+            -- , ( "text-green-700 bg-slate-300 z-10", Movement.unwrapTargetPitch pitchState.proposedMovement == decodedPitch )
             , ( "border-2 border-blue-700", shouldHighlight )
             , ( "border-2 border-transparent", not shouldHighlight )
             ]

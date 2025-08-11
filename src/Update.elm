@@ -111,6 +111,7 @@ update msg model =
             ( updatePitchState
                 (\pitchState -> { pitchState | proposedAccidental = maybeAccidental })
                 model
+                |> resetPitchSpaceData
             , Cmd.none
             )
 

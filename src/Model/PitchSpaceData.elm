@@ -58,17 +58,26 @@ Elements include:
   - **`display`** – a `Display` value that encapsulates both the layout and the
     pitch button size, based on the layout selection and/or viewport size for
     auto.
+
   - **`pitchPositions`** – a `DegreeDataDict Int`, representing the pitch
     position (in moria) of each degree with respect to the given scale, current
     pitch, and proposed movement with proposed accidental applied as
     appropriate.
+
+  - **`pitchToSelect`** – a `DegreeDataDict (Maybe Pitch)`, representing the
+    pitch that will be given as a payload for the `SelectPitch` message for the
+    pitch button onclick.
+
   - **`pitchVisibility`** – a `DegreeDataDict PositionWithinVisibleRange`,
     indicating the visibility of each degree in the current pitch space.
+
   - **`scalingFactor`** – a `Float`, representing the scaling factor for
     translating pitch positions and interval sizes from moria into pixels.
+
   - **`visibleRangeStart`** – `Int` representing the pitch position (in moria)
     of the bottom of the visible range, which may expand the default or user-set
     position to include the current pitch.
+
   - **`visibleRangeEnd`** – same idea, but for the top end of the range.
 
 Other elements we'll want:
@@ -89,6 +98,7 @@ type alias PitchSpaceData =
     { display : Display
     , isonIndicators : DegreeDataDict IsonSelectionIndicator
     , pitchPositions : DegreeDataDict Int
+    , pitchToSelect : DegreeDataDict (Maybe Pitch)
     , pitchVisibility : DegreeDataDict PositionWithinVisibleRange
     , scalingFactor : Float
     , visibleRangeStart : Int
@@ -121,6 +131,7 @@ init layoutData modeSettings pitchState =
                 (Movement.unwrapTargetPitch pitchState.proposedMovement)
                 >> Pitch.pitchPosition modeSettings.scale
             )
+    , pitchToSelect = DegreeDataDict.init (pitchButtonSelectPitch modeSettings pitchState)
     , pitchVisibility = DegreeDataDict.init (visibility visibleRangeIndexes)
     , scalingFactor = 10
     , visibleRangeStart = Pitch.pitchPosition modeSettings.scale visibleRange.start
@@ -159,6 +170,63 @@ calculateVisibleRange modeSettings pitchState =
             { start = Pitch.natural modeSettings.rangeStart
             , end = Pitch.natural modeSettings.rangeEnd
             }
+
+
+{-| The idea here is to pull the logic out of the PitchSpace.pitchButton so that
+we can move the domain logic out of the view code.
+
+Compare the `Pitch.wrapDegree` function. There's overlap here. We should
+probably liquidate that function; it encompasses controller logic that's outside
+the scope of the type proper. But we'd need a way of getting intervals out of
+the pitch module as well, which we _should_ do, but there's a good amount of
+refactors needed for that.
+
+-}
+pitchButtonSelectPitch : ModeSettings -> PitchState -> Degree -> Maybe Pitch
+pitchButtonSelectPitch { scale } pitchState degree =
+    let
+        naturalPitch =
+            Pitch.natural degree
+
+        -- pitch with proposed accidental, if there is a proposed accidental,
+        -- and if this is valid in the scale
+        pitchWithProposedAccidental =
+            pitchState.proposedAccidental
+                |> Maybe.map (\accidental -> Pitch.inflected scale accidental degree)
+                |> Maybe.andThen Result.toMaybe
+
+        proposedInflectedPitchIsCurrentPitch =
+            pitchWithProposedAccidental == pitchState.currentPitch
+
+        proposedPitchIsCurrentNaturalPitch =
+            (pitchState.proposedAccidental == Nothing)
+                && (pitchState.currentPitch == Just naturalPitch)
+    in
+    if proposedInflectedPitchIsCurrentPitch then
+        Just naturalPitch
+
+    else if proposedPitchIsCurrentNaturalPitch then
+        Nothing
+
+    else
+        let
+            -- if there is a current pitch, would the resulting interval to the
+            -- proposed pitch be valid?
+            inflectedPitchWithResultingMovementWouldBeValid =
+                pitchWithProposedAccidental
+                    |> Maybe.map2 (Pitch.getInterval scale) pitchState.currentPitch
+                    |> Maybe.map (Movement.ofInterval pitchState.currentPitch)
+                    |> Maybe.map2 (Movement.isValid scale) pitchState.currentPitch
+        in
+        case inflectedPitchWithResultingMovementWouldBeValid of
+            Just True ->
+                pitchWithProposedAccidental
+
+            Just False ->
+                Just naturalPitch
+
+            Nothing ->
+                Just (Pitch.from scale pitchState.proposedAccidental degree)
 
 
 
