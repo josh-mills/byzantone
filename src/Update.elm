@@ -11,6 +11,7 @@ import Model exposing (Modal, Model)
 import Model.AudioSettings exposing (AudioSettings)
 import Model.LayoutData exposing (LayoutData, LayoutSelection)
 import Model.ModeSettings exposing (ModeSettings)
+import Model.PitchSpaceData as PitchSpaceData
 import Model.PitchState as PitchState exposing (IsonStatus(..), PitchState)
 import Movement exposing (Movement)
 import Platform.Cmd as Cmd
@@ -37,7 +38,6 @@ type Msg
     | SetRegister Register
     | SetScale Scale
     | ToggleMenu
-    | ToggleSpacing
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -56,6 +56,7 @@ update msg model =
                     updateLayoutData
                         (\layoutData -> { layoutData | pitchSpace = element })
                         model
+                        |> resetPitchSpaceData
 
                 Err _ ->
                     model
@@ -66,6 +67,7 @@ update msg model =
             ( updateLayoutData
                 (\layoutData -> { layoutData | viewport = viewport })
                 model
+                |> resetPitchSpaceData
             , Task.attempt GotPitchSpaceElement (Dom.getElement "pitch-space")
             )
 
@@ -101,6 +103,7 @@ update msg model =
                     }
                 )
                 model
+                |> resetPitchSpaceData
             , Cmd.none
             )
 
@@ -108,6 +111,7 @@ update msg model =
             ( updatePitchState
                 (\pitchState -> { pitchState | proposedAccidental = maybeAccidental })
                 model
+                |> resetPitchSpaceData
             , Cmd.none
             )
 
@@ -139,6 +143,7 @@ update msg model =
                     }
                 )
                 model
+                |> resetPitchSpaceData
             , Cmd.none
             )
 
@@ -153,6 +158,7 @@ update msg model =
             ( updatePitchState
                 (\pitchState -> { pitchState | ison = ison })
                 model
+                |> resetPitchSpaceData
             , Cmd.none
             )
 
@@ -160,6 +166,7 @@ update msg model =
             ( updateLayoutData
                 (\layoutData -> { layoutData | layoutSelection = layoutSelection })
                 model
+                |> resetPitchSpaceData
             , Task.perform GotViewport Dom.getViewport
             )
 
@@ -181,6 +188,7 @@ update msg model =
                     }
                 )
                 model
+                |> resetPitchSpaceData
             , Cmd.none
             )
 
@@ -195,6 +203,7 @@ update msg model =
                     }
                 )
                 model
+                |> resetPitchSpaceData
             , Cmd.none
             )
 
@@ -210,6 +219,7 @@ update msg model =
                 (\modeSettings -> { modeSettings | scale = scale })
                 -- , currentPitch = Nothing -- consider this.
                 model
+                |> resetPitchSpaceData
             , Cmd.none
             )
 
@@ -220,13 +230,6 @@ update msg model =
 
               else
                 Cmd.none
-            )
-
-        ToggleSpacing ->
-            ( updateLayoutData
-                (\layoutData -> { layoutData | showSpacing = not layoutData.showSpacing })
-                model
-            , Cmd.none
             )
 
         Keydown key ->
@@ -398,6 +401,17 @@ update msg model =
                     ( model, Cmd.none )
 
 
+resetPitchSpaceData : Model -> Model
+resetPitchSpaceData model =
+    { model
+        | pitchSpaceData =
+            PitchSpaceData.init
+                model.layoutData
+                model.modeSettings
+                model.pitchState
+    }
+
+
 updateAudioSettings : (AudioSettings -> AudioSettings) -> Model -> Model
 updateAudioSettings f model =
     { model | audioSettings = f model.audioSettings }
@@ -444,6 +458,7 @@ moveAndFocus model interval =
             }
         )
         model
+        |> resetPitchSpaceData
     , Maybe.unwrap Cmd.none
         (\pitch_ ->
             Pitch.unwrapDegree pitch_
@@ -463,6 +478,7 @@ setAndFocus model degree =
             updatePitchState
                 (\pitchState -> { pitchState | ison = PitchState.Selected degree })
                 model
+                |> resetPitchSpaceData
 
         _ ->
             updatePitchState
@@ -479,6 +495,7 @@ setAndFocus model degree =
                     }
                 )
                 model
+                |> resetPitchSpaceData
     , Degree.toString degree |> (++) "p_" |> Dom.focus |> Task.attempt DomResult
     )
 

@@ -1,7 +1,7 @@
 module Byzantine.Pitch exposing
     ( Pitch
     , natural, inflected, from, wrapDegree, applyAccidental
-    , encode, decode
+    , PitchString, encode, decode
     , unwrapDegree, unwrapAccidental
     , isInflected, isValidInflection, toString
     , pitchPosition, pitchPositions
@@ -31,7 +31,7 @@ attractions and inflections.
 
 ## Encode
 
-@docs encode, decode
+@docs PitchString, encode, decode
 
 
 ## Unwrap
@@ -76,6 +76,7 @@ import Byzantine.Degree as Degree exposing (Degree)
 import Byzantine.Scale as Scale exposing (Scale(..))
 import Maybe.Extra
 import Result exposing (Result)
+import Tuple.Trio as Trio
 
 
 type Pitch
@@ -87,44 +88,61 @@ type Pitch
 -- ENCODE
 
 
-encode : Pitch -> String
-encode pitch =
-    case pitch of
+{-| String-encoded representation of a pitch within a scale.
+-}
+type alias PitchString =
+    String
+
+
+{-| Encode both a scale and pitch into a combined string representation. This
+allows decoding without a separate scale argument.
+-}
+encode : Scale -> Pitch -> PitchString
+encode scale pitch =
+    (case pitch of
         Natural degree ->
-            "n|" ++ Degree.toString degree
+            [ "n", Degree.toString degree ]
 
         Inflected accidental degree ->
-            "i|" ++ Degree.toString degree ++ "|" ++ Accidental.toString accidental
+            [ "i", Degree.toString degree, Accidental.toString accidental ]
+    )
+        |> (::) (Scale.encode scale)
+        |> String.join "|"
 
 
-{-| Decode a string representation of a Pitch. The string must be in one of two
-formats:
+{-| Decode a string representation that contains both scale and pitch
+information. The string must be in the format:
 
-  - "n|<degree>" for natural pitches
+  - "<scale>|n|<degree>" for natural pitches
 
-  - "i|<degree>|<accidental>" for inflected pitches
+  - "<scale>|i|<degree>|<accidental>" for inflected pitches
 
-Scale argument is required for validating inflected pitches.
+where <scale> is one of the codes defined in Scale.encode.
 
 -}
-decode : Scale -> String -> Result String Pitch
-decode scale str =
-    case String.split "|" str of
-        [ "n", degreeStr ] ->
-            Degree.fromString degreeStr
-                |> Result.map Natural
-
-        [ "i", degreeStr, accidentalStr ] ->
+decode : PitchString -> Result String ( Scale, Pitch )
+decode pitchString =
+    case String.split "|" pitchString of
+        [ scaleCode, "n", degreeStr ] ->
             Result.map2 Tuple.pair
-                (Accidental.fromString accidentalStr)
+                (Scale.decode scaleCode)
+                (Degree.fromString degreeStr
+                    |> Result.map Natural
+                )
+
+        [ scaleCode, "i", degreeStr, accidentalStr ] ->
+            Result.map3 Trio.intrine
+                (Scale.decode scaleCode)
                 (Degree.fromString degreeStr)
+                (Accidental.fromString accidentalStr)
                 |> Result.andThen
-                    (\( accidental, degree ) ->
+                    (\( scale, degree, accidental ) ->
                         inflected scale accidental degree
+                            |> Result.map (Tuple.pair scale)
                     )
 
         _ ->
-            Err ("Invalid pitch format: " ++ str)
+            Err ("Invalid format for scale and pitch: " ++ pitchString)
 
 
 
@@ -193,8 +211,8 @@ wrapDegree currentPitch proposedMovementTo degree =
 if the accidental is not valid for that degree within the given scale, or if
 it is `Nothing`.
 -}
-applyAccidental : Scale -> Maybe Accidental -> Pitch -> Pitch
-applyAccidental scale maybeAccidental pitch =
+applyAccidental : Scale -> Pitch -> Maybe Accidental -> Pitch
+applyAccidental scale pitch maybeAccidental =
     let
         degree =
             unwrapDegree pitch

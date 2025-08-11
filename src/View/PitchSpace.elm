@@ -10,17 +10,29 @@ import Byzantine.ByzHtml.Martyria as ByzHtmlMartyria
 import Byzantine.Degree as Degree exposing (Degree)
 import Byzantine.IntervalCharacter as IntervalCharacter
 import Byzantine.Martyria as Martyria
-import Byzantine.Pitch as Pitch exposing (Interval, Pitch)
+import Byzantine.Pitch as Pitch exposing (Interval, Pitch, PitchString)
 import Html exposing (Html, button, div, li, span, text)
 import Html.Attributes as Attr exposing (class, classList)
 import Html.Attributes.Extra as Attr
 import Html.Events exposing (onClick, onFocus, onMouseEnter, onMouseLeave)
 import Html.Extra exposing (viewIf, viewIfLazy)
+import Html.Lazy
 import Maybe.Extra as Maybe
-import Model.LayoutData as LayoutData exposing (Layout(..), LayoutData)
+import Model.DegreeDataDict as DegreeDataDict
+import Model.LayoutData as LayoutData exposing (Layout(..))
 import Model.ModeSettings exposing (ModeSettings)
-import Model.PitchState as PitchState exposing (IsonStatus(..), PitchState)
+import Model.PitchSpaceData as PitchSpaceData
+    exposing
+        ( Display
+        , IsonSelectionIndicator
+        , PitchPositionContextString
+        , PitchSpaceData
+        , PositionWithinVisibleRange(..)
+        , calculateVisibleRange
+        )
+import Model.PitchState exposing (IsonStatus(..), PitchState)
 import Movement exposing (Movement(..))
+import Result.Extra
 import Round
 import Styles
 import Update exposing (Msg(..))
@@ -30,113 +42,34 @@ import Update exposing (Msg(..))
 -- WRAPPER AND VIEW HELPERS
 
 
-view : LayoutData -> ModeSettings -> PitchState -> Html Msg
-view layoutData modeSettings pitchState =
-    let
-        layout =
-            LayoutData.layoutFor layoutData
-
-        visibleRange =
-            calculateVisibleRange modeSettings pitchState
-
-        params : Params
-        params =
-            { layout = layout
-            , pitchButtonSize = calculatePitchButtonSize layoutData
-            , layoutData = layoutData
-            , modeSettings = modeSettings
-            , pitchState = pitchState
-            , scalingFactor = calculateScalingFactor layout layoutData modeSettings visibleRange
-            , visibleRange = visibleRange
-            }
-    in
+view : PitchSpaceData -> ModeSettings -> PitchState -> Html Msg
+view pitchSpaceData modeSettings pitchState =
     div
         ([ Attr.id "pitch-space"
          , Styles.transition
-         , Attr.attributeIf layoutData.showSpacing Styles.border
+         , Attr.attributeIf LayoutData.showSpacing Styles.border
          ]
-            ++ (case layout of
-                    Vertical ->
-                        [ Styles.flexRow
-                        , class "my-8"
-                        ]
+            ++ (if PitchSpaceData.isVertical pitchSpaceData.display then
+                    [ Styles.flexRow, class "my-8" ]
 
-                    Horizontal ->
-                        [ Styles.flexCol
-                        , class "mx-8"
-                        ]
+                else
+                    [ Styles.flexCol, class "mx-8" ]
                )
         )
-        [ viewIntervals params
-        , viewPitches params
+        [ viewIntervals pitchSpaceData modeSettings pitchState
+        , viewPitches pitchSpaceData modeSettings pitchState
         ]
 
 
-{-| Includes both state elements passed in from the model and also derived
-values that are calculated from the state.
--}
-type alias Params =
-    { layout : Layout
-    , layoutData : LayoutData
-    , modeSettings : ModeSettings
-    , pitchButtonSize : Float
-    , pitchState : PitchState
-    , scalingFactor : Float
-    , visibleRange : { start : Pitch, end : Pitch }
-    }
+listAttributes : Display -> List (Html.Attribute Msg)
+listAttributes display =
+    if PitchSpaceData.isVertical display then
+        [ class "flex flex-col-reverse justify-end w-36 mx-4" ]
 
-
-type alias PitchDisplayParams =
-    { pitch : Pitch
-    , pitchPosition : Int
-    , pitchPositionAbove : Maybe Int
-    , pitchPositionBelow : Maybe Int
-    , positionWithinRange : PositionWithinVisibleRange
-    , scalingFactor : Float
-    }
-
-
-{-| This feels potentially fragile.
-
-TODO: we'll need some sort of minimum for the portrait to enable scrolling on
-small viewports.
-
--}
-calculateScalingFactor : Layout -> LayoutData -> ModeSettings -> { start : Pitch, end : Pitch } -> Float
-calculateScalingFactor layout layoutData modeSettings visibleRange =
-    let
-        visibleRangeInMoria =
-            Pitch.pitchPosition modeSettings.scale visibleRange.end
-                - Pitch.pitchPosition modeSettings.scale visibleRange.start
-
-        marginForButton =
-            calculatePitchButtonSize layoutData
-    in
-    case layout of
-        Vertical ->
-            (layoutData.viewport.viewport.height
-                - max layoutData.pitchSpace.element.y 128
-                - marginForButton
-            )
-                / toFloat visibleRangeInMoria
-
-        Horizontal ->
-            (layoutData.pitchSpace.element.width
-                - marginForButton
-            )
-                / toFloat visibleRangeInMoria
-
-
-listAttributes : Layout -> List (Html.Attribute Msg)
-listAttributes layout =
-    case layout of
-        Vertical ->
-            [ class "flex flex-col-reverse justify-end w-36 mx-4" ]
-
-        Horizontal ->
-            [ Styles.flexRowCentered
-            , class "h-24 w-full my-4"
-            ]
+    else
+        [ Styles.flexRowCentered
+        , class "h-24 w-full my-4"
+        ]
 
 
 {-| 64px default, 48px below the sm breakpoint.
@@ -146,99 +79,31 @@ pitchButtonSizeClass =
     class "w-12 h-12 sm:w-16 sm:h-16 text-xl sm:text-3xl"
 
 
-calculatePitchButtonSize : LayoutData -> Float
-calculatePitchButtonSize layoutData =
-    if layoutData.viewport.viewport.width < 640 then
-        48
-
-    else
-        64
-
-
-
--- VISIBILITY
-
-
-{-| What is the visible range of the pitch space? This expands the default (or
-user-set) start and stop positions to include the current pitch. (We may want to
-consider additional limits as well.)
--}
-calculateVisibleRange : ModeSettings -> PitchState -> { start : Pitch, end : Pitch }
-calculateVisibleRange modeSettings pitchState =
-    case pitchState.currentPitch of
-        Just currentPitch ->
-            let
-                currentDegree =
-                    Pitch.unwrapDegree currentPitch
-            in
-            { start =
-                if Degree.indexOf currentDegree < Degree.indexOf modeSettings.rangeStart then
-                    currentPitch
-
-                else
-                    Pitch.natural modeSettings.rangeStart
-            , end =
-                if Degree.indexOf currentDegree > Degree.indexOf modeSettings.rangeEnd then
-                    currentPitch
-
-                else
-                    Pitch.natural modeSettings.rangeEnd
-            }
-
-        Nothing ->
-            { start = Pitch.natural modeSettings.rangeStart
-            , end = Pitch.natural modeSettings.rangeEnd
-            }
-
-
-type PositionWithinVisibleRange
-    = Below
-    | LowerBoundary
-    | Within
-    | UpperBoundary
-    | Above
-
-
-positionIsVisible : PositionWithinVisibleRange -> Bool
-positionIsVisible position =
-    case position of
-        Below ->
-            False
-
-        LowerBoundary ->
-            True
-
-        Within ->
-            True
-
-        UpperBoundary ->
-            True
-
-        Above ->
-            False
-
-
 
 -- INTERVAL COLUMN
 
 
-viewIntervals : Params -> Html Msg
-viewIntervals params =
-    Html.ol (onMouseLeave (SelectProposedMovement None) :: listAttributes params.layout)
+viewIntervals : PitchSpaceData -> ModeSettings -> PitchState -> Html Msg
+viewIntervals pitchSpaceData modeSettings pitchState =
+    Html.ol (onMouseLeave (SelectProposedMovement None) :: listAttributes pitchSpaceData.display)
         (List.map
-            (viewInterval params)
-            (intervalsWithVisibility params)
+            (viewInterval pitchSpaceData.display pitchSpaceData.scalingFactor pitchState)
+            (intervalsWithVisibility modeSettings pitchState (calculateVisibleRange modeSettings pitchState))
         )
 
 
-intervalsWithVisibility : Params -> List ( Interval, PositionWithinVisibleRange )
-intervalsWithVisibility params =
+intervalsWithVisibility :
+    ModeSettings
+    -> PitchState
+    -> { start : Pitch, end : Pitch }
+    -> List ( Interval, PositionWithinVisibleRange )
+intervalsWithVisibility modeSettings pitchState visibleRange =
     let
         lowerBoundIndex =
-            Degree.indexOf (Pitch.unwrapDegree params.visibleRange.start)
+            Degree.indexOf (Pitch.unwrapDegree visibleRange.start)
 
         upperBoundIndex =
-            Degree.indexOf (Pitch.unwrapDegree params.visibleRange.end)
+            Degree.indexOf (Pitch.unwrapDegree visibleRange.end)
 
         visibility interval =
             let
@@ -269,18 +134,17 @@ intervalsWithVisibility params =
             , visibility interval
             )
         )
-        (Pitch.intervals params.modeSettings.scale
-            params.pitchState.currentPitch
-            (Movement.unwrapTargetPitch params.pitchState.proposedMovement)
+        (Pitch.intervals modeSettings.scale
+            pitchState.currentPitch
+            (Movement.unwrapTargetPitch pitchState.proposedMovement)
         )
 
 
-{-| TODO: see if with some refactors, we could use Html.Lazy for this. But
-benchmark this before shipping.
--}
-viewInterval : Params -> ( Interval, PositionWithinVisibleRange ) -> Html Msg
-viewInterval { layout, layoutData, pitchState, scalingFactor } ( interval, position ) =
+viewInterval : Display -> Float -> PitchState -> ( Interval, PositionWithinVisibleRange ) -> Html Msg
+viewInterval display scalingFactor pitchState ( interval, position ) =
     let
+        -- _ =
+        --     Debug.log "in viewInterval" interval
         size =
             case position of
                 Above ->
@@ -298,7 +162,7 @@ viewInterval { layout, layoutData, pitchState, scalingFactor } ( interval, posit
         moria =
             span [ class "text-gray-600" ]
                 [ text (String.fromInt interval.moria)
-                , viewIf layoutData.showSpacing
+                , viewIf LayoutData.showSpacing
                     (text <| " (" ++ Round.round 2 size ++ "px)")
                 ]
 
@@ -322,20 +186,18 @@ viewInterval { layout, layoutData, pitchState, scalingFactor } ( interval, posit
                 ++ Degree.toString (Pitch.unwrapDegree interval.to)
             )
         , Styles.flexRowCentered
-        , case layout of
-            Vertical ->
-                Styles.height size
+        , if PitchSpaceData.isVertical display then
+            Styles.height size
 
-            Horizontal ->
-                Styles.width size
+          else
+            Styles.width size
         , Styles.transition
-        , Attr.attributeIf (positionIsVisible position) Styles.border
-        , case layout of
-            Vertical ->
-                class "border-r-0"
+        , Attr.attributeIf (PitchSpaceData.positionIsVisible position) Styles.border
+        , if PitchSpaceData.isVertical display then
+            class "border-r-0"
 
-            Horizontal ->
-                class "border-b-0"
+          else
+            class "border-b-0"
         ]
         [ (case movement of
             AscendTo pitch ->
@@ -360,7 +222,7 @@ viewInterval { layout, layoutData, pitchState, scalingFactor } ( interval, posit
                 div [ class "content-center" ]
                     [ moria ]
           )
-            |> viewIf (positionIsVisible position)
+            |> viewIf (PitchSpaceData.positionIsVisible position)
         ]
 
 
@@ -410,85 +272,61 @@ shouldHighlightInterval { currentPitch, proposedMovement } interval =
 -- PITCH COLUMN
 
 
-viewPitches : Params -> Html Msg
-viewPitches params =
-    Html.ol (listAttributes params.layout)
-        (List.map (viewPitch params) (pitchesWithVisibility params))
-
-
-pitchesWithVisibility : Params -> List ( Pitch, PositionWithinVisibleRange )
-pitchesWithVisibility params =
+viewPitches : PitchSpaceData -> ModeSettings -> PitchState -> Html Msg
+viewPitches pitchSpaceData modeSettings pitchState =
     let
-        lowerBoundIndex =
-            Degree.indexOf (Pitch.unwrapDegree params.visibleRange.start)
-
-        upperBoundIndex =
-            Degree.indexOf (Pitch.unwrapDegree params.visibleRange.end)
-
-        visibility pitchIndex =
-            if pitchIndex < lowerBoundIndex then
-                Below
-
-            else if pitchIndex > upperBoundIndex then
-                Above
-
-            else if pitchIndex == lowerBoundIndex then
-                LowerBoundary
-
-            else if pitchIndex == upperBoundIndex then
-                UpperBoundary
-
-            else
-                Within
+        proposedMovementTo =
+            Movement.unwrapTargetPitch pitchState.proposedMovement
     in
-    List.map
-        (\degree ->
-            ( Pitch.wrapDegree params.pitchState.currentPitch
-                (Movement.unwrapTargetPitch params.pitchState.proposedMovement)
-                degree
-            , visibility (Degree.indexOf degree)
+    Html.ol (listAttributes pitchSpaceData.display)
+        (List.map
+            (\degree ->
+                Html.Lazy.lazy8 viewPitch
+                    (Pitch.wrapDegree pitchState.currentPitch proposedMovementTo degree
+                        |> Pitch.encode modeSettings.scale
+                    )
+                    (Just degree == Maybe.map Pitch.unwrapDegree pitchState.currentPitch)
+                    pitchSpaceData.display
+                    (DegreeDataDict.get degree pitchSpaceData.isonIndicators)
+                    (PitchSpaceData.encodePitchPositionContext pitchSpaceData degree)
+                    (DegreeDataDict.get degree pitchSpaceData.pitchToSelect
+                        |> Maybe.unwrap "nothing" (Pitch.encode modeSettings.scale)
+                    )
+                    (DegreeDataDict.get degree pitchSpaceData.pitchVisibility)
+                    pitchSpaceData.scalingFactor
             )
+            Degree.gamutList
         )
-        Degree.gamutList
 
 
-viewPitch : Params -> ( Pitch, PositionWithinVisibleRange ) -> Html Msg
-viewPitch ({ layout, layoutData, modeSettings, scalingFactor } as params) ( pitch, positionWithinRange ) =
+{-| Renders a single pitch element in the pitch space. Prepared for lazy
+rendering.
+-}
+viewPitch :
+    PitchString
+    -> Bool
+    -> Display
+    -> IsonSelectionIndicator
+    -> PitchPositionContextString
+    -> PitchString
+    -> PositionWithinVisibleRange
+    -> Float
+    -> Html Msg
+viewPitch pitchString isCurrentDegree display isonStatusIndicator pitchPositions pitchToSelect positionWithinRange scalingFactor =
     let
         degree =
-            Pitch.unwrapDegree pitch
+            Pitch.decode pitchString
+                |> Result.map (Tuple.second >> Pitch.unwrapDegree)
 
-        pitchPosition : Int
-        pitchPosition =
-            Pitch.pitchPosition modeSettings.scale pitch
+        { pitchPosition, pitchPositionAbove, pitchPositionBelow } =
+            Result.withDefault
+                { pitchPosition = -1
+                , pitchPositionBelow = Nothing
+                , pitchPositionAbove = Nothing
+                }
+                (PitchSpaceData.decodePitchPositionContext pitchPositions)
 
-        inflectedPitchPosition : Degree -> Int
-        inflectedPitchPosition =
-            Pitch.wrapDegree params.pitchState.currentPitch
-                (Movement.unwrapTargetPitch params.pitchState.proposedMovement)
-                >> Pitch.pitchPosition modeSettings.scale
-
-        pitchPositionAbove : Maybe Int
-        pitchPositionAbove =
-            Degree.step degree 1
-                |> Maybe.map inflectedPitchPosition
-
-        pitchPositionBelow : Maybe Int
-        pitchPositionBelow =
-            Degree.step degree -1
-                |> Maybe.map inflectedPitchPosition
-
-        pitchDisplayParams : PitchDisplayParams
-        pitchDisplayParams =
-            { pitch = pitch
-            , pitchPosition = pitchPosition
-            , pitchPositionAbove = pitchPositionAbove
-            , pitchPositionBelow = pitchPositionBelow
-            , positionWithinRange = positionWithinRange
-            , scalingFactor = scalingFactor
-            }
-
-        scale int =
+        scale_ int =
             (toFloat int / 2) * scalingFactor
 
         size =
@@ -498,7 +336,7 @@ viewPitch ({ layout, layoutData, modeSettings, scalingFactor } as params) ( pitc
 
                 LowerBoundary ->
                     Maybe.map
-                        (\above -> scale (above - pitchPosition))
+                        (\above -> scale_ (above - pitchPosition))
                         pitchPositionAbove
                         |> Maybe.withDefault 0
 
@@ -515,137 +353,135 @@ viewPitch ({ layout, layoutData, modeSettings, scalingFactor } as params) ( pitc
 
                 UpperBoundary ->
                     Maybe.map
-                        (\below -> scale (pitchPosition - below))
+                        (\below -> scale_ (pitchPosition - below))
                         pitchPositionBelow
                         |> Maybe.withDefault 0
 
                 Above ->
                     0
 
+        positionIsVisible =
+            PitchSpaceData.positionIsVisible positionWithinRange
+
         showSpacingDetails =
-            layoutData.showSpacing && positionIsVisible positionWithinRange
+            LayoutData.showSpacing && positionIsVisible
 
         attributeIfVisible =
-            Attr.attributeIf (positionIsVisible positionWithinRange)
+            Attr.attributeIf positionIsVisible
 
         isIson =
-            PitchState.ison params.pitchState.ison == Just (Pitch.natural degree)
+            PitchSpaceData.isCurrentIson isonStatusIndicator
     in
     li
-        ([ Attr.id ("pitch-" ++ Degree.toString degree)
+        ([ Attr.id ("pitch-" ++ Result.Extra.unwrap "err" Degree.toString degree)
          , Styles.transition
          , Attr.attributeIf showSpacingDetails Styles.border
          ]
-            ++ (case layout of
-                    Vertical ->
-                        [ Styles.height size
-                        , attributeIfVisible Styles.flexRow
-                        ]
+            ++ (if PitchSpaceData.isVertical display then
+                    [ Styles.height size
+                    , attributeIfVisible Styles.flexRow
+                    ]
 
-                    Horizontal ->
-                        [ Styles.width size
-                        , attributeIfVisible Styles.flexCol
-                        ]
+                else
+                    [ Styles.width size
+                    , attributeIfVisible Styles.flexCol
+                    ]
                )
         )
-        [ viewIfLazy (positionIsVisible positionWithinRange)
-            (\_ -> pitchButton params pitchDisplayParams)
+        [ viewIfLazy positionIsVisible
+            (\_ ->
+                -- lazy rendering not needed; this is covered by the lazy check on `viewPitch`.
+                pitchButton
+                    pitchString
+                    isCurrentDegree
+                    display
+                    isonStatusIndicator
+                    pitchPositions
+                    pitchToSelect
+                    positionWithinRange
+                    scalingFactor
+            )
         , viewIfLazy isIson
-            (\_ -> isonIndicator params pitchDisplayParams)
+            (\_ ->
+                Result.Extra.unwrap Html.Extra.nothing
+                    (\degree_ ->
+                        Html.Lazy.lazy5 isonIndicator
+                            degree_
+                            display
+                            pitchPositions
+                            positionWithinRange
+                            scalingFactor
+                    )
+                    degree
+            )
         , viewIf showSpacingDetails
             (text (" (" ++ Round.round 2 size ++ "px)"))
         ]
 
 
-pitchButton : Params -> PitchDisplayParams -> Html Msg
-pitchButton ({ layout, modeSettings, pitchState } as params) ({ pitch } as pitchDisplayParams) =
-    let
-        isCurrentDegree =
-            Just (Pitch.unwrapDegree pitch) == Maybe.map Pitch.unwrapDegree pitchState.currentPitch
+{-| Prepared for lazy rendering.
 
-        isCurrentPitch =
-            Just proposedPitch == pitchState.currentPitch
+TODO: To enable lazy rendering, we're dropping the proposed movement argument
+(previously included with the PitchState argument), which means that the pitch
+won't highlight when it is the target of the proposed movement. If this behavior
+is still desirable, we'll need a way of getting this back in.
+
+-}
+pitchButton :
+    PitchString
+    -> Bool
+    -> Display
+    -> IsonSelectionIndicator
+    -> PitchPositionContextString
+    -> PitchString
+    -> PositionWithinVisibleRange
+    -> Float
+    -> Html Msg
+pitchButton pitchString isCurrentDegree display isonStatusIndicator pitchPositions pitchToSelect positionWithinRange scalingFactor =
+    let
+        ( decodedScale, decodedPitch, decodedDegree ) =
+            Result.Extra.unwrap ( Nothing, Nothing, Nothing )
+                (\( s, p ) -> ( Just s, Just p, Just (Pitch.unwrapDegree p) ))
+                (Pitch.decode pitchString)
+
+        decodedPitchToSelect =
+            Pitch.decode pitchToSelect
+                |> Result.toMaybe
+                |> Maybe.map Tuple.second
 
         canBeSelectedAsIson =
-            -- this should be made a bit more robust once modal logic gets built out.
-            case pitchState.ison of
-                SelectingIson _ ->
-                    True
-
-                _ ->
-                    False
+            PitchSpaceData.canBeSelectedAsIson isonStatusIndicator
 
         position =
-            pitchElementPosition params pitchDisplayParams PitchButton
-
-        degreeCanSupportProposedAccidental =
-            Maybe.map
-                (\accidental ->
-                    Pitch.isValidInflection
-                        params.modeSettings.scale
-                        accidental
-                        (Pitch.unwrapDegree pitch)
-                )
-                pitchState.proposedAccidental
-                |> Maybe.withDefault False
-                |> (&&) movementWouldBeValid
-
-        movementWouldBeValid =
-            pitchState.proposedAccidental
-                |> Maybe.andThen
-                    (\accidental ->
-                        Pitch.inflected modeSettings.scale
-                            accidental
-                            (Pitch.unwrapDegree pitch)
-                            |> Result.toMaybe
-                    )
-                |> Maybe.map2
-                    (Pitch.getInterval modeSettings.scale)
-                    pitchState.currentPitch
-                |> Maybe.map (Movement.ofInterval pitchState.currentPitch)
-                |> Maybe.map2 (Movement.isValid modeSettings.scale) pitchState.currentPitch
-                |> Maybe.withDefault True
-
-        proposedPitch =
-            if degreeCanSupportProposedAccidental && movementWouldBeValid then
-                Pitch.applyAccidental modeSettings.scale pitchState.proposedAccidental pitch
-
-            else
-                pitch
+            pitchElementPosition PitchButton
+                display
+                pitchPositions
+                positionWithinRange
+                scalingFactor
 
         shouldHighlight =
-            canBeSelectedAsIson || degreeCanSupportProposedAccidental
+            canBeSelectedAsIson || Maybe.unwrap False Pitch.isInflected decodedPitchToSelect
     in
     button
         [ onClick <|
             if canBeSelectedAsIson then
-                SetIson (Selected (Pitch.unwrapDegree pitch))
-
-            else if isCurrentDegree then
-                if isCurrentPitch && Pitch.isInflected proposedPitch then
-                    SelectPitch (Just (Pitch.applyAccidental modeSettings.scale Nothing pitch)) Nothing
-
-                else if not isCurrentPitch && Pitch.isInflected proposedPitch then
-                    SelectPitch (Just proposedPitch) Nothing
-
-                else
-                    SelectPitch Nothing Nothing
+                SetIson (Maybe.unwrap NoIson Selected decodedDegree)
 
             else
-                SelectPitch (Just proposedPitch) Nothing
+                SelectPitch decodedPitchToSelect Nothing
         , pitchButtonSizeClass
         , class "rounded-full hover:z-20 cursor-pointer relative pb-8"
         , Styles.transition
-        , case layout of
-            Vertical ->
-                Styles.top position
+        , if PitchSpaceData.isVertical display then
+            Styles.top position
 
-            Horizontal ->
-                Styles.left position
+          else
+            Styles.left position
         , classList
-            [ ( "bg-red-200 z-10", isCurrentPitch )
-            , ( "hover:text-green-700 bg-slate-200 hover:bg-slate-300 opacity-75 hover:opacity-90", not isCurrentPitch )
-            , ( "text-green-700 bg-slate-300 z-10", Movement.unwrapTargetPitch pitchState.proposedMovement == Just pitch )
+            [ ( "bg-red-200 z-10", isCurrentDegree )
+            , ( "hover:text-green-700 bg-slate-200 hover:bg-slate-300 opacity-75 hover:opacity-90", not isCurrentDegree )
+
+            -- , ( "text-green-700 bg-slate-300 z-10", Movement.unwrapTargetPitch pitchState.proposedMovement == decodedPitch )
             , ( "border-2 border-blue-700", shouldHighlight )
             , ( "border-2 border-transparent", not shouldHighlight )
             ]
@@ -655,34 +491,41 @@ pitchButton ({ layout, modeSettings, pitchState } as params) ({ pitch } as pitch
                 span [ class "absolute mt-2 md:mt-4", Styles.left 12 ]
                     [ Accidental.view Accidental.Red accidental ]
             )
-            (Pitch.unwrapAccidental pitch)
-        , ByzHtmlMartyria.viewWithAttributes
-            [ Styles.left -3, Styles.top -3 ]
-            (Martyria.for modeSettings.scale (Pitch.unwrapDegree pitch))
+            (Maybe.andThen Pitch.unwrapAccidental decodedPitch)
+        , Maybe.map2
+            (\scale pitch ->
+                ByzHtmlMartyria.viewWithAttributes
+                    [ Styles.left -3, Styles.top -3 ]
+                    (Martyria.for scale (Pitch.unwrapDegree pitch))
+            )
+            decodedScale
+            decodedPitch
+            |> Maybe.withDefault Html.Extra.nothing
         ]
 
 
-isonIndicator : Params -> PitchDisplayParams -> Html Msg
-isonIndicator ({ layout } as params) ({ pitch } as pitchDisplayParams) =
+{-| Prepared for lazy rendering.
+-}
+isonIndicator : Degree -> Display -> PitchPositionContextString -> PositionWithinVisibleRange -> Float -> Html Msg
+isonIndicator degree display pitchPositions positionWithinRange scalingFactor =
     let
         position =
-            pitchElementPosition params pitchDisplayParams IsonIndicator
+            pitchElementPosition IsonIndicator
+                display
+                pitchPositions
+                positionWithinRange
+                scalingFactor
     in
     div
         (class "relative text-lg sm:text-2xl text-blue-700 text-greek"
-            :: (case layout of
-                    Vertical ->
-                        [ class "ml-3"
-                        , Styles.top position
-                        ]
+            :: (if PitchSpaceData.isVertical display then
+                    [ class "ml-3", Styles.top position ]
 
-                    Horizontal ->
-                        [ class "mt-1"
-                        , Styles.left position
-                        ]
+                else
+                    [ class "mt-1", Styles.left position ]
                )
         )
-        [ text "(", Degree.text (Pitch.unwrapDegree pitch), text ")" ]
+        [ text "(", Degree.text degree, text ")" ]
 
 
 type PitchElementTarget
@@ -691,12 +534,22 @@ type PitchElementTarget
 
 
 pitchElementPosition :
-    Params
-    -> PitchDisplayParams
-    -> PitchElementTarget
+    PitchElementTarget
+    -> Display
+    -> PitchPositionContextString
+    -> PositionWithinVisibleRange
     -> Float
-pitchElementPosition { layout, pitchButtonSize } { pitchPosition, pitchPositionAbove, pitchPositionBelow, positionWithinRange, scalingFactor } target =
+    -> Float
+pitchElementPosition target display pitchPositions positionWithinRange scalingFactor =
     let
+        { pitchPosition, pitchPositionAbove, pitchPositionBelow } =
+            Result.withDefault
+                { pitchPosition = -1
+                , pitchPositionBelow = Nothing
+                , pitchPositionAbove = Nothing
+                }
+                (PitchSpaceData.decodePitchPositionContext pitchPositions)
+
         scale int =
             (toFloat int / 2)
                 |> (*) scalingFactor
@@ -705,12 +558,12 @@ pitchElementPosition { layout, pitchButtonSize } { pitchPosition, pitchPositionA
         pitchButtonSizeValue =
             case target of
                 PitchButton ->
-                    pitchButtonSize / 2
+                    PitchSpaceData.pitchButtonSize display / 2
 
                 IsonIndicator ->
-                    pitchButtonSize / 4
+                    PitchSpaceData.pitchButtonSize display / 4
     in
-    case ( layout, positionWithinRange ) of
+    case ( PitchSpaceData.displayToLayout display, positionWithinRange ) of
         ( _, Below ) ->
             0
 

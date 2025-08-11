@@ -69,10 +69,10 @@ applyAccidental : Scale -> Maybe Accidental -> Movement -> Movement
 applyAccidental scale accidental movement =
     case movement of
         AscendTo pitch ->
-            AscendTo (Pitch.applyAccidental scale accidental pitch)
+            AscendTo (Pitch.applyAccidental scale pitch accidental)
 
         DescendTo pitch ->
-            DescendTo (Pitch.applyAccidental scale accidental pitch)
+            DescendTo (Pitch.applyAccidental scale pitch accidental)
 
         None ->
             None

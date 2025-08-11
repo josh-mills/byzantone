@@ -13,7 +13,7 @@ import Html exposing (Html, button, datalist, div, h1, h2, input, main_, p, span
 import Html.Attributes as Attr exposing (class, classList, id, type_)
 import Html.Attributes.Extra as Attr
 import Html.Events exposing (onClick, onInput)
-import Html.Extra exposing (viewIf, viewIfLazy)
+import Html.Extra exposing (viewIf)
 import Html.Lazy exposing (lazy, lazy2, lazy3, lazy4)
 import Icons
 import Json.Decode exposing (Decoder)
@@ -29,11 +29,6 @@ import RadioFieldset
 import Styles
 import Update exposing (Msg(..))
 import View.PitchSpace as PitchSpace
-
-
-debuggingLayout : Bool
-debuggingLayout =
-    False
 
 
 
@@ -66,7 +61,10 @@ view model =
             , Html.Events.on "keydown" keyDecoder
             , Attr.attributeIf model.menuOpen (onClick ToggleMenu)
             ]
-            [ lazy3 PitchSpace.view model.layoutData model.modeSettings model.pitchState
+            [ lazy3 PitchSpace.view
+                model.pitchSpaceData
+                model.modeSettings
+                model.pitchState
             , lazy3 viewControls model.audioSettings model.modeSettings model.pitchState
             ]
         ]
@@ -208,9 +206,7 @@ modalContent audioSettings layoutData modeSettings modal =
 settings : AudioSettings -> LayoutData -> ModeSettings -> Html Msg
 settings audioSettings layoutData modeSettings =
     div [ Styles.flexCol, class "gap-2" ]
-        [ viewIfLazy debuggingLayout
-            (\_ -> spacingButton layoutData.showSpacing)
-        , lazy2 RadioFieldset.view layoutRadioConfig layoutData.layoutSelection
+        [ lazy2 RadioFieldset.view layoutRadioConfig layoutData.layoutSelection
         , lazy2 RadioFieldset.view registerRadioConfig audioSettings.register
         , lazy2 RadioFieldset.view pitchStandardRadioConfig audioSettings.pitchStandard
         , lazy gainInput audioSettings
@@ -337,7 +333,7 @@ viewPitchStandard pitchStandard =
 
 viewControls : AudioSettings -> ModeSettings -> PitchState -> Html Msg
 viewControls audioSettings modeSettings pitchState =
-    div [ class "w-max", classList [ ( "mt-8", debuggingLayout ) ] ]
+    div [ class "w-max", classList [ ( "mt-8", LayoutData.showSpacing ) ] ]
         [ lazy2 RadioFieldset.view scaleRadioConfig modeSettings.scale
         , lazy isonButton pitchState.ison
         , lazy viewIson (PitchState.ison pitchState.ison)
@@ -396,21 +392,6 @@ viewIson pitch =
             Just p ->
                 Degree.text (Pitch.unwrapDegree p)
         , viewIf (Maybe.isJust pitch) (clearButton (SetIson PitchState.NoIson))
-        ]
-
-
-spacingButton : Bool -> Html Msg
-spacingButton showSpacing =
-    button
-        [ Styles.buttonClass
-        , onClick ToggleSpacing
-        ]
-        [ text <|
-            if showSpacing then
-                "hide spacing"
-
-            else
-                "show spacing"
         ]
 
 

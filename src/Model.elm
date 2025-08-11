@@ -22,6 +22,7 @@ import Byzantine.Scale exposing (Scale(..))
 import Model.AudioSettings as AudioSettings exposing (AudioSettings)
 import Model.LayoutData as LayoutData exposing (LayoutData)
 import Model.ModeSettings as ModeSettings exposing (ModeSettings)
+import Model.PitchSpaceData as PitchSpaceData exposing (PitchSpaceData)
 import Model.PitchState as PitchState exposing (PitchState)
 import Movement exposing (Movement(..))
 
@@ -32,6 +33,7 @@ type alias Model =
     , menuOpen : Bool
     , modal : Modal
     , modeSettings : ModeSettings
+    , pitchSpaceData : PitchSpaceData
     , pitchState : PitchState
     }
 
@@ -43,6 +45,11 @@ initialModel =
     , menuOpen = False
     , modal = NoModal
     , modeSettings = ModeSettings.initialModeSettings
+    , pitchSpaceData =
+        PitchSpaceData.init
+            LayoutData.initialLayoutData
+            ModeSettings.initialModeSettings
+            PitchState.initialPitchState
     , pitchState = PitchState.initialPitchState
     }
 
