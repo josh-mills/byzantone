@@ -59,6 +59,9 @@ Elements include:
     pitch button size, based on the layout selection and/or viewport size for
     auto.
 
+  - **`isonIndicators`** – a `DegreeDataDict IsonSelectionIndicator`, indicating
+    whether or not the degree is or can be selected as the ison.
+
   - **`pitchPositions`** – a `DegreeDataDict Int`, representing the pitch
     position (in moria) of each degree with respect to the given scale, current
     pitch, and proposed movement with proposed accidental applied as
@@ -92,6 +95,9 @@ To consider:
 
   - visible range boundaries could be encoded as Degrees rather than Ints if
     that would help anything.
+
+  - visible range doesn't appear to be used outside of this module. There could
+    be some implications for that.
 
 -}
 type alias PitchSpaceData =

@@ -122,11 +122,7 @@ where <scale> is one of the codes defined in Scale.encode.
 -}
 decode : PitchString -> Result String ( Scale, Pitch )
 decode pitchString =
-    let
-        parts =
-            String.split "|" pitchString
-    in
-    case parts of
+    case String.split "|" pitchString of
         [ scaleCode, "n", degreeStr ] ->
             Result.map2 Tuple.pair
                 (Scale.decode scaleCode)

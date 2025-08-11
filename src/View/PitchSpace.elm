@@ -42,17 +42,6 @@ import Update exposing (Msg(..))
 -- WRAPPER AND VIEW HELPERS
 
 
-{-| How we might refactor things to take advantage of lazy rendering? We only
-have three arguments, with everything else being derived, and the only dynamic
-items really being those from PitchState.
-
-If we are able to split out the pitchState arguments so they are passed in on an
-as-needed basis, and if derived values could be passed in as primitives (a
-Layout I think should also be fine), I think we should be able to lazify this.
-
-Consider treating the visibleRange values as two ints (moria pitch positions).
-
--}
 view : PitchSpaceData -> ModeSettings -> PitchState -> Html Msg
 view pitchSpaceData modeSettings pitchState =
     div
@@ -94,12 +83,6 @@ pitchButtonSizeClass =
 -- INTERVAL COLUMN
 
 
-{-| The core challenge with this, from a standpoint of lazy rendering, is that
-the intervalsWithVisibility list is dynamically calculated. So in the view JS
-code, these will be new objects with different references. I'm not sure if
-there's a good way to get around that, unless you find a way to encode the
-interval as a primitive.
--}
 viewIntervals : PitchSpaceData -> ModeSettings -> PitchState -> Html Msg
 viewIntervals pitchSpaceData modeSettings pitchState =
     Html.ol (onMouseLeave (SelectProposedMovement None) :: listAttributes pitchSpaceData.display)
@@ -292,8 +275,6 @@ shouldHighlightInterval { currentPitch, proposedMovement } interval =
 viewPitches : PitchSpaceData -> ModeSettings -> PitchState -> Html Msg
 viewPitches pitchSpaceData modeSettings pitchState =
     let
-        --     _ =
-        --         Debug.log "in view pitches function" ""
         proposedMovementTo =
             Movement.unwrapTargetPitch pitchState.proposedMovement
     in
@@ -301,18 +282,18 @@ viewPitches pitchSpaceData modeSettings pitchState =
         (List.map
             (\degree ->
                 Html.Lazy.lazy8 viewPitch
-                    pitchSpaceData.display
-                    pitchSpaceData.scalingFactor
-                    (Just degree == Maybe.map Pitch.unwrapDegree pitchState.currentPitch)
-                    (PitchSpaceData.encodePitchPositionContext pitchSpaceData degree)
                     (Pitch.wrapDegree pitchState.currentPitch proposedMovementTo degree
                         |> Pitch.encode modeSettings.scale
                     )
+                    (Just degree == Maybe.map Pitch.unwrapDegree pitchState.currentPitch)
+                    pitchSpaceData.display
+                    (DegreeDataDict.get degree pitchSpaceData.isonIndicators)
+                    (PitchSpaceData.encodePitchPositionContext pitchSpaceData degree)
                     (DegreeDataDict.get degree pitchSpaceData.pitchToSelect
                         |> Maybe.unwrap "nothing" (Pitch.encode modeSettings.scale)
                     )
                     (DegreeDataDict.get degree pitchSpaceData.pitchVisibility)
-                    (DegreeDataDict.get degree pitchSpaceData.isonIndicators)
+                    pitchSpaceData.scalingFactor
             )
             Degree.gamutList
         )
@@ -320,22 +301,18 @@ viewPitches pitchSpaceData modeSettings pitchState =
 
 {-| Renders a single pitch element in the pitch space. Prepared for lazy
 rendering.
-
-TODO: standardize argument ordering. Lazy rendering also introduces string type
-unsafety.
-
 -}
 viewPitch :
-    Display
-    -> Float
+    PitchString
     -> Bool
+    -> Display
+    -> IsonSelectionIndicator
     -> PitchPositionContextString
     -> PitchString
-    -> PitchString
     -> PositionWithinVisibleRange
-    -> IsonSelectionIndicator
+    -> Float
     -> Html Msg
-viewPitch display scalingFactor isCurrentDegree pitchPositions pitchString pitchToSelect positionWithinRange isonStatusIndicator =
+viewPitch pitchString isCurrentDegree display isonStatusIndicator pitchPositions pitchToSelect positionWithinRange scalingFactor =
     let
         degree =
             Pitch.decode pitchString
@@ -413,27 +390,27 @@ viewPitch display scalingFactor isCurrentDegree pitchPositions pitchString pitch
         )
         [ viewIfLazy positionIsVisible
             (\_ ->
-                -- lazy rundering not needed; this is covered by the lazy check on `viewPitch`.
+                -- lazy rendering not needed; this is covered by the lazy check on `viewPitch`.
                 pitchButton
-                    display
-                    scalingFactor
-                    isCurrentDegree
                     pitchString
-                    pitchToSelect
-                    pitchPositions
-                    positionWithinRange
+                    isCurrentDegree
+                    display
                     isonStatusIndicator
+                    pitchPositions
+                    pitchToSelect
+                    positionWithinRange
+                    scalingFactor
             )
         , viewIfLazy isIson
             (\_ ->
                 Result.Extra.unwrap Html.Extra.nothing
                     (\degree_ ->
                         Html.Lazy.lazy5 isonIndicator
-                            display
-                            scalingFactor
                             degree_
+                            display
                             pitchPositions
                             positionWithinRange
+                            scalingFactor
                     )
                     degree
             )
@@ -444,23 +421,23 @@ viewPitch display scalingFactor isCurrentDegree pitchPositions pitchString pitch
 
 {-| Prepared for lazy rendering.
 
-TODO? : To enable lazy rendering, we're dropping the proposed movement argument
+TODO: To enable lazy rendering, we're dropping the proposed movement argument
 (previously included with the PitchState argument), which means that the pitch
 won't highlight when it is the target of the proposed movement. If this behavior
 is still desirable, we'll need a way of getting this back in.
 
 -}
 pitchButton :
-    Display
-    -> Float
+    PitchString
     -> Bool
-    -> PitchString
-    -> PitchString
-    -> PitchPositionContextString
-    -> PositionWithinVisibleRange
+    -> Display
     -> IsonSelectionIndicator
+    -> PitchPositionContextString
+    -> PitchString
+    -> PositionWithinVisibleRange
+    -> Float
     -> Html Msg
-pitchButton display scalingFactor isCurrentDegree pitchString pitchToSelect pitchPositions positionWithinRange isonStatusIndicator =
+pitchButton pitchString isCurrentDegree display isonStatusIndicator pitchPositions pitchToSelect positionWithinRange scalingFactor =
     let
         ( decodedScale, decodedPitch, decodedDegree ) =
             Result.Extra.unwrap ( Nothing, Nothing, Nothing )
@@ -476,11 +453,11 @@ pitchButton display scalingFactor isCurrentDegree pitchString pitchToSelect pitc
             PitchSpaceData.canBeSelectedAsIson isonStatusIndicator
 
         position =
-            pitchElementPosition display
-                scalingFactor
+            pitchElementPosition PitchButton
+                display
                 pitchPositions
                 positionWithinRange
-                PitchButton
+                scalingFactor
 
         shouldHighlight =
             canBeSelectedAsIson || Maybe.unwrap False Pitch.isInflected decodedPitchToSelect
@@ -529,15 +506,15 @@ pitchButton display scalingFactor isCurrentDegree pitchString pitchToSelect pitc
 
 {-| Prepared for lazy rendering.
 -}
-isonIndicator : Display -> Float -> Degree -> PitchPositionContextString -> PositionWithinVisibleRange -> Html Msg
-isonIndicator display scalingFactor degree pitchPositions positionWithinRange =
+isonIndicator : Degree -> Display -> PitchPositionContextString -> PositionWithinVisibleRange -> Float -> Html Msg
+isonIndicator degree display pitchPositions positionWithinRange scalingFactor =
     let
         position =
-            pitchElementPosition display
-                scalingFactor
+            pitchElementPosition IsonIndicator
+                display
                 pitchPositions
                 positionWithinRange
-                IsonIndicator
+                scalingFactor
     in
     div
         (class "relative text-lg sm:text-2xl text-blue-700 text-greek"
@@ -557,13 +534,13 @@ type PitchElementTarget
 
 
 pitchElementPosition :
-    Display
-    -> Float
+    PitchElementTarget
+    -> Display
     -> PitchPositionContextString
     -> PositionWithinVisibleRange
-    -> PitchElementTarget
     -> Float
-pitchElementPosition display scalingFactor pitchPositions positionWithinRange target =
+    -> Float
+pitchElementPosition target display pitchPositions positionWithinRange scalingFactor =
     let
         { pitchPosition, pitchPositionAbove, pitchPositionBelow } =
             Result.withDefault

@@ -122,7 +122,7 @@ get degree (DegreeDataDict dict) =
             dict.ga2
 
 
-{-| Set the value for a specific degree, returning a new dictionary.
+{-| Set the value for a specific degree.
 
     set Di newValue dict -- Updates the value for Di
 
