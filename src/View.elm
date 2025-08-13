@@ -333,8 +333,13 @@ viewPitchStandard pitchStandard =
 
 viewControls : AudioSettings -> ModeSettings -> PitchState -> Html Msg
 viewControls audioSettings modeSettings pitchState =
-    div [ class "w-max", classList [ ( "mt-8", LayoutData.showSpacing ) ] ]
+    let
+        _ =
+            Debug.log "calling pitch tracker" ()
+    in
+    div [ class "w-max", classList [ ( "    mt-8", LayoutData.showSpacing ) ] ]
         [ lazy2 RadioFieldset.view scaleRadioConfig modeSettings.scale
+        , Html.node "pitch-tracker" [] []
         , lazy isonButton pitchState.ison
         , lazy viewIson (PitchState.ison pitchState.ison)
         , lazy viewCurrentPitch pitchState.currentPitch

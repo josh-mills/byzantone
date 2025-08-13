@@ -12,7 +12,7 @@
     "start": "node server.cjs",
     "tailwind": "npx @tailwindcss/cli -i src/main.css -o public/dist/main.css --watch",
     "test": "npx elm-test",
-    "watch": "nodemon --watch 'src/chant_engine.ts' --exec 'tsc'"
+    "watch": "nodemon --watch src --ext ts --exec 'npx tsc'"
   },
   "author": "",
   "license": "ISC",
