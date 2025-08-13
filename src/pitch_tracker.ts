@@ -67,7 +67,7 @@ class PitchTracker extends HTMLElement {
                 padding: 20px;
             }
             .controls {
-                margin: 20px 0;
+                margin: 0 0 20px 0;
             }
             .control-group {
                 margin-bottom: 15px;
@@ -85,14 +85,10 @@ class PitchTracker extends HTMLElement {
                 margin: 20px 0;
                 min-height: 36px;
             }
-            h1 {
+            .controls {
                 margin-top: 0;
             }
         `;
-
-        // Create heading
-        const heading = document.createElement("h1");
-        heading.textContent = "Pitch Detection";
 
         // Create note display
         this.noteDisplay = document.createElement("div");
@@ -126,10 +122,10 @@ class PitchTracker extends HTMLElement {
         this.displayOptions.className = "control-group";
         this.displayOptions.innerHTML = `
             <p>Display:</p>
-            <input type="radio" name="display" value="sine" id="sine-display" checked />
-            <label for="sine-display">Sine wave</label>
-            <input type="radio" name="display" value="frequency" id="freq-display" />
+            <input type="radio" name="display" value="frequency" id="freq-display" checked />
             <label for="freq-display">Frequency</label>
+            <input type="radio" name="display" value="sine" id="sine-display" />
+            <label for="sine-display">Sine wave</label>
         `;
 
         // Append controls to the controls div
@@ -138,7 +134,6 @@ class PitchTracker extends HTMLElement {
 
         // Append everything to shadow DOM
         this.shadow.appendChild(style);
-        this.shadow.appendChild(heading);
         this.shadow.appendChild(controls);
         this.shadow.appendChild(this.noteDisplay);
         this.shadow.appendChild(this.canvas);
@@ -472,12 +467,12 @@ https://alexanderell.is/posts/tuner/
         const displayRadio = this.shadow.querySelector(
             'input[name="display"]:checked',
         ) as HTMLInputElement;
-        const displayValue = displayRadio ? displayRadio.value : "sine";
+        const displayValue = displayRadio ? displayRadio.value : "frequency";
 
-        if (displayValue === "sine") {
-            draw();
-        } else {
+        if (displayValue === "frequency") {
             drawFrequency();
+        } else {
+            draw();
         }
 
         drawNote();
