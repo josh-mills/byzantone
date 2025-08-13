@@ -29,6 +29,7 @@ import Movement exposing (Movement(..))
 
 type alias Model =
     { audioSettings : AudioSettings
+    , detectedPitch : Maybe Float
     , layoutData : LayoutData
     , menuOpen : Bool
     , modal : Modal
@@ -41,6 +42,7 @@ type alias Model =
 initialModel : Model
 initialModel =
     { audioSettings = AudioSettings.defaultAudioSettings
+    , detectedPitch = Nothing
     , layoutData = LayoutData.initialLayoutData
     , menuOpen = False
     , modal = NoModal

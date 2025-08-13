@@ -31,6 +31,7 @@ type Msg
     | SelectProposedAccidental (Maybe Accidental)
     | SelectProposedMovement Movement
     | SetAudioMode AudioSettings.Mode
+    | SetDetectedPitch (Maybe Float)
     | SetGain Float
     | SetIson IsonStatus
     | SetLayout LayoutSelection
@@ -235,6 +236,11 @@ update msg model =
                 -- , currentPitch = Nothing -- consider this.
                 model
                 |> resetPitchSpaceData
+            , Cmd.none
+            )
+
+        SetDetectedPitch pitch ->
+            ( { model | detectedPitch = pitch }
             , Cmd.none
             )
 

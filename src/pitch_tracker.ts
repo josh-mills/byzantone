@@ -132,6 +132,17 @@ class PitchTracker extends HTMLElement {
         this.init();
     };
 
+    private dispatchPitchDetected = (pitch: number | null) => {
+        // Create and dispatch a custom event with the detected pitch
+        const event = new CustomEvent("pitchDetected", {
+            bubbles: true,
+            composed: true, // Allows the event to cross the shadow DOM boundary
+            detail: { pitch: pitch },
+        });
+
+        this.dispatchEvent(event);
+    };
+
     /*
 The MIT License (MIT)
 Copyright (c) 2014 Chris Wilson
@@ -319,6 +330,8 @@ https://alexanderell.is/posts/tuner/
                 if (this.noteDisplay) {
                     this.noteDisplay.innerText = "Too quiet...";
                 }
+                // Dispatch null when no pitch is detected (too quiet)
+                this.dispatchPitchDetected(null);
                 return;
             }
 
@@ -363,6 +376,12 @@ https://alexanderell.is/posts/tuner/
             if (typeof valueToDisplay === "number") {
                 // Format with 2 decimal places for better readability while keeping precision
                 valueToDisplay = valueToDisplay.toFixed(2) + " Hz";
+
+                // Dispatch pitch detected event when we have a valid frequency
+                this.dispatchPitchDetected(autoCorrelateValue);
+            } else {
+                // Dispatch null when no pitch is detected
+                this.dispatchPitchDetected(null);
             }
 
             if (this.noteDisplay) {

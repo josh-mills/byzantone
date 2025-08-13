@@ -36,4 +36,5 @@ subscriptions _ =
     Sub.batch
         [ Browser.Events.onResize ViewportResize
         , Ports.pitchTrackerClicked PitchTrackerClicked
+        , Ports.pitchDetected (\{ pitch } -> SetDetectedPitch pitch)
         ]

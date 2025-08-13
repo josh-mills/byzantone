@@ -35,6 +35,18 @@
                     elm.ports.pitchTrackerClicked.send(event.detail.message);
                 }
             });
+
+            // Event listener for pitch detected events
+            document.addEventListener("pitchDetected", (event) => {
+                if (elm.ports && elm.ports.pitchDetected) {
+                    elm.ports.pitchDetected.send({
+                        pitch:
+                            event.detail.pitch === null
+                                ? null
+                                : event.detail.pitch,
+                    });
+                }
+            });
         </script>
 
         <script src="dist/src/chant_engine.js"></script>

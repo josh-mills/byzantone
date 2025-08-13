@@ -42,6 +42,9 @@ import Update exposing (Msg(..))
 -- WRAPPER AND VIEW HELPERS
 
 
+{-| TODO: for mvp pitch tracking, we'll presumably want to disable interaction
+when in listen mode.
+-}
 view : PitchSpaceData -> ModeSettings -> PitchState -> Html Msg
 view pitchSpaceData modeSettings pitchState =
     div
