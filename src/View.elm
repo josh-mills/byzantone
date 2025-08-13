@@ -20,7 +20,7 @@ import Json.Decode exposing (Decoder)
 import List.Extra as List
 import Maybe.Extra as Maybe
 import Model exposing (Modal(..), Model)
-import Model.AudioSettings exposing (AudioSettings)
+import Model.AudioSettings as AudioSettings exposing (AudioSettings)
 import Model.LayoutData as LayoutData exposing (Layout(..), LayoutData, LayoutSelection(..), layoutFor)
 import Model.ModeSettings exposing (ModeSettings)
 import Model.PitchState as PitchState exposing (IsonStatus, PitchState)
@@ -39,11 +39,14 @@ view : Model -> Html Msg
 view model =
     div
         [ class "p-4" ]
-        [ lazy4 chantEngineNode
-            model.audioSettings
-            model.modeSettings.scale
-            model.pitchState.currentPitch
-            (PitchState.ison model.pitchState.ison)
+        [ Html.Extra.viewIfLazy (model.audioSettings.mode == AudioSettings.Play)
+            (\_ ->
+                lazy4 chantEngineNode
+                    model.audioSettings
+                    model.modeSettings.scale
+                    model.pitchState.currentPitch
+                    (PitchState.ison model.pitchState.ison)
+            )
         , lazy2 backdrop model.menuOpen model.modal
         , header
         , lazy4 viewModal model.audioSettings model.layoutData model.modeSettings model.modal
@@ -333,18 +336,27 @@ viewPitchStandard pitchStandard =
 
 viewControls : AudioSettings -> ModeSettings -> PitchState -> Html Msg
 viewControls audioSettings modeSettings pitchState =
-    let
-        _ =
-            Debug.log "calling pitch tracker" ()
-    in
     div [ class "w-max", classList [ ( "    mt-8", LayoutData.showSpacing ) ] ]
         [ lazy2 RadioFieldset.view scaleRadioConfig modeSettings.scale
-        , Html.node "pitch-tracker" [] []
-        , lazy isonButton pitchState.ison
-        , lazy viewIson (PitchState.ison pitchState.ison)
-        , lazy viewCurrentPitch pitchState.currentPitch
-        , lazy viewAccidentalButtons pitchState.proposedAccidental
-        , lazy gainInput audioSettings
+        , lazy2 RadioFieldset.view playModeRadioConfig audioSettings.mode
+        , case audioSettings.mode of
+            AudioSettings.Listen ->
+                let
+                    _ =
+                        Debug.log "calling pitch tracker" ()
+                in
+                div []
+                    [ Html.node "pitch-tracker" [] []
+                    ]
+
+            AudioSettings.Play ->
+                div []
+                    [ lazy isonButton pitchState.ison
+                    , lazy viewIson (PitchState.ison pitchState.ison)
+                    , lazy viewCurrentPitch pitchState.currentPitch
+                    , lazy viewAccidentalButtons pitchState.proposedAccidental
+                    , lazy gainInput audioSettings
+                    ]
         ]
 
 
@@ -354,6 +366,16 @@ scaleRadioConfig =
     , legendText = "Select Scale"
     , onSelect = SetScale
     , options = Scale.all
+    , viewItem = Nothing
+    }
+
+
+playModeRadioConfig : RadioFieldset.Config AudioSettings.Mode Msg
+playModeRadioConfig =
+    { itemToString = AudioSettings.audioModeToString
+    , legendText = "Audio Mode"
+    , onSelect = SetAudioMode
+    , options = AudioSettings.modes
     , viewItem = Nothing
     }
 

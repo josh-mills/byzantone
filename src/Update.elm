@@ -8,7 +8,7 @@ import Byzantine.Pitch as Pitch exposing (Pitch, PitchStandard, Register)
 import Byzantine.Scale exposing (Scale)
 import Maybe.Extra as Maybe
 import Model exposing (Modal, Model)
-import Model.AudioSettings exposing (AudioSettings)
+import Model.AudioSettings as AudioSettings exposing (AudioSettings)
 import Model.LayoutData exposing (LayoutData, LayoutSelection)
 import Model.ModeSettings exposing (ModeSettings)
 import Model.PitchSpaceData as PitchSpaceData
@@ -30,6 +30,7 @@ type Msg
     | SelectPitch (Maybe Pitch) (Maybe Movement)
     | SelectProposedAccidental (Maybe Accidental)
     | SelectProposedMovement Movement
+    | SetAudioMode AudioSettings.Mode
     | SetGain Float
     | SetIson IsonStatus
     | SetLayout LayoutSelection
@@ -150,6 +151,13 @@ update msg model =
                     }
                 )
                 model
+                |> resetPitchSpaceData
+            , Cmd.none
+            )
+
+        SetAudioMode mode ->
+            ( { model | pitchState = PitchState.initialPitchState }
+                |> updateAudioSettings (\audioSettings -> { audioSettings | mode = mode })
                 |> resetPitchSpaceData
             , Cmd.none
             )
