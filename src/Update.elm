@@ -263,6 +263,7 @@ update msg model =
 
                     else
                         ( setPitchState PitchState.initialPitchState model
+                            |> resetPitchSpaceData
                         , Cmd.none
                         )
 
