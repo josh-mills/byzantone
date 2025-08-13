@@ -9,7 +9,7 @@ class PitchTracker extends HTMLElement {
     private animationFrameId: number | null = null;
     private noteAnimationFrameId: number | null = null;
     private smoothingOptions: HTMLDivElement | null = null;
-    private displayOptions: HTMLDivElement | null = null;
+
     private shadow: ShadowRoot;
     private resizeObserver: ResizeObserver | null = null;
 
@@ -26,9 +26,9 @@ class PitchTracker extends HTMLElement {
         // Auto-initialize when connected
         this.init();
 
-        // Add change event listeners to radio buttons
+        // Add change event listeners to smoothing radio buttons
         const radioButtons = this.shadow.querySelectorAll(
-            'input[type="radio"]',
+            'input[name="smoothing"]',
         );
         radioButtons.forEach((radio) => {
             radio.addEventListener("change", this.handleOptionChange);
@@ -40,9 +40,9 @@ class PitchTracker extends HTMLElement {
         // Clean up resources
         this.stopAudioProcessing();
 
-        // Remove event listeners from radio buttons
+        // Remove event listeners from smoothing radio buttons
         const radioButtons = this.shadow.querySelectorAll(
-            'input[type="radio"]',
+            'input[name="smoothing"]',
         );
         radioButtons.forEach((radio) => {
             radio.removeEventListener("change", this.handleOptionChange);
@@ -61,7 +61,6 @@ class PitchTracker extends HTMLElement {
         style.textContent = `
             :host {
                 display: block;
-                font-family: Arial, sans-serif;
                 max-width: 800px;
                 margin: 0 auto;
                 padding: 20px;
@@ -117,20 +116,8 @@ class PitchTracker extends HTMLElement {
             <label for="very-smoothing">Very smoothed</label>
         `;
 
-        // Display options
-        this.displayOptions = document.createElement("div");
-        this.displayOptions.className = "control-group";
-        this.displayOptions.innerHTML = `
-            <p>Display:</p>
-            <input type="radio" name="display" value="frequency" id="freq-display" checked />
-            <label for="freq-display">Frequency</label>
-            <input type="radio" name="display" value="sine" id="sine-display" />
-            <label for="sine-display">Sine wave</label>
-        `;
-
         // Append controls to the controls div
         controls.appendChild(this.smoothingOptions);
-        controls.appendChild(this.displayOptions);
 
         // Append everything to shadow DOM
         this.shadow.appendChild(style);
@@ -300,46 +287,6 @@ https://alexanderell.is/posts/tuner/
         const WIDTH = this.canvas.width;
         const HEIGHT = this.canvas.height;
 
-        const draw = () => {
-            this.animationFrameId = requestAnimationFrame(draw);
-
-            if (!this.analyser) return;
-
-            this.analyser.fftSize = 2048;
-            const bufferLength = this.analyser.fftSize;
-            const dataArray = new Uint8Array(bufferLength);
-            this.analyser.getByteTimeDomainData(dataArray);
-
-            if (!this.canvasContext) return;
-
-            this.canvasContext.fillStyle = "rgb(200, 200, 200)";
-            this.canvasContext.fillRect(0, 0, WIDTH, HEIGHT);
-
-            this.canvasContext.lineWidth = 2;
-            this.canvasContext.strokeStyle = "rgb(0, 0, 0)";
-
-            this.canvasContext.beginPath();
-
-            const sliceWidth = (WIDTH * 1.0) / bufferLength;
-            let x = 0;
-
-            for (let i = 0; i < bufferLength; i++) {
-                const v = dataArray[i] / 128.0;
-                const y = (v * HEIGHT) / 2;
-
-                if (i === 0) {
-                    this.canvasContext.moveTo(x, y);
-                } else {
-                    this.canvasContext.lineTo(x, y);
-                }
-
-                x += sliceWidth;
-            }
-
-            this.canvasContext.lineTo(WIDTH, HEIGHT / 2);
-            this.canvasContext.stroke();
-        };
-
         let previousValueToDisplay: number | string = 0;
         let smoothingCount = 0;
         let smoothingThreshold = 5;
@@ -423,6 +370,7 @@ https://alexanderell.is/posts/tuner/
             }
         };
 
+        // Draw frequency visualization
         const drawFrequency = () => {
             if (!this.analyser || !this.canvasContext) return;
 
@@ -464,16 +412,8 @@ https://alexanderell.is/posts/tuner/
             drawAlt();
         };
 
-        const displayRadio = this.shadow.querySelector(
-            'input[name="display"]:checked',
-        ) as HTMLInputElement;
-        const displayValue = displayRadio ? displayRadio.value : "frequency";
-
-        if (displayValue === "frequency") {
-            drawFrequency();
-        } else {
-            draw();
-        }
+        // Always use frequency visualization
+        drawFrequency();
 
         drawNote();
     }
