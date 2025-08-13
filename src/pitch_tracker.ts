@@ -22,20 +22,31 @@ class PitchTracker extends HTMLElement {
 
     connectedCallback() {
         console.log("PitchTracker connected");
-        const startButton = this.shadow.querySelector("button");
-        if (startButton) {
-            startButton.addEventListener("click", this.init);
-        }
+
+        // Auto-initialize when connected
+        this.init();
+
+        // Add change event listeners to radio buttons
+        const radioButtons = this.shadow.querySelectorAll(
+            'input[type="radio"]',
+        );
+        radioButtons.forEach((radio) => {
+            radio.addEventListener("change", this.handleOptionChange);
+        });
     }
 
     disconnectedCallback() {
         console.log("PitchTracker disconnected");
         // Clean up resources
         this.stopAudioProcessing();
-        const startButton = this.shadow.querySelector("button");
-        if (startButton) {
-            startButton.removeEventListener("click", this.init);
-        }
+
+        // Remove event listeners from radio buttons
+        const radioButtons = this.shadow.querySelectorAll(
+            'input[type="radio"]',
+        );
+        radioButtons.forEach((radio) => {
+            radio.removeEventListener("change", this.handleOptionChange);
+        });
 
         // Disconnect the resize observer
         if (this.resizeObserver) {
@@ -74,11 +85,6 @@ class PitchTracker extends HTMLElement {
                 margin: 20px 0;
                 min-height: 36px;
             }
-            button {
-                padding: 10px 20px;
-                font-size: 16px;
-                cursor: pointer;
-            }
             h1 {
                 margin-top: 0;
             }
@@ -87,10 +93,6 @@ class PitchTracker extends HTMLElement {
         // Create heading
         const heading = document.createElement("h1");
         heading.textContent = "Pitch Detection";
-
-        // Create start button
-        const startButton = document.createElement("button");
-        startButton.textContent = "Start";
 
         // Create note display
         this.noteDisplay = document.createElement("div");
@@ -137,11 +139,16 @@ class PitchTracker extends HTMLElement {
         // Append everything to shadow DOM
         this.shadow.appendChild(style);
         this.shadow.appendChild(heading);
-        this.shadow.appendChild(startButton);
         this.shadow.appendChild(controls);
         this.shadow.appendChild(this.noteDisplay);
         this.shadow.appendChild(this.canvas);
     }
+
+    private handleOptionChange = () => {
+        // Reinitialize when options change
+        this.stopAudioProcessing();
+        this.init();
+    };
 
     /*
 The MIT License (MIT)
@@ -172,6 +179,16 @@ https://alexanderell.is/posts/tuner/
 
     private init = async () => {
         try {
+            // If already initialized, clean up first
+            if (this.audioContext) {
+                this.stopAudioProcessing();
+            }
+
+            // Update note display
+            if (this.noteDisplay) {
+                this.noteDisplay.innerText = "Initializing...";
+            }
+
             // Create audio context
             this.audioContext = new (window.AudioContext ||
                 (window as any).webkitAudioContext)();
@@ -181,44 +198,64 @@ https://alexanderell.is/posts/tuner/
             this.analyser.smoothingTimeConstant = 0.85;
 
             if (!navigator?.mediaDevices?.getUserMedia) {
-                alert(
-                    "Sorry, getUserMedia is required for this functionality.",
-                );
+                if (this.noteDisplay) {
+                    this.noteDisplay.innerText =
+                        "Error: Your browser doesn't support audio input.";
+                }
+                console.error("getUserMedia not supported");
                 return;
             }
 
-            const constraints = { audio: true };
-            this.stream =
-                await navigator.mediaDevices.getUserMedia(constraints);
+            try {
+                const constraints = { audio: true };
+                this.stream =
+                    await navigator.mediaDevices.getUserMedia(constraints);
 
-            // Initialize the SourceNode
-            this.source = this.audioContext.createMediaStreamSource(
-                this.stream,
-            );
-            // Connect the source node to the analyzer
-            this.source.connect(this.analyser);
+                // Initialize the SourceNode
+                this.source = this.audioContext.createMediaStreamSource(
+                    this.stream,
+                );
+                // Connect the source node to the analyzer
+                this.source.connect(this.analyser);
 
-            // Initialize canvas context
-            if (this.canvas) {
-                this.canvasContext = this.canvas.getContext("2d");
+                // Initialize canvas context
+                if (this.canvas) {
+                    this.canvasContext = this.canvas.getContext("2d");
 
-                // Set up resize observer for the canvas
-                this.resizeObserver = new ResizeObserver(() => {
-                    if (this.canvas) {
-                        // Update canvas dimensions when container resizes
-                        const rect = this.canvas.getBoundingClientRect();
-                        this.canvas.width = rect.width;
-                        this.canvas.height = rect.height;
+                    // Set up resize observer for the canvas
+                    this.resizeObserver = new ResizeObserver(() => {
+                        if (this.canvas) {
+                            // Update canvas dimensions when container resizes
+                            const rect = this.canvas.getBoundingClientRect();
+                            this.canvas.width = rect.width;
+                            this.canvas.height = rect.height;
+                        }
+                    });
+                    this.resizeObserver.observe(this.canvas);
+
+                    this.visualize();
+                }
+            } catch (mediaError) {
+                if (this.noteDisplay) {
+                    if ((mediaError as Error).name === "NotAllowedError") {
+                        this.noteDisplay.innerText =
+                            "Microphone access denied. Please grant permission to use the pitch detector.";
+                    } else if ((mediaError as Error).name === "NotFoundError") {
+                        this.noteDisplay.innerText =
+                            "No microphone detected. Please connect a microphone and try again.";
+                    } else {
+                        this.noteDisplay.innerText =
+                            "Error accessing microphone: " +
+                            (mediaError as Error).message;
                     }
-                });
-                this.resizeObserver.observe(this.canvas);
-
-                this.visualize();
+                }
+                console.error("Media error:", mediaError);
             }
         } catch (err) {
-            alert(
-                "Sorry, microphone permissions are required for this functionality.",
-            );
+            if (this.noteDisplay) {
+                this.noteDisplay.innerText =
+                    "Error initializing audio system. Please try again.";
+            }
             console.error("Error initializing audio:", err);
         }
     };
