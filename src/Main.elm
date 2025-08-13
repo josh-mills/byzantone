@@ -4,6 +4,7 @@ import Browser
 import Browser.Dom as Dom
 import Browser.Events
 import Model exposing (Model)
+import Ports
 import Task
 import Update exposing (Msg(..), update)
 import View exposing (view)
@@ -19,7 +20,7 @@ main =
         { init = init
         , view = view
         , update = update
-        , subscriptions = always (Browser.Events.onResize ViewportResize)
+        , subscriptions = subscriptions
         }
 
 
@@ -28,3 +29,11 @@ init _ =
     ( Model.initialModel
     , Task.perform GotViewport Dom.getViewport
     )
+
+
+subscriptions : Model -> Sub Msg
+subscriptions _ =
+    Sub.batch
+        [ Browser.Events.onResize ViewportResize
+        , Ports.pitchTrackerClicked PitchTrackerClicked
+        ]

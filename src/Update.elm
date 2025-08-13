@@ -25,6 +25,7 @@ type Msg
     | ViewportResize Int Int
     | Keydown String
     | NoOp
+    | PitchTrackerClicked String
     | SelectModal Modal
     | SelectPitch (Maybe Pitch) (Maybe Movement)
     | SelectProposedAccidental (Maybe Accidental)
@@ -45,6 +46,12 @@ update msg model =
     case msg of
         NoOp ->
             ( model, Task.perform GotViewport Dom.getViewport )
+
+        PitchTrackerClicked _ ->
+            -- this won't last.
+            ( model
+            , Cmd.none
+            )
 
         DomResult _ ->
             -- just for dev purposes
