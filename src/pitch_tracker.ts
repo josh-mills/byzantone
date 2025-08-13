@@ -8,7 +8,6 @@ class PitchTracker extends HTMLElement {
     private stream: MediaStream | null = null;
     private animationFrameId: number | null = null;
     private noteAnimationFrameId: number | null = null;
-    private roundingOptions: HTMLDivElement | null = null;
     private smoothingOptions: HTMLDivElement | null = null;
     private displayOptions: HTMLDivElement | null = null;
     private shadow: ShadowRoot;
@@ -109,16 +108,6 @@ class PitchTracker extends HTMLElement {
         controls.className = "controls";
 
         // Rounding options
-        this.roundingOptions = document.createElement("div");
-        this.roundingOptions.className = "control-group";
-        this.roundingOptions.innerHTML = `
-            <p>Rounding options:</p>
-            <input type="radio" name="rounding" value="none" id="no-rounding" checked />
-            <label for="no-rounding">No rounding</label>
-            <input type="radio" name="rounding" value="hz" id="round-hz" />
-            <label for="round-hz">Round to nearest Hz</label>
-        `;
-
         // Smoothing options
         this.smoothingOptions = document.createElement("div");
         this.smoothingOptions.className = "control-group";
@@ -142,7 +131,6 @@ class PitchTracker extends HTMLElement {
         `;
 
         // Append controls to the controls div
-        controls.appendChild(this.roundingOptions);
         controls.appendChild(this.smoothingOptions);
         controls.appendChild(this.displayOptions);
 
@@ -338,16 +326,8 @@ https://alexanderell.is/posts/tuner/
                 this.audioContext.sampleRate,
             );
 
-            // Handle rounding
+            // Use full precision
             let valueToDisplay: number | string = autoCorrelateValue;
-            const roundingRadio = this.shadow.querySelector(
-                'input[name="rounding"]:checked',
-            ) as HTMLInputElement;
-            const roundingValue = roundingRadio ? roundingRadio.value : "none";
-
-            if (roundingValue === "hz") {
-                valueToDisplay = Math.round(valueToDisplay);
-            }
 
             const smoothingRadio = this.shadow.querySelector(
                 'input[name="smoothing"]:checked',
@@ -402,7 +382,8 @@ https://alexanderell.is/posts/tuner/
             }
 
             if (typeof valueToDisplay === "number") {
-                valueToDisplay = valueToDisplay + " Hz";
+                // Format with 2 decimal places for better readability while keeping precision
+                valueToDisplay = valueToDisplay.toFixed(2) + " Hz";
             }
 
             if (this.noteDisplay) {
