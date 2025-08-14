@@ -5,7 +5,7 @@ module Byzantine.Pitch exposing
     , unwrapDegree, unwrapAccidental
     , isInflected, isValidInflection, toString
     , pitchPosition, pitchPositions
-    , frequency
+    , frequency, frequencyToPitchPosition
     , PitchStandard(..), pitchStandardToString
     , Register(..), registerToString
     , Interval, intervals, intervalsFrom, getInterval
@@ -51,7 +51,7 @@ attractions and inflections.
 
 # Frequency
 
-@docs frequency
+@docs frequency, frequencyToPitchPosition
 
 
 ## PitchStandard
@@ -440,25 +440,37 @@ frequency : PitchStandard -> Register -> Scale -> Pitch -> Float
 frequency pitchStandard register scale pitch =
     let
         position =
-            pitchPosition scale pitch - 84 |> toFloat
-
-        di =
-            case pitchStandard of
-                Ni256 ->
-                    384.0
-
-                Ke440 ->
-                    391.995
-
-        registerFactor =
-            case register of
-                Treble ->
-                    1.0
-
-                Bass ->
-                    0.5
+            toFloat (pitchPosition scale pitch - 84)
     in
-    2 ^ (position / 72) * di * registerFactor
+    2 ^ (position / 72) * diFrequency pitchStandard * registerFactor register
+
+
+{-| For a given frequency (in Hz), evaluate the pitch position in moria relative
+to a fixed position of Natural Di of 84.
+-}
+frequencyToPitchPosition : PitchStandard -> Register -> Float -> Float
+frequencyToPitchPosition pitchStandard register frequency_ =
+    72 * logBase 2 (frequency_ / (diFrequency pitchStandard * registerFactor register)) + 84
+
+
+diFrequency : PitchStandard -> Float
+diFrequency pitchStandard =
+    case pitchStandard of
+        Ni256 ->
+            384.0
+
+        Ke440 ->
+            391.995
+
+
+registerFactor : Register -> Float
+registerFactor register =
+    case register of
+        Treble ->
+            1.0
+
+        Bass ->
+            0.5
 
 
 
