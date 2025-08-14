@@ -14,7 +14,7 @@ import Html.Attributes as Attr exposing (class, classList, id, type_)
 import Html.Attributes.Extra as Attr
 import Html.Events exposing (onClick, onInput)
 import Html.Extra exposing (viewIf)
-import Html.Lazy exposing (lazy, lazy2, lazy3, lazy4)
+import Html.Lazy exposing (lazy, lazy2, lazy3, lazy4, lazy5)
 import Icons
 import Json.Decode exposing (Decoder)
 import List.Extra as List
@@ -64,11 +64,13 @@ view model =
             , Html.Events.on "keydown" keyDecoder
             , Attr.attributeIf model.menuOpen (onClick ToggleMenu)
             ]
-            [ lazy3 PitchSpace.view
+            [ lazy5 PitchSpace.view
                 model.pitchSpaceData
+                model.audioSettings
                 model.modeSettings
                 model.pitchState
-            , lazy3 viewControls model.audioSettings model.modeSettings model.pitchState
+                model.detectedPitch
+            , lazy4 viewControls model.audioSettings model.modeSettings model.pitchState model.detectedPitch
             ]
         ]
 
@@ -334,19 +336,16 @@ viewPitchStandard pitchStandard =
 -- CONTROLS
 
 
-viewControls : AudioSettings -> ModeSettings -> PitchState -> Html Msg
-viewControls audioSettings modeSettings pitchState =
+viewControls : AudioSettings -> ModeSettings -> PitchState -> Maybe Float -> Html Msg
+viewControls audioSettings modeSettings pitchState detectedPitch =
     div [ class "w-max", classList [ ( "    mt-8", LayoutData.showSpacing ) ] ]
         [ lazy2 RadioFieldset.view scaleRadioConfig modeSettings.scale
         , lazy2 RadioFieldset.view playModeRadioConfig audioSettings.mode
         , case audioSettings.mode of
             AudioSettings.Listen ->
-                let
-                    _ =
-                        Debug.log "calling pitch tracker" ()
-                in
                 div []
                     [ Html.node "pitch-tracker" [] []
+                    , lazy2 RadioFieldset.view registerRadioConfig audioSettings.register
                     ]
 
             AudioSettings.Play ->

@@ -15,9 +15,10 @@ import Html exposing (Html, button, div, li, span, text)
 import Html.Attributes as Attr exposing (class, classList)
 import Html.Attributes.Extra as Attr
 import Html.Events exposing (onClick, onFocus, onMouseEnter, onMouseLeave)
-import Html.Extra exposing (viewIf, viewIfLazy)
+import Html.Extra exposing (viewIf, viewIfLazy, viewMaybe)
 import Html.Lazy
 import Maybe.Extra as Maybe
+import Model.AudioSettings as AudioSettings exposing (AudioSettings)
 import Model.DegreeDataDict as DegreeDataDict
 import Model.LayoutData as LayoutData exposing (Layout(..))
 import Model.ModeSettings exposing (ModeSettings)
@@ -45,8 +46,8 @@ import Update exposing (Msg(..))
 {-| TODO: for mvp pitch tracking, we'll presumably want to disable interaction
 when in listen mode.
 -}
-view : PitchSpaceData -> ModeSettings -> PitchState -> Html Msg
-view pitchSpaceData modeSettings pitchState =
+view : PitchSpaceData -> AudioSettings -> ModeSettings -> PitchState -> Maybe Float -> Html Msg
+view pitchSpaceData audioSettings modeSettings pitchState detectedPitch =
     div
         ([ Attr.id "pitch-space"
          , Styles.transition
@@ -59,8 +60,10 @@ view pitchSpaceData modeSettings pitchState =
                     [ Styles.flexCol, class "mx-8" ]
                )
         )
-        [ viewIntervals pitchSpaceData modeSettings pitchState
-        , viewPitches pitchSpaceData modeSettings pitchState
+        [ Html.Lazy.lazy3 viewIntervals pitchSpaceData modeSettings pitchState
+        , viewIf (audioSettings.mode == AudioSettings.Listen)
+            (viewPitchTracker pitchSpaceData audioSettings detectedPitch)
+        , Html.Lazy.lazy3 viewPitches pitchSpaceData modeSettings pitchState
         ]
 
 
@@ -269,6 +272,52 @@ shouldHighlightInterval { currentPitch, proposedMovement } interval =
                     False
         )
         (Maybe.map Pitch.unwrapDegree currentPitch)
+
+
+
+-- INTERVAL TRACKER COLUMN
+
+
+viewPitchTracker : PitchSpaceData -> AudioSettings -> Maybe Float -> Html Msg
+viewPitchTracker pitchSpaceData audioSettings detectedPitch =
+    div
+        (if PitchSpaceData.isVertical pitchSpaceData.display then
+            [ Styles.flexCol, class "w-6 ms-4" ]
+
+         else
+            [ Styles.flexRow, class "h-6 w-full" ]
+        )
+        [ viewMaybe (viewPitchIndicator pitchSpaceData audioSettings) detectedPitch
+        ]
+
+
+{-| TODO: when we put the sensitivity into the Elm model, we should adjust the
+transition attribute. Try 150ms. Might consider the highly-smoothed option as
+the default, but experiment with it for a bit first.
+
+TODO: need an icon of some sort for the indicator.
+
+-}
+viewPitchIndicator : PitchSpaceData -> AudioSettings -> Float -> Html Msg
+viewPitchIndicator pitchSpaceData { pitchStandard, register } detectedPitch =
+    let
+        detectedPitchInMoria =
+            Pitch.frequencyToPitchPosition pitchStandard register detectedPitch
+
+        position =
+            case PitchSpaceData.displayToLayout pitchSpaceData.display of
+                Vertical ->
+                    Styles.top (pitchSpaceData.scalingFactor * (toFloat pitchSpaceData.visibleRangeEnd - detectedPitchInMoria))
+
+                Horizontal ->
+                    Styles.left (pitchSpaceData.scalingFactor * (detectedPitchInMoria - toFloat pitchSpaceData.visibleRangeStart))
+    in
+    div
+        [ class "relative"
+        , Attr.style "transition" "all 80ms ease-out"
+        , position
+        ]
+        [ text "x" ]
 
 
 
