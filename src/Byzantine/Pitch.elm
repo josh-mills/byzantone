@@ -418,6 +418,18 @@ pitchStandardToString pitchStandard =
             "Ke440"
 
 
+{-| Di is used as a fixed point of reference.
+-}
+diFrequency : PitchStandard -> Float
+diFrequency pitchStandard =
+    case pitchStandard of
+        Ni256 ->
+            384.0
+
+        Ke440 ->
+            391.995
+
+
 type Register
     = Treble
     | Bass
@@ -431,6 +443,16 @@ registerToString register =
 
         Bass ->
             "Bass"
+
+
+registerFactor : Register -> Float
+registerFactor register =
+    case register of
+        Treble ->
+            1.0
+
+        Bass ->
+            0.5
 
 
 {-| Frequency relative to a fixed pitch for Natural Di, according to the given pitch
@@ -451,26 +473,6 @@ to a fixed position of Natural Di of 84.
 frequencyToPitchPosition : PitchStandard -> Register -> Float -> Float
 frequencyToPitchPosition pitchStandard register frequency_ =
     72 * logBase 2 (frequency_ / (diFrequency pitchStandard * registerFactor register)) + 84
-
-
-diFrequency : PitchStandard -> Float
-diFrequency pitchStandard =
-    case pitchStandard of
-        Ni256 ->
-            384.0
-
-        Ke440 ->
-            391.995
-
-
-registerFactor : Register -> Float
-registerFactor register =
-    case register of
-        Treble ->
-            1.0
-
-        Bass ->
-            0.5
 
 
 
