@@ -3,6 +3,7 @@ module View.PitchSpace exposing (view)
 {-| View logic for pitch space (i.e., the intervalic space and positioned pitches)
 -}
 
+import Array
 import Byzantine.Accidental as Accidental
 import Byzantine.ByzHtml.Accidental as Accidental
 import Byzantine.ByzHtml.Interval as ByzHtmlInterval
@@ -19,7 +20,7 @@ import Html.Extra exposing (viewIf, viewIfLazy, viewMaybe)
 import Html.Lazy
 import Maybe.Extra as Maybe
 import Model.AudioSettings as AudioSettings exposing (AudioSettings)
-import Model.DegreeDataDict as DegreeDataDict
+import Model.DegreeDataDict as DegreeDataDict exposing (DegreeDataDict)
 import Model.LayoutData as LayoutData exposing (Layout(..))
 import Model.ModeSettings exposing (ModeSettings)
 import Model.PitchSpaceData as PitchSpaceData
@@ -293,10 +294,7 @@ viewPitchTracker pitchSpaceData audioSettings detectedPitch =
 
 {-| TODO: when we put the sensitivity into the Elm model, we should adjust the
 transition attribute. Try 150ms. Might consider the highly-smoothed option as
-the default, but experiment with it for a bit first.
-
-TODO: need an icon of some sort for the indicator.
-
+the default, but experiment with it for a bit first. 80ms for basic.
 -}
 viewPitchIndicator : PitchSpaceData -> AudioSettings -> Float -> Html Msg
 viewPitchIndicator pitchSpaceData { pitchStandard, register } detectedPitch =
@@ -311,13 +309,93 @@ viewPitchIndicator pitchSpaceData { pitchStandard, register } detectedPitch =
 
                 Horizontal ->
                     Styles.left (pitchSpaceData.scalingFactor * (detectedPitchInMoria - toFloat pitchSpaceData.visibleRangeStart))
+
+        { degree, offset } =
+            closestDegree pitchSpaceData.pitchPositions detectedPitchInMoria
+
+        absOffset =
+            abs offset
+
+        color =
+            if absOffset < 0.5 then
+                "bg-green-500"
+
+            else if absOffset <= 1 then
+                "bg-amber-400"
+
+            else
+                "bg-red-500"
     in
     div
-        [ class "relative"
-        , Attr.style "transition" "all 80ms ease-out"
+        [ class "relative h-6 w-6 rounded-full"
         , position
+        , Attr.style "transition" "background-color 150ms ease-in-out, left 150ms ease-out, top 150ms ease-out"
+        , class color
         ]
-        [ text "x" ]
+        []
+
+
+closestDegree : DegreeDataDict Int -> Float -> { degree : Degree, offset : Float }
+closestDegree pitchPositions detectedPitchInMoria =
+    let
+        initialGuessDegreeIndex =
+            floor (detectedPitchInMoria / 72 * 7)
+
+        initialGuessDegree =
+            Array.get initialGuessDegreeIndex Degree.gamut
+                |> Maybe.withDefaultLazy
+                    (\_ ->
+                        if initialGuessDegreeIndex < 0 then
+                            Degree.GA
+
+                        else
+                            Degree.Ga_
+                    )
+    in
+    closestDegreeHelper pitchPositions detectedPitchInMoria initialGuessDegree
+
+
+closestDegreeHelper : DegreeDataDict Int -> Float -> Degree -> { degree : Degree, offset : Float }
+closestDegreeHelper pitchPositions detectedPitch lowerNeighborCandidate =
+    let
+        lowerNeighborCandidatePosition =
+            toFloat (DegreeDataDict.get lowerNeighborCandidate pitchPositions)
+    in
+    case ( compare lowerNeighborCandidatePosition detectedPitch, Degree.step lowerNeighborCandidate 1 ) of
+        ( GT, _ ) ->
+            case Degree.step lowerNeighborCandidate -1 of
+                Just newTest ->
+                    closestDegreeHelper pitchPositions detectedPitch newTest
+
+                Nothing ->
+                    { degree = lowerNeighborCandidate, offset = detectedPitch - lowerNeighborCandidatePosition }
+
+        ( EQ, _ ) ->
+            -- don't hold your breath for this one.
+            { degree = lowerNeighborCandidate, offset = 0 }
+
+        ( LT, Nothing ) ->
+            { degree = lowerNeighborCandidate, offset = detectedPitch - lowerNeighborCandidatePosition }
+
+        ( LT, Just upperNeighborCandidate ) ->
+            let
+                upperNeighborCandidatePosition =
+                    toFloat (DegreeDataDict.get upperNeighborCandidate pitchPositions)
+            in
+            if detectedPitch < upperNeighborCandidatePosition then
+                if abs (lowerNeighborCandidatePosition - detectedPitch) < abs (upperNeighborCandidatePosition - detectedPitch) then
+                    { degree = lowerNeighborCandidate, offset = detectedPitch - lowerNeighborCandidatePosition }
+
+                else
+                    { degree = upperNeighborCandidate, offset = detectedPitch - upperNeighborCandidatePosition }
+
+            else
+                case Degree.step upperNeighborCandidate 1 of
+                    Just newTest ->
+                        closestDegreeHelper pitchPositions detectedPitch newTest
+
+                    Nothing ->
+                        { degree = upperNeighborCandidate, offset = detectedPitch - upperNeighborCandidatePosition }
 
 
 
