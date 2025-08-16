@@ -1,12 +1,6 @@
-port module Ports exposing (pitchDetected, pitchTrackerClicked)
+port module Ports exposing (pitchDetected)
 
 {-| -}
-
-
-{-| Example port for receiving messages from pitch tracker clicks. We'll want
-something that's useful later.
--}
-port pitchTrackerClicked : (String -> msg) -> Sub msg
 
 
 {-| Port for receiving pitch detection events from the pitch tracker component.

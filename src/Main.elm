@@ -36,6 +36,5 @@ subscriptions : Model -> Sub Msg
 subscriptions _ =
     Sub.batch
         [ Browser.Events.onResize ViewportResize
-        , Ports.pitchTrackerClicked PitchTrackerClicked
         , Ports.pitchDetected (\{ pitch } -> SetDetectedPitch (Maybe.map Frequency pitch))
         ]

@@ -29,13 +29,6 @@
                 node: document.getElementById("elm-app"),
             });
 
-            // Example event listener for pitch tracker clicks
-            document.addEventListener("pitchTrackerClicked", (event) => {
-                if (elm.ports && elm.ports.pitchTrackerClicked) {
-                    elm.ports.pitchTrackerClicked.send(event.detail.message);
-                }
-            });
-
             // Event listener for pitch detected events
             document.addEventListener("pitchDetected", (event) => {
                 if (elm.ports && elm.ports.pitchDetected) {
