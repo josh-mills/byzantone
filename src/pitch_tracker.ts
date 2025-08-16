@@ -44,15 +44,10 @@ class PitchTracker extends HTMLElement {
     }
 
     connectedCallback() {
-        console.log("PitchTracker connected");
-
-        // Auto-initialize when connected
         this.init();
     }
 
     disconnectedCallback() {
-        console.log("PitchTracker disconnected");
-        // Clean up resources
         this.stopAudioProcessing();
 
         // Disconnect the resize observer
@@ -99,7 +94,6 @@ class PitchTracker extends HTMLElement {
         // Create note display
         this.noteDisplay = document.createElement("div");
         this.noteDisplay.id = "note";
-        this.noteDisplay.textContent = "Press start to begin";
 
         // Create canvas
         this.canvas = document.createElement("canvas");
@@ -156,11 +150,6 @@ https://alexanderell.is/posts/tuner/
             // If already initialized, clean up first
             if (this.audioContext) {
                 this.stopAudioProcessing();
-            }
-
-            // Update note display
-            if (this.noteDisplay) {
-                this.noteDisplay.innerText = "Initializing...";
             }
 
             // Create audio context
@@ -407,7 +396,6 @@ https://alexanderell.is/posts/tuner/
             drawAlt();
         };
 
-        // Always use frequency visualization
         drawFrequency();
 
         drawNote();
@@ -493,5 +481,4 @@ https://alexanderell.is/posts/tuner/
     }
 }
 
-// Register the custom element
 window.customElements.define("pitch-tracker", PitchTracker);
