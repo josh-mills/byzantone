@@ -239,6 +239,16 @@ registerRadioConfig =
     }
 
 
+responsivenessRadioConfig : RadioFieldset.Config AudioSettings.Responsiveness Msg
+responsivenessRadioConfig =
+    { itemToString = AudioSettings.responsivenessToString
+    , legendText = "Responsiveness"
+    , onSelect = SetResponsiveness
+    , options = [ AudioSettings.Sensitive, AudioSettings.Smooth ]
+    , viewItem = Nothing
+    }
+
+
 pitchStandardRadioConfig : RadioFieldset.Config PitchStandard Msg
 pitchStandardRadioConfig =
     { itemToString = Pitch.pitchStandardToString
@@ -344,8 +354,21 @@ viewControls audioSettings modeSettings pitchState detectedPitch =
         , case audioSettings.mode of
             AudioSettings.Listen ->
                 div []
-                    [ Html.node "pitch-tracker" [] []
-                    , lazy2 RadioFieldset.view registerRadioConfig audioSettings.register
+                    [ lazy2 RadioFieldset.view registerRadioConfig audioSettings.register
+                    , lazy2 RadioFieldset.view responsivenessRadioConfig audioSettings.responsiveness
+
+                    -- , lazy viewAccidentalButtons pitchState.proposedAccidental
+                    , Html.node "pitch-tracker"
+                        [ Attr.attribute "smoothing"
+                            (case audioSettings.responsiveness of
+                                AudioSettings.Sensitive ->
+                                    "sensitive"
+
+                                AudioSettings.Smooth ->
+                                    "smooth"
+                            )
+                        ]
+                        []
                     ]
 
             AudioSettings.Play ->

@@ -1,12 +1,14 @@
 module Model.AudioSettings exposing
     ( AudioSettings, defaultAudioSettings
     , Mode(..), audioModeToString, modes
+    , Responsiveness(..), responsivenessToString
     )
 
 {-|
 
 @docs AudioSettings, defaultAudioSettings
 @docs Mode, audioModeToString, modes
+@docs Responsiveness, responsivenessToString
 
 -}
 
@@ -22,6 +24,7 @@ type alias AudioSettings =
     , mode : Mode
     , pitchStandard : PitchStandard
     , register : Register
+    , responsiveness : Responsiveness
     }
 
 
@@ -31,6 +34,7 @@ defaultAudioSettings =
     , mode = Play
     , pitchStandard = Ni256
     , register = Treble
+    , responsiveness = Sensitive
     }
 
 
@@ -52,3 +56,18 @@ audioModeToString mode =
 
         Listen ->
             "Listen"
+
+
+type Responsiveness
+    = Sensitive
+    | Smooth
+
+
+responsivenessToString : Responsiveness -> String
+responsivenessToString responsiveness =
+    case responsiveness of
+        Sensitive ->
+            "Sensitive"
+
+        Smooth ->
+            "Smooth"

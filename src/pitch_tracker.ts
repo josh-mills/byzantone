@@ -8,7 +8,7 @@ class PitchTracker extends HTMLElement {
     private stream: MediaStream | null = null;
     private animationFrameId: number | null = null;
     private noteAnimationFrameId: number | null = null;
-    private smoothingOptions: HTMLDivElement | null = null;
+    private smoothing: string = "sensitive";
 
     private shadow: ShadowRoot;
     private resizeObserver: ResizeObserver | null = null;
@@ -20,33 +20,40 @@ class PitchTracker extends HTMLElement {
         this.createUI();
     }
 
+    static get observedAttributes(): string[] {
+        return ["smoothing"];
+    }
+
+    attributeChangedCallback(
+        name: string,
+        oldValue: string | null,
+        newValue: string | null,
+    ): void {
+        if (oldValue === newValue) return;
+
+        if (name === "smoothing" && newValue) {
+            if (newValue === "sensitive" || newValue === "smooth") {
+                this.smoothing = newValue;
+                // Reinitialize if we're already running
+                if (this.audioContext) {
+                    this.stopAudioProcessing();
+                    this.init();
+                }
+            }
+        }
+    }
+
     connectedCallback() {
         console.log("PitchTracker connected");
 
         // Auto-initialize when connected
         this.init();
-
-        // Add change event listeners to smoothing radio buttons
-        const radioButtons = this.shadow.querySelectorAll(
-            'input[name="smoothing"]',
-        );
-        radioButtons.forEach((radio) => {
-            radio.addEventListener("change", this.handleOptionChange);
-        });
     }
 
     disconnectedCallback() {
         console.log("PitchTracker disconnected");
         // Clean up resources
         this.stopAudioProcessing();
-
-        // Remove event listeners from smoothing radio buttons
-        const radioButtons = this.shadow.querySelectorAll(
-            'input[name="smoothing"]',
-        );
-        radioButtons.forEach((radio) => {
-            radio.removeEventListener("change", this.handleOptionChange);
-        });
 
         // Disconnect the resize observer
         if (this.resizeObserver) {
@@ -100,37 +107,11 @@ class PitchTracker extends HTMLElement {
         this.canvas.width = 800;
         this.canvas.height = 200;
 
-        // Create controls div
-        const controls = document.createElement("div");
-        controls.className = "controls";
-
-        // Rounding options
-        // Smoothing options
-        this.smoothingOptions = document.createElement("div");
-        this.smoothingOptions.className = "control-group";
-        this.smoothingOptions.innerHTML = `
-            <p>Smoothing options:</p>
-            <input type="radio" name="smoothing" value="basic" id="basic-smoothing" checked />
-            <label for="basic-smoothing">Basic smoothing</label>
-            <input type="radio" name="smoothing" value="very" id="very-smoothing" />
-            <label for="very-smoothing">Very smoothed</label>
-        `;
-
-        // Append controls to the controls div
-        controls.appendChild(this.smoothingOptions);
-
         // Append everything to shadow DOM
         this.shadow.appendChild(style);
-        this.shadow.appendChild(controls);
         this.shadow.appendChild(this.noteDisplay);
         this.shadow.appendChild(this.canvas);
     }
-
-    private handleOptionChange = () => {
-        // Reinitialize when options change
-        this.stopAudioProcessing();
-        this.init();
-    };
 
     private dispatchPitchDetected = (pitch: number | null) => {
         // Create and dispatch a custom event with the detected pitch
@@ -319,12 +300,7 @@ https://alexanderell.is/posts/tuner/
             // Use full precision
             let valueToDisplay: number | string = autoCorrelateValue;
 
-            const smoothingRadio = this.shadow.querySelector(
-                'input[name="smoothing"]:checked',
-            ) as HTMLInputElement;
-            const smoothingValue = smoothingRadio
-                ? smoothingRadio.value
-                : "basic";
+            const smoothingValue = this.smoothing;
 
             if (autoCorrelateValue === -1) {
                 if (this.noteDisplay) {
@@ -335,10 +311,10 @@ https://alexanderell.is/posts/tuner/
                 return;
             }
 
-            if (smoothingValue === "basic") {
+            if (smoothingValue === "sensitive") {
                 smoothingThreshold = 10;
                 smoothingCountThreshold = 5;
-            } else if (smoothingValue === "very") {
+            } else if (smoothingValue === "smooth") {
                 smoothingThreshold = 5;
                 smoothingCountThreshold = 10;
             }

@@ -39,6 +39,7 @@ type Msg
     | SetRangeStart String
     | SetRangeEnd String
     | SetRegister Register
+    | SetResponsiveness AudioSettings.Responsiveness
     | SetScale Scale
     | ToggleMenu
 
@@ -226,6 +227,13 @@ update msg model =
         SetRegister register ->
             ( updateAudioSettings
                 (\audioSettings -> { audioSettings | register = register })
+                model
+            , Cmd.none
+            )
+
+        SetResponsiveness responsiveness ->
+            ( updateAudioSettings
+                (\audioSettings -> { audioSettings | responsiveness = responsiveness })
                 model
             , Cmd.none
             )
