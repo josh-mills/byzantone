@@ -6,7 +6,7 @@ import Byzantine.ByzHtml.Martyria as Martyria
 import Byzantine.Degree as Degree exposing (Degree(..))
 import Byzantine.IntervalCharacter exposing (..)
 import Byzantine.Martyria as Martyria
-import Byzantine.Pitch as Pitch exposing (Pitch, PitchStandard(..), Register(..))
+import Byzantine.Pitch as Pitch exposing (Frequency, Pitch, PitchStandard(..), Register(..))
 import Byzantine.Scale as Scale exposing (Scale(..))
 import Copy
 import Html exposing (Html, button, datalist, div, h1, h2, input, main_, p, span, text)
@@ -102,6 +102,7 @@ chantEngineNode audioSettings scale currentPitch currentIson =
                 audioSettings.playbackRegister
                 scale
                 pitch
+                |> Pitch.unwrapFrequency
                 |> String.fromFloat
     in
     Html.node "chant-engine"
@@ -348,7 +349,7 @@ viewPitchStandard pitchStandard =
 -- CONTROLS
 
 
-viewControls : AudioSettings -> ModeSettings -> PitchState -> Maybe Float -> Html Msg
+viewControls : AudioSettings -> ModeSettings -> PitchState -> Maybe Frequency -> Html Msg
 viewControls audioSettings modeSettings pitchState detectedPitch =
     div [ class "w-max", classList [ ( "    mt-8", LayoutData.showSpacing ) ] ]
         [ lazy2 RadioFieldset.view scaleRadioConfig modeSettings.scale

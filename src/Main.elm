@@ -3,6 +3,7 @@ module Main exposing (main)
 import Browser
 import Browser.Dom as Dom
 import Browser.Events
+import Byzantine.Pitch exposing (Frequency(..))
 import Model exposing (Model)
 import Ports
 import Task
@@ -36,5 +37,5 @@ subscriptions _ =
     Sub.batch
         [ Browser.Events.onResize ViewportResize
         , Ports.pitchTrackerClicked PitchTrackerClicked
-        , Ports.pitchDetected (\{ pitch } -> SetDetectedPitch pitch)
+        , Ports.pitchDetected (\{ pitch } -> SetDetectedPitch (Maybe.map Frequency pitch))
         ]

@@ -18,6 +18,7 @@ module Model exposing
 -}
 
 import Byzantine.Degree exposing (Degree(..))
+import Byzantine.Pitch exposing (Frequency)
 import Byzantine.Scale exposing (Scale(..))
 import Model.AudioSettings as AudioSettings exposing (AudioSettings)
 import Model.LayoutData as LayoutData exposing (LayoutData)
@@ -29,7 +30,7 @@ import Movement exposing (Movement(..))
 
 type alias Model =
     { audioSettings : AudioSettings
-    , detectedPitch : Maybe Float
+    , detectedPitch : Maybe Frequency
     , layoutData : LayoutData
     , menuOpen : Bool
     , modal : Modal

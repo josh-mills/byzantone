@@ -4,7 +4,7 @@ import Array
 import Browser.Dom as Dom
 import Byzantine.Accidental as Accidental exposing (Accidental)
 import Byzantine.Degree as Degree exposing (Degree(..))
-import Byzantine.Pitch as Pitch exposing (Pitch, PitchStandard, Register)
+import Byzantine.Pitch as Pitch exposing (Frequency(..), Pitch, PitchStandard, Register)
 import Byzantine.Scale exposing (Scale)
 import Maybe.Extra as Maybe
 import Model exposing (Modal, Model)
@@ -31,7 +31,7 @@ type Msg
     | SelectProposedAccidental (Maybe Accidental)
     | SelectProposedMovement Movement
     | SetAudioMode AudioSettings.Mode
-    | SetDetectedPitch (Maybe Float)
+    | SetDetectedPitch (Maybe Frequency)
     | SetGain Float
     | SetIson IsonStatus
     | SetLayout LayoutSelection
@@ -255,8 +255,8 @@ update msg model =
             , Cmd.none
             )
 
-        SetDetectedPitch pitch ->
-            ( { model | detectedPitch = pitch }
+        SetDetectedPitch pitchFrequency ->
+            ( { model | detectedPitch = pitchFrequency }
             , Cmd.none
             )
 

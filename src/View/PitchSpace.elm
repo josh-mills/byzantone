@@ -11,7 +11,7 @@ import Byzantine.ByzHtml.Martyria as ByzHtmlMartyria
 import Byzantine.Degree as Degree exposing (Degree)
 import Byzantine.IntervalCharacter as IntervalCharacter
 import Byzantine.Martyria as Martyria
-import Byzantine.Pitch as Pitch exposing (Interval, Pitch, PitchString)
+import Byzantine.Pitch as Pitch exposing (Frequency, Interval, Pitch, PitchString)
 import Html exposing (Html, button, div, li, span, text)
 import Html.Attributes as Attr exposing (class, classList)
 import Html.Attributes.Extra as Attr
@@ -47,7 +47,7 @@ import Update exposing (Msg(..))
 {-| TODO: for mvp pitch tracking, we'll presumably want to disable interaction
 when in listen mode.
 -}
-view : PitchSpaceData -> AudioSettings -> ModeSettings -> PitchState -> Maybe Float -> Html Msg
+view : PitchSpaceData -> AudioSettings -> ModeSettings -> PitchState -> Maybe Frequency -> Html Msg
 view pitchSpaceData audioSettings modeSettings pitchState detectedPitch =
     div
         ([ Attr.id "pitch-space"
@@ -279,7 +279,7 @@ shouldHighlightInterval { currentPitch, proposedMovement } interval =
 -- INTERVAL TRACKER COLUMN
 
 
-viewPitchTracker : PitchSpaceData -> AudioSettings -> Maybe Float -> Html Msg
+viewPitchTracker : PitchSpaceData -> AudioSettings -> Maybe Frequency -> Html Msg
 viewPitchTracker pitchSpaceData audioSettings detectedPitch =
     div
         (if PitchSpaceData.isVertical pitchSpaceData.display then
@@ -296,7 +296,7 @@ viewPitchTracker pitchSpaceData audioSettings detectedPitch =
 transition attribute. Try 150ms. Might consider the highly-smoothed option as
 the default, but experiment with it for a bit first. 80ms for basic.
 -}
-viewPitchIndicator : PitchSpaceData -> AudioSettings -> Float -> Html Msg
+viewPitchIndicator : PitchSpaceData -> AudioSettings -> Frequency -> Html Msg
 viewPitchIndicator pitchSpaceData { pitchStandard, listenRegister } detectedPitch =
     let
         detectedPitchInMoria =
