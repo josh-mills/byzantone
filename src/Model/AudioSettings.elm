@@ -16,14 +16,12 @@ import Byzantine.Degree exposing (Degree(..))
 import Byzantine.Pitch exposing (PitchStandard(..), Register(..))
 
 
-{-| TODO: separate playing and listening registers as two independent fields.
-Types can remain the same, though.
--}
 type alias AudioSettings =
     { gain : Float
     , mode : Mode
     , pitchStandard : PitchStandard
-    , register : Register
+    , playbackRegister : Register
+    , listenRegister : Register
     , responsiveness : Responsiveness
     }
 
@@ -33,8 +31,9 @@ defaultAudioSettings =
     { gain = 0.3
     , mode = Play
     , pitchStandard = Ni256
-    , register = Treble
-    , responsiveness = Sensitive
+    , playbackRegister = Treble
+    , listenRegister = Bass
+    , responsiveness = Smooth
     }
 
 

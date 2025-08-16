@@ -38,7 +38,8 @@ type Msg
     | SetPitchStandard PitchStandard
     | SetRangeStart String
     | SetRangeEnd String
-    | SetRegister Register
+    | SetPlaybackRegister Register
+    | SetListenRegister Register
     | SetResponsiveness AudioSettings.Responsiveness
     | SetScale Scale
     | ToggleMenu
@@ -194,6 +195,20 @@ update msg model =
             , Cmd.none
             )
 
+        SetPlaybackRegister register ->
+            ( updateAudioSettings
+                (\audioSettings -> { audioSettings | playbackRegister = register })
+                model
+            , Cmd.none
+            )
+
+        SetListenRegister register ->
+            ( updateAudioSettings
+                (\audioSettings -> { audioSettings | listenRegister = register })
+                model
+            , Cmd.none
+            )
+
         SetRangeStart start ->
             ( updateModeSettings
                 (\modeSettings ->
@@ -221,13 +236,6 @@ update msg model =
                 )
                 model
                 |> resetPitchSpaceData
-            , Cmd.none
-            )
-
-        SetRegister register ->
-            ( updateAudioSettings
-                (\audioSettings -> { audioSettings | register = register })
-                model
             , Cmd.none
             )
 

@@ -99,7 +99,7 @@ chantEngineNode audioSettings scale currentPitch currentIson =
     let
         frequency pitch =
             Pitch.frequency audioSettings.pitchStandard
-                audioSettings.register
+                audioSettings.playbackRegister
                 scale
                 pitch
                 |> String.fromFloat
@@ -212,7 +212,9 @@ settings : AudioSettings -> LayoutData -> ModeSettings -> Html Msg
 settings audioSettings layoutData modeSettings =
     div [ Styles.flexCol, class "gap-2" ]
         [ lazy2 RadioFieldset.view layoutRadioConfig layoutData.layoutSelection
-        , lazy2 RadioFieldset.view registerRadioConfig audioSettings.register
+        , lazy2 RadioFieldset.view
+            (registerRadioConfig "Playback Register" SetPlaybackRegister)
+            audioSettings.playbackRegister
         , lazy2 RadioFieldset.view pitchStandardRadioConfig audioSettings.pitchStandard
         , lazy gainInput audioSettings
         , lazy rangeFieldset modeSettings
@@ -229,11 +231,11 @@ layoutRadioConfig =
     }
 
 
-registerRadioConfig : RadioFieldset.Config Register Msg
-registerRadioConfig =
+registerRadioConfig : String -> (Register -> Msg) -> RadioFieldset.Config Register Msg
+registerRadioConfig legendText onSelect =
     { itemToString = Pitch.registerToString
-    , legendText = "Register"
-    , onSelect = SetRegister
+    , legendText = legendText
+    , onSelect = onSelect
     , options = [ Treble, Bass ]
     , viewItem = Nothing
     }
@@ -354,7 +356,9 @@ viewControls audioSettings modeSettings pitchState detectedPitch =
         , case audioSettings.mode of
             AudioSettings.Listen ->
                 div []
-                    [ lazy2 RadioFieldset.view registerRadioConfig audioSettings.register
+                    [ lazy2 RadioFieldset.view
+                        (registerRadioConfig "Listen Register" SetListenRegister)
+                        audioSettings.listenRegister
                     , lazy2 RadioFieldset.view responsivenessRadioConfig audioSettings.responsiveness
 
                     -- , lazy viewAccidentalButtons pitchState.proposedAccidental

@@ -297,10 +297,10 @@ transition attribute. Try 150ms. Might consider the highly-smoothed option as
 the default, but experiment with it for a bit first. 80ms for basic.
 -}
 viewPitchIndicator : PitchSpaceData -> AudioSettings -> Float -> Html Msg
-viewPitchIndicator pitchSpaceData { pitchStandard, register } detectedPitch =
+viewPitchIndicator pitchSpaceData { pitchStandard, listenRegister } detectedPitch =
     let
         detectedPitchInMoria =
-            Pitch.frequencyToPitchPosition pitchStandard register detectedPitch
+            Pitch.frequencyToPitchPosition pitchStandard listenRegister detectedPitch
 
         position =
             case PitchSpaceData.displayToLayout pitchSpaceData.display of
