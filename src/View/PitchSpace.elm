@@ -19,7 +19,7 @@ import Html.Events exposing (onClick, onFocus, onMouseEnter, onMouseLeave)
 import Html.Extra exposing (viewIf, viewIfLazy, viewMaybe)
 import Html.Lazy
 import Maybe.Extra as Maybe
-import Model.AudioSettings as AudioSettings exposing (AudioSettings)
+import Model.AudioSettings as AudioSettings exposing (AudioSettings, Responsiveness(..))
 import Model.DegreeDataDict as DegreeDataDict exposing (DegreeDataDict)
 import Model.LayoutData as LayoutData exposing (Layout(..))
 import Model.ModeSettings exposing (ModeSettings)
@@ -292,12 +292,8 @@ viewPitchTracker pitchSpaceData audioSettings detectedPitch =
         ]
 
 
-{-| TODO: when we put the sensitivity into the Elm model, we should adjust the
-transition attribute. Try 150ms. Might consider the highly-smoothed option as
-the default, but experiment with it for a bit first. 80ms for basic.
--}
 viewPitchIndicator : PitchSpaceData -> AudioSettings -> Frequency -> Html Msg
-viewPitchIndicator pitchSpaceData { pitchStandard, listenRegister } detectedPitch =
+viewPitchIndicator pitchSpaceData { pitchStandard, listenRegister, responsiveness } detectedPitch =
     let
         detectedPitchInMoria =
             Pitch.frequencyToPitchPosition pitchStandard listenRegister detectedPitch
@@ -329,7 +325,13 @@ viewPitchIndicator pitchSpaceData { pitchStandard, listenRegister } detectedPitc
     div
         [ class "relative h-6 w-6 rounded-full"
         , position
-        , Attr.style "transition" "background-color 150ms ease-in-out, left 150ms ease-out, top 150ms ease-out"
+        , Attr.style "transition" <|
+            case responsiveness of
+                Sensitive ->
+                    "background-color 80ms ease-in-out, left 80ms ease-out, top 80ms ease-out"
+
+                Smooth ->
+                    "background-color 150ms ease-in-out, left 150ms ease-out, top 150ms ease-out"
         , class color
         ]
         []
