@@ -5,7 +5,7 @@ module Byzantine.Pitch exposing
     , unwrapDegree, unwrapAccidental
     , isInflected, isValidInflection, toString
     , pitchPosition, pitchPositions
-    , frequency
+    , Frequency(..), frequency, frequencyToPitchPosition, unwrapFrequency
     , PitchStandard(..), pitchStandardToString
     , Register(..), registerToString
     , Interval, intervals, intervalsFrom, getInterval
@@ -51,7 +51,7 @@ attractions and inflections.
 
 # Frequency
 
-@docs frequency
+@docs Frequency, frequency, frequencyToPitchPosition, unwrapFrequency
 
 
 ## PitchStandard
@@ -418,6 +418,18 @@ pitchStandardToString pitchStandard =
             "Ke440"
 
 
+{-| Di is used as a fixed point of reference.
+-}
+diFrequency : PitchStandard -> Float
+diFrequency pitchStandard =
+    case pitchStandard of
+        Ni256 ->
+            384.0
+
+        Ke440 ->
+            391.995
+
+
 type Register
     = Treble
     | Bass
@@ -433,32 +445,43 @@ registerToString register =
             "Bass"
 
 
+registerFactor : Register -> Float
+registerFactor register =
+    case register of
+        Treble ->
+            1.0
+
+        Bass ->
+            0.5
+
+
+type Frequency
+    = Frequency Float
+
+
 {-| Frequency relative to a fixed pitch for Natural Di, according to the given pitch
 standard and register.
 -}
-frequency : PitchStandard -> Register -> Scale -> Pitch -> Float
+frequency : PitchStandard -> Register -> Scale -> Pitch -> Frequency
 frequency pitchStandard register scale pitch =
     let
         position =
-            pitchPosition scale pitch - 84 |> toFloat
-
-        di =
-            case pitchStandard of
-                Ni256 ->
-                    384.0
-
-                Ke440 ->
-                    391.995
-
-        registerFactor =
-            case register of
-                Treble ->
-                    1.0
-
-                Bass ->
-                    0.5
+            toFloat (pitchPosition scale pitch - 84)
     in
-    2 ^ (position / 72) * di * registerFactor
+    2 ^ (position / 72) * diFrequency pitchStandard * registerFactor register |> Frequency
+
+
+{-| For a given frequency (in Hz), evaluate the pitch position in moria relative
+to a fixed position of Natural Di of 84.
+-}
+frequencyToPitchPosition : PitchStandard -> Register -> Frequency -> Float
+frequencyToPitchPosition pitchStandard register (Frequency frequency_) =
+    72 * logBase 2 (frequency_ / (diFrequency pitchStandard * registerFactor register)) + 84
+
+
+unwrapFrequency : Frequency -> Float
+unwrapFrequency (Frequency frequency_) =
+    frequency_
 
 
 

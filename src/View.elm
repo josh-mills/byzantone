@@ -6,7 +6,7 @@ import Byzantine.ByzHtml.Martyria as Martyria
 import Byzantine.Degree as Degree exposing (Degree(..))
 import Byzantine.IntervalCharacter exposing (..)
 import Byzantine.Martyria as Martyria
-import Byzantine.Pitch as Pitch exposing (Pitch, PitchStandard(..), Register(..))
+import Byzantine.Pitch as Pitch exposing (Frequency, Pitch, PitchStandard(..), Register(..))
 import Byzantine.Scale as Scale exposing (Scale(..))
 import Copy
 import Html exposing (Html, button, datalist, div, h1, h2, input, main_, p, span, text)
@@ -14,13 +14,13 @@ import Html.Attributes as Attr exposing (class, classList, id, type_)
 import Html.Attributes.Extra as Attr
 import Html.Events exposing (onClick, onInput)
 import Html.Extra exposing (viewIf)
-import Html.Lazy exposing (lazy, lazy2, lazy3, lazy4)
+import Html.Lazy exposing (lazy, lazy2, lazy3, lazy4, lazy5)
 import Icons
 import Json.Decode exposing (Decoder)
 import List.Extra as List
 import Maybe.Extra as Maybe
 import Model exposing (Modal(..), Model)
-import Model.AudioSettings exposing (AudioSettings)
+import Model.AudioSettings as AudioSettings exposing (AudioSettings)
 import Model.LayoutData as LayoutData exposing (Layout(..), LayoutData, LayoutSelection(..), layoutFor)
 import Model.ModeSettings exposing (ModeSettings)
 import Model.PitchState as PitchState exposing (IsonStatus, PitchState)
@@ -39,11 +39,14 @@ view : Model -> Html Msg
 view model =
     div
         [ class "p-4" ]
-        [ lazy4 chantEngineNode
-            model.audioSettings
-            model.modeSettings.scale
-            model.pitchState.currentPitch
-            (PitchState.ison model.pitchState.ison)
+        [ Html.Extra.viewIfLazy (model.audioSettings.mode == AudioSettings.Play)
+            (\_ ->
+                lazy4 chantEngineNode
+                    model.audioSettings
+                    model.modeSettings.scale
+                    model.pitchState.currentPitch
+                    (PitchState.ison model.pitchState.ison)
+            )
         , lazy2 backdrop model.menuOpen model.modal
         , header
         , lazy4 viewModal model.audioSettings model.layoutData model.modeSettings model.modal
@@ -61,11 +64,13 @@ view model =
             , Html.Events.on "keydown" keyDecoder
             , Attr.attributeIf model.menuOpen (onClick ToggleMenu)
             ]
-            [ lazy3 PitchSpace.view
+            [ lazy5 PitchSpace.view
                 model.pitchSpaceData
+                model.audioSettings
                 model.modeSettings
                 model.pitchState
-            , lazy3 viewControls model.audioSettings model.modeSettings model.pitchState
+                model.detectedPitch
+            , lazy4 viewControls model.audioSettings model.modeSettings model.pitchState model.detectedPitch
             ]
         ]
 
@@ -94,9 +99,10 @@ chantEngineNode audioSettings scale currentPitch currentIson =
     let
         frequency pitch =
             Pitch.frequency audioSettings.pitchStandard
-                audioSettings.register
+                audioSettings.playbackRegister
                 scale
                 pitch
+                |> Pitch.unwrapFrequency
                 |> String.fromFloat
     in
     Html.node "chant-engine"
@@ -207,7 +213,9 @@ settings : AudioSettings -> LayoutData -> ModeSettings -> Html Msg
 settings audioSettings layoutData modeSettings =
     div [ Styles.flexCol, class "gap-2" ]
         [ lazy2 RadioFieldset.view layoutRadioConfig layoutData.layoutSelection
-        , lazy2 RadioFieldset.view registerRadioConfig audioSettings.register
+        , lazy2 RadioFieldset.view
+            (registerRadioConfig "Playback Register" SetPlaybackRegister)
+            audioSettings.playbackRegister
         , lazy2 RadioFieldset.view pitchStandardRadioConfig audioSettings.pitchStandard
         , lazy gainInput audioSettings
         , lazy rangeFieldset modeSettings
@@ -224,12 +232,22 @@ layoutRadioConfig =
     }
 
 
-registerRadioConfig : RadioFieldset.Config Register Msg
-registerRadioConfig =
+registerRadioConfig : String -> (Register -> Msg) -> RadioFieldset.Config Register Msg
+registerRadioConfig legendText onSelect =
     { itemToString = Pitch.registerToString
-    , legendText = "Register"
-    , onSelect = SetRegister
+    , legendText = legendText
+    , onSelect = onSelect
     , options = [ Treble, Bass ]
+    , viewItem = Nothing
+    }
+
+
+responsivenessRadioConfig : RadioFieldset.Config AudioSettings.Responsiveness Msg
+responsivenessRadioConfig =
+    { itemToString = AudioSettings.responsivenessToString
+    , legendText = "Responsiveness"
+    , onSelect = SetResponsiveness
+    , options = [ AudioSettings.Sensitive, AudioSettings.Smooth ]
     , viewItem = Nothing
     }
 
@@ -331,15 +349,41 @@ viewPitchStandard pitchStandard =
 -- CONTROLS
 
 
-viewControls : AudioSettings -> ModeSettings -> PitchState -> Html Msg
-viewControls audioSettings modeSettings pitchState =
-    div [ class "w-max", classList [ ( "mt-8", LayoutData.showSpacing ) ] ]
+viewControls : AudioSettings -> ModeSettings -> PitchState -> Maybe Frequency -> Html Msg
+viewControls audioSettings modeSettings pitchState detectedPitch =
+    div [ class "w-max", classList [ ( "    mt-8", LayoutData.showSpacing ) ] ]
         [ lazy2 RadioFieldset.view scaleRadioConfig modeSettings.scale
-        , lazy isonButton pitchState.ison
-        , lazy viewIson (PitchState.ison pitchState.ison)
-        , lazy viewCurrentPitch pitchState.currentPitch
-        , lazy viewAccidentalButtons pitchState.proposedAccidental
-        , lazy gainInput audioSettings
+        , lazy2 RadioFieldset.view playModeRadioConfig audioSettings.mode
+        , case audioSettings.mode of
+            AudioSettings.Listen ->
+                div []
+                    [ lazy2 RadioFieldset.view
+                        (registerRadioConfig "Listen Register" SetListenRegister)
+                        audioSettings.listenRegister
+                    , lazy2 RadioFieldset.view responsivenessRadioConfig audioSettings.responsiveness
+
+                    -- , lazy viewAccidentalButtons pitchState.proposedAccidental
+                    , Html.node "pitch-tracker"
+                        [ Attr.attribute "smoothing"
+                            (case audioSettings.responsiveness of
+                                AudioSettings.Sensitive ->
+                                    "sensitive"
+
+                                AudioSettings.Smooth ->
+                                    "smooth"
+                            )
+                        ]
+                        []
+                    ]
+
+            AudioSettings.Play ->
+                div []
+                    [ lazy isonButton pitchState.ison
+                    , lazy viewIson (PitchState.ison pitchState.ison)
+                    , lazy viewCurrentPitch pitchState.currentPitch
+                    , lazy viewAccidentalButtons pitchState.proposedAccidental
+                    , lazy gainInput audioSettings
+                    ]
         ]
 
 
@@ -349,6 +393,16 @@ scaleRadioConfig =
     , legendText = "Select Scale"
     , onSelect = SetScale
     , options = Scale.all
+    , viewItem = Nothing
+    }
+
+
+playModeRadioConfig : RadioFieldset.Config AudioSettings.Mode Msg
+playModeRadioConfig =
+    { itemToString = AudioSettings.audioModeToString
+    , legendText = "Audio Mode"
+    , onSelect = SetAudioMode
+    , options = AudioSettings.modes
     , viewItem = Nothing
     }
 

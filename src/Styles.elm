@@ -78,11 +78,11 @@ left l =
     style "left" (round2 l ++ "px")
 
 
-{-| in px: `style="top: ${l}px;"`
+{-| in px: `style="top: ${t}px;"`
 -}
 top : Float -> Html.Attribute msg
-top l =
-    style "top" (round2 l ++ "px")
+top t =
+    style "top" (round2 t ++ "px")
 
 
 

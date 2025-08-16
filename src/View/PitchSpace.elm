@@ -3,6 +3,7 @@ module View.PitchSpace exposing (view)
 {-| View logic for pitch space (i.e., the intervalic space and positioned pitches)
 -}
 
+import Array
 import Byzantine.Accidental as Accidental
 import Byzantine.ByzHtml.Accidental as Accidental
 import Byzantine.ByzHtml.Interval as ByzHtmlInterval
@@ -10,15 +11,16 @@ import Byzantine.ByzHtml.Martyria as ByzHtmlMartyria
 import Byzantine.Degree as Degree exposing (Degree)
 import Byzantine.IntervalCharacter as IntervalCharacter
 import Byzantine.Martyria as Martyria
-import Byzantine.Pitch as Pitch exposing (Interval, Pitch, PitchString)
+import Byzantine.Pitch as Pitch exposing (Frequency, Interval, Pitch, PitchString)
 import Html exposing (Html, button, div, li, span, text)
 import Html.Attributes as Attr exposing (class, classList)
 import Html.Attributes.Extra as Attr
 import Html.Events exposing (onClick, onFocus, onMouseEnter, onMouseLeave)
-import Html.Extra exposing (viewIf, viewIfLazy)
+import Html.Extra exposing (viewIf, viewIfLazy, viewMaybe)
 import Html.Lazy
 import Maybe.Extra as Maybe
-import Model.DegreeDataDict as DegreeDataDict
+import Model.AudioSettings as AudioSettings exposing (AudioSettings, Responsiveness(..))
+import Model.DegreeDataDict as DegreeDataDict exposing (DegreeDataDict)
 import Model.LayoutData as LayoutData exposing (Layout(..))
 import Model.ModeSettings exposing (ModeSettings)
 import Model.PitchSpaceData as PitchSpaceData
@@ -42,8 +44,11 @@ import Update exposing (Msg(..))
 -- WRAPPER AND VIEW HELPERS
 
 
-view : PitchSpaceData -> ModeSettings -> PitchState -> Html Msg
-view pitchSpaceData modeSettings pitchState =
+{-| TODO: for mvp pitch tracking, we'll presumably want to disable interaction
+when in listen mode.
+-}
+view : PitchSpaceData -> AudioSettings -> ModeSettings -> PitchState -> Maybe Frequency -> Html Msg
+view pitchSpaceData audioSettings modeSettings pitchState detectedPitch =
     div
         ([ Attr.id "pitch-space"
          , Styles.transition
@@ -56,8 +61,10 @@ view pitchSpaceData modeSettings pitchState =
                     [ Styles.flexCol, class "mx-8" ]
                )
         )
-        [ viewIntervals pitchSpaceData modeSettings pitchState
-        , viewPitches pitchSpaceData modeSettings pitchState
+        [ Html.Lazy.lazy3 viewIntervals pitchSpaceData modeSettings pitchState
+        , viewIf (audioSettings.mode == AudioSettings.Listen)
+            (viewPitchTracker pitchSpaceData audioSettings detectedPitch)
+        , Html.Lazy.lazy3 viewPitches pitchSpaceData modeSettings pitchState
         ]
 
 
@@ -266,6 +273,131 @@ shouldHighlightInterval { currentPitch, proposedMovement } interval =
                     False
         )
         (Maybe.map Pitch.unwrapDegree currentPitch)
+
+
+
+-- INTERVAL TRACKER COLUMN
+
+
+viewPitchTracker : PitchSpaceData -> AudioSettings -> Maybe Frequency -> Html Msg
+viewPitchTracker pitchSpaceData audioSettings detectedPitch =
+    div
+        (if PitchSpaceData.isVertical pitchSpaceData.display then
+            [ Styles.flexCol, class "w-6 ms-4" ]
+
+         else
+            [ Styles.flexRow, class "h-6 w-full" ]
+        )
+        [ viewMaybe (viewPitchIndicator pitchSpaceData audioSettings) detectedPitch
+        ]
+
+
+viewPitchIndicator : PitchSpaceData -> AudioSettings -> Frequency -> Html Msg
+viewPitchIndicator pitchSpaceData { pitchStandard, listenRegister, responsiveness } detectedPitch =
+    let
+        detectedPitchInMoria =
+            Pitch.frequencyToPitchPosition pitchStandard listenRegister detectedPitch
+
+        position =
+            case PitchSpaceData.displayToLayout pitchSpaceData.display of
+                Vertical ->
+                    Styles.top (pitchSpaceData.scalingFactor * (toFloat pitchSpaceData.visibleRangeEnd - detectedPitchInMoria))
+
+                Horizontal ->
+                    Styles.left (pitchSpaceData.scalingFactor * (detectedPitchInMoria - toFloat pitchSpaceData.visibleRangeStart))
+
+        { degree, offset } =
+            closestDegree pitchSpaceData.pitchPositions detectedPitchInMoria
+
+        absOffset =
+            abs offset
+
+        color =
+            if absOffset < 0.5 then
+                "bg-green-500"
+
+            else if absOffset <= 1 then
+                "bg-amber-400"
+
+            else
+                "bg-red-500"
+    in
+    div
+        [ class "relative h-6 w-6 rounded-full"
+        , position
+        , Attr.style "transition" <|
+            case responsiveness of
+                Sensitive ->
+                    "background-color 80ms ease-in-out, left 80ms ease-out, top 80ms ease-out"
+
+                Smooth ->
+                    "background-color 150ms ease-in-out, left 150ms ease-out, top 150ms ease-out"
+        , class color
+        ]
+        []
+
+
+closestDegree : DegreeDataDict Int -> Float -> { degree : Degree, offset : Float }
+closestDegree pitchPositions detectedPitchInMoria =
+    let
+        initialGuessDegreeIndex =
+            floor (detectedPitchInMoria / 72 * 7)
+
+        initialGuessDegree =
+            Array.get initialGuessDegreeIndex Degree.gamut
+                |> Maybe.withDefaultLazy
+                    (\_ ->
+                        if initialGuessDegreeIndex < 0 then
+                            Degree.GA
+
+                        else
+                            Degree.Ga_
+                    )
+    in
+    closestDegreeHelper pitchPositions detectedPitchInMoria initialGuessDegree
+
+
+closestDegreeHelper : DegreeDataDict Int -> Float -> Degree -> { degree : Degree, offset : Float }
+closestDegreeHelper pitchPositions detectedPitch lowerNeighborCandidate =
+    let
+        lowerNeighborCandidatePosition =
+            toFloat (DegreeDataDict.get lowerNeighborCandidate pitchPositions)
+    in
+    case ( compare lowerNeighborCandidatePosition detectedPitch, Degree.step lowerNeighborCandidate 1 ) of
+        ( GT, _ ) ->
+            case Degree.step lowerNeighborCandidate -1 of
+                Just newTest ->
+                    closestDegreeHelper pitchPositions detectedPitch newTest
+
+                Nothing ->
+                    { degree = lowerNeighborCandidate, offset = detectedPitch - lowerNeighborCandidatePosition }
+
+        ( EQ, _ ) ->
+            -- don't hold your breath for this one.
+            { degree = lowerNeighborCandidate, offset = 0 }
+
+        ( LT, Nothing ) ->
+            { degree = lowerNeighborCandidate, offset = detectedPitch - lowerNeighborCandidatePosition }
+
+        ( LT, Just upperNeighborCandidate ) ->
+            let
+                upperNeighborCandidatePosition =
+                    toFloat (DegreeDataDict.get upperNeighborCandidate pitchPositions)
+            in
+            if detectedPitch < upperNeighborCandidatePosition then
+                if abs (lowerNeighborCandidatePosition - detectedPitch) < abs (upperNeighborCandidatePosition - detectedPitch) then
+                    { degree = lowerNeighborCandidate, offset = detectedPitch - lowerNeighborCandidatePosition }
+
+                else
+                    { degree = upperNeighborCandidate, offset = detectedPitch - upperNeighborCandidatePosition }
+
+            else
+                case Degree.step upperNeighborCandidate 1 of
+                    Just newTest ->
+                        closestDegreeHelper pitchPositions detectedPitch newTest
+
+                    Nothing ->
+                        { degree = upperNeighborCandidate, offset = detectedPitch - upperNeighborCandidatePosition }
 
 
 

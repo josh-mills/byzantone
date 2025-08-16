@@ -4,11 +4,11 @@ import Array
 import Browser.Dom as Dom
 import Byzantine.Accidental as Accidental exposing (Accidental)
 import Byzantine.Degree as Degree exposing (Degree(..))
-import Byzantine.Pitch as Pitch exposing (Pitch, PitchStandard, Register)
+import Byzantine.Pitch as Pitch exposing (Frequency(..), Pitch, PitchStandard, Register)
 import Byzantine.Scale exposing (Scale)
 import Maybe.Extra as Maybe
 import Model exposing (Modal, Model)
-import Model.AudioSettings exposing (AudioSettings)
+import Model.AudioSettings as AudioSettings exposing (AudioSettings)
 import Model.LayoutData exposing (LayoutData, LayoutSelection)
 import Model.ModeSettings exposing (ModeSettings)
 import Model.PitchSpaceData as PitchSpaceData
@@ -29,13 +29,17 @@ type Msg
     | SelectPitch (Maybe Pitch) (Maybe Movement)
     | SelectProposedAccidental (Maybe Accidental)
     | SelectProposedMovement Movement
+    | SetAudioMode AudioSettings.Mode
+    | SetDetectedPitch (Maybe Frequency)
     | SetGain Float
     | SetIson IsonStatus
     | SetLayout LayoutSelection
     | SetPitchStandard PitchStandard
     | SetRangeStart String
     | SetRangeEnd String
-    | SetRegister Register
+    | SetPlaybackRegister Register
+    | SetListenRegister Register
+    | SetResponsiveness AudioSettings.Responsiveness
     | SetScale Scale
     | ToggleMenu
 
@@ -147,6 +151,13 @@ update msg model =
             , Cmd.none
             )
 
+        SetAudioMode mode ->
+            ( { model | pitchState = PitchState.initialPitchState }
+                |> updateAudioSettings (\audioSettings -> { audioSettings | mode = mode })
+                |> resetPitchSpaceData
+            , Cmd.none
+            )
+
         SetGain gain ->
             ( updateAudioSettings
                 (\audioSettings -> { audioSettings | gain = clamp 0 1 gain })
@@ -173,6 +184,20 @@ update msg model =
         SetPitchStandard pitchStandard ->
             ( updateAudioSettings
                 (\audioSettings -> { audioSettings | pitchStandard = pitchStandard })
+                model
+            , Cmd.none
+            )
+
+        SetPlaybackRegister register ->
+            ( updateAudioSettings
+                (\audioSettings -> { audioSettings | playbackRegister = register })
+                model
+            , Cmd.none
+            )
+
+        SetListenRegister register ->
+            ( updateAudioSettings
+                (\audioSettings -> { audioSettings | listenRegister = register })
                 model
             , Cmd.none
             )
@@ -207,9 +232,9 @@ update msg model =
             , Cmd.none
             )
 
-        SetRegister register ->
+        SetResponsiveness responsiveness ->
             ( updateAudioSettings
-                (\audioSettings -> { audioSettings | register = register })
+                (\audioSettings -> { audioSettings | responsiveness = responsiveness })
                 model
             , Cmd.none
             )
@@ -220,6 +245,11 @@ update msg model =
                 -- , currentPitch = Nothing -- consider this.
                 model
                 |> resetPitchSpaceData
+            , Cmd.none
+            )
+
+        SetDetectedPitch pitchFrequency ->
+            ( { model | detectedPitch = pitchFrequency }
             , Cmd.none
             )
 
@@ -248,6 +278,7 @@ update msg model =
 
                     else
                         ( setPitchState PitchState.initialPitchState model
+                            |> resetPitchSpaceData
                         , Cmd.none
                         )
 
