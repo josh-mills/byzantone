@@ -4,7 +4,7 @@ module View.PitchSpace exposing (view)
 -}
 
 import Array
-import Byzantine.Accidental as Accidental
+import Byzantine.Accidental as Accidental exposing (Accidental)
 import Byzantine.ByzHtml.Accidental as Accidental
 import Byzantine.ByzHtml.Interval as ByzHtmlInterval
 import Byzantine.ByzHtml.Martyria as ByzHtmlMartyria
@@ -65,6 +65,7 @@ view pitchSpaceData audioSettings modeSettings pitchState detectedPitch =
         , viewIf (audioSettings.mode == AudioSettings.Listen)
             (viewPitchTracker pitchSpaceData audioSettings detectedPitch)
         , Html.Lazy.lazy3 viewPitches pitchSpaceData modeSettings pitchState
+        , viewAccidentalButtons pitchSpaceData.display pitchState.proposedAccidental
         ]
 
 
@@ -404,6 +405,9 @@ closestDegreeHelper pitchPositions detectedPitch lowerNeighborCandidate =
 -- PITCH COLUMN
 
 
+{-| We'll need additional control over width / height. The interval column and
+the pitch column should no longer be the same.
+-}
 viewPitches : PitchSpaceData -> ModeSettings -> PitchState -> Html Msg
 viewPitches pitchSpaceData modeSettings pitchState =
     let
@@ -727,3 +731,60 @@ pitchElementPosition target display pitchPositions positionWithinRange scalingFa
 
         ( _, Above ) ->
             0
+
+
+
+-- ACCIDENTAL BUTTONS
+
+
+{-| TODO: need some sort of "natural" button here.
+-}
+viewAccidentalButtons : Display -> Maybe Accidental -> Html Msg
+viewAccidentalButtons display maybeAccidental =
+    div
+        (if PitchSpaceData.isVertical display then
+            [ Styles.flexCol, class "justify-center me-4" ]
+
+         else
+            [ Styles.flexRow, class "justify-center me-4" ]
+        )
+        [ Html.fieldset
+            [ Styles.borderRounded
+            , if PitchSpaceData.isVertical display then
+                Styles.flexCol
+
+              else
+                Styles.flexRow
+            , class "justify-center"
+            , class "px-2 pb-1 mb-2 gap-2"
+            ]
+            (Html.legend [ class "px-1" ] [ Html.text "Accidental" ]
+                :: List.map (viewAccidentalButton maybeAccidental) Accidental.all
+            )
+        ]
+
+
+{-| TODO: new Msg
+-}
+viewAccidentalButton : Maybe Accidental -> Accidental -> Html Msg
+viewAccidentalButton proposedAccidental accidental =
+    let
+        isCurrent =
+            proposedAccidental == Just accidental
+    in
+    button
+        [ Styles.buttonClass
+        , class "text-3xl min-w-12 max-w-14"
+        , classList
+            [ ( "text-blue-700 border-2 border-blue-700", isCurrent )
+            , ( "border-2 border-transparent", not isCurrent )
+            ]
+        , onClick
+            (if isCurrent then
+                SelectProposedAccidental Nothing
+
+             else
+                SelectProposedAccidental (Just accidental)
+            )
+        ]
+        [ Accidental.view Accidental.InheritColor accidental ]

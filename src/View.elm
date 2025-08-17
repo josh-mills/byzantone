@@ -1,6 +1,6 @@
 module View exposing (view)
 
-import Byzantine.Accidental as Accidental exposing (Accidental)
+import Byzantine.Accidental as Accidental
 import Byzantine.ByzHtml.Accidental as Accidental
 import Byzantine.ByzHtml.Martyria as Martyria
 import Byzantine.Degree as Degree exposing (Degree(..))
@@ -381,7 +381,6 @@ viewControls audioSettings modeSettings pitchState detectedPitch =
                     [ lazy isonButton pitchState.ison
                     , lazy viewIson (PitchState.ison pitchState.ison)
                     , lazy viewCurrentPitch pitchState.currentPitch
-                    , lazy viewAccidentalButtons pitchState.proposedAccidental
                     , lazy gainInput audioSettings
                     ]
         ]
@@ -411,6 +410,7 @@ isonButton : IsonStatus -> Html Msg
 isonButton ison =
     button
         [ Styles.buttonClass
+        , class "my-2"
         , id "select-ison-button"
         , onClick
             (SetIson
@@ -474,47 +474,11 @@ viewCurrentPitch pitch =
         ]
 
 
-viewAccidentalButtons : Maybe Accidental -> Html Msg
-viewAccidentalButtons maybeAccidental =
-    Html.fieldset
-        [ Styles.borderRounded
-        , class "px-2 pb-1 mb-2"
-        , class "flex flex-row flex-wrap gap-2 mt-2"
-        ]
-        (Html.legend [ class "px-1" ] [ Html.text "Accidental" ]
-            :: List.map (viewAccidentalButton maybeAccidental) Accidental.all
-        )
-
-
-viewAccidentalButton : Maybe Accidental -> Accidental -> Html Msg
-viewAccidentalButton proposedAccidental accidental =
-    let
-        isCurrent =
-            proposedAccidental == Just accidental
-    in
-    button
-        [ Styles.buttonClass
-        , class "text-3xl min-w-12"
-        , classList
-            [ ( "text-blue-700 border-2 border-blue-700", isCurrent )
-            , ( "border-2 border-transparent", not isCurrent )
-            ]
-        , onClick
-            (if isCurrent then
-                SelectProposedAccidental Nothing
-
-             else
-                SelectProposedAccidental (Just accidental)
-            )
-        ]
-        [ Accidental.view Accidental.InheritColor accidental ]
-
-
 clearButton : Msg -> Html Msg
 clearButton msg =
     button
         [ Styles.buttonClass
-        , class "mx-2"
+        , class "my-2 mx-2"
         , onClick msg
         ]
         [ text "clear" ]
@@ -533,7 +497,7 @@ gainInput { gain } =
     div []
         [ button
             [ Styles.buttonClass
-            , class "w-24 mr-4"
+            , class "w-24 my-2 mr-4"
             , onClick msg
             ]
             [ text buttonText ]

@@ -161,11 +161,11 @@ borderRounded =
     class "border border-gray-300 rounded-md"
 
 
-{-| `class "bg-gray-200 my-2 py-1 px-3 rounded-md"`
+{-| `class "bg-gray-200 hover:bg-gray-300 py-1 px-3 rounded-md cursor-pointer"`
 -}
 buttonClass : Html.Attribute msg
 buttonClass =
-    class "bg-gray-200 hover:bg-gray-300 my-2 py-1 px-3 rounded-md cursor-pointer"
+    class "bg-gray-200 hover:bg-gray-300 py-1 px-3 rounded-md cursor-pointer"
 
 
 {-| `class "transition-all duration-800"`
