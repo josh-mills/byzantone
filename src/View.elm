@@ -104,8 +104,7 @@ chantEngineNode audioSettings scale currentPitch currentIson =
                 audioSettings.playbackRegister
                 scale
                 pitch
-                |> Frequency.unwrap
-                |> String.fromFloat
+                |> Frequency.preciseString
     in
     Html.node "chant-engine"
         [ audioSettings.gain

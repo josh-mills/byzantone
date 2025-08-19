@@ -1,5 +1,5 @@
 module Byzantine.Frequency exposing
-    ( Frequency(..), unwrap
+    ( Frequency(..), displayString, preciseString
     , PitchStandard(..), pitchStandardToString
     , frequency, toPitchPosition
     )
@@ -9,7 +9,7 @@ module Byzantine.Frequency exposing
 
 # Frequency
 
-@docs Frequency, unwrap
+@docs Frequency, displayString, preciseString
 
 
 # Pitch Standard
@@ -24,6 +24,7 @@ module Byzantine.Frequency exposing
 -}
 
 import Byzantine.Register as Register exposing (Register)
+import Round
 
 
 {-| Frequency represented in Hz
@@ -32,11 +33,18 @@ type Frequency
     = Frequency Float
 
 
-{-| Extract the float value from a Frequency type
+{-| Rounded to two decimal points with "Hz" label
 -}
-unwrap : Frequency -> Float
-unwrap (Frequency frequency_) =
-    frequency_
+displayString : Frequency -> String
+displayString (Frequency frequency_) =
+    Round.round 2 frequency_ ++ " Hz"
+
+
+{-| Unrounded toFloat (for audio processing)
+-}
+preciseString : Frequency -> String
+preciseString (Frequency frequency_) =
+    String.fromFloat frequency_
 
 
 {-| Pitch standard for frequency. Ni = 256 Hz is the default standard, but the
