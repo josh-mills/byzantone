@@ -18,7 +18,7 @@ module Model exposing
 -}
 
 import Byzantine.Degree exposing (Degree(..))
-import Byzantine.Pitch exposing (Frequency)
+import Byzantine.Frequency exposing (Frequency)
 import Byzantine.Scale exposing (Scale(..))
 import Model.AudioSettings as AudioSettings exposing (AudioSettings)
 import Model.LayoutData as LayoutData exposing (LayoutData)

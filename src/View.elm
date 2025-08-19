@@ -4,9 +4,11 @@ import Byzantine.Accidental as Accidental
 import Byzantine.ByzHtml.Accidental as Accidental
 import Byzantine.ByzHtml.Martyria as Martyria
 import Byzantine.Degree as Degree exposing (Degree(..))
+import Byzantine.Frequency as Frequency exposing (Frequency, PitchStandard(..))
 import Byzantine.IntervalCharacter exposing (..)
 import Byzantine.Martyria as Martyria
-import Byzantine.Pitch as Pitch exposing (Frequency, Pitch, PitchStandard(..), Register(..))
+import Byzantine.Pitch as Pitch exposing (Pitch)
+import Byzantine.Register as Register exposing (Register(..))
 import Byzantine.Scale as Scale exposing (Scale(..))
 import Copy
 import Html exposing (Html, button, datalist, div, h1, h2, input, main_, p, span, text)
@@ -98,11 +100,11 @@ chantEngineNode : AudioSettings -> Scale -> Maybe Pitch -> Maybe Pitch -> Html m
 chantEngineNode audioSettings scale currentPitch currentIson =
     let
         frequency pitch =
-            Pitch.frequency audioSettings.pitchStandard
+            Pitch.getPitchFrequency audioSettings.pitchStandard
                 audioSettings.playbackRegister
                 scale
                 pitch
-                |> Pitch.unwrapFrequency
+                |> Frequency.unwrap
                 |> String.fromFloat
     in
     Html.node "chant-engine"
@@ -234,7 +236,7 @@ layoutRadioConfig =
 
 registerRadioConfig : String -> (Register -> Msg) -> RadioFieldset.Config Register Msg
 registerRadioConfig legendText onSelect =
-    { itemToString = Pitch.registerToString
+    { itemToString = Register.toString
     , legendText = legendText
     , onSelect = onSelect
     , options = [ Treble, Bass ]
@@ -254,7 +256,7 @@ responsivenessRadioConfig =
 
 pitchStandardRadioConfig : RadioFieldset.Config PitchStandard Msg
 pitchStandardRadioConfig =
-    { itemToString = Pitch.pitchStandardToString
+    { itemToString = Frequency.pitchStandardToString
     , legendText = "Pitch Standard"
     , onSelect = SetPitchStandard
     , options = [ Ni256, Ke440 ]

@@ -9,9 +9,10 @@ import Byzantine.ByzHtml.Accidental as Accidental
 import Byzantine.ByzHtml.Interval as ByzHtmlInterval
 import Byzantine.ByzHtml.Martyria as ByzHtmlMartyria
 import Byzantine.Degree as Degree exposing (Degree)
+import Byzantine.Frequency as Frequency exposing (Frequency)
 import Byzantine.IntervalCharacter as IntervalCharacter
 import Byzantine.Martyria as Martyria
-import Byzantine.Pitch as Pitch exposing (Frequency, Interval, Pitch, PitchString)
+import Byzantine.Pitch as Pitch exposing (Interval, Pitch, PitchString)
 import Html exposing (Html, button, div, li, span, text)
 import Html.Attributes as Attr exposing (class, classList)
 import Html.Attributes.Extra as Attr exposing (attributeMaybe)
@@ -297,7 +298,7 @@ viewPitchIndicator : PitchSpaceData -> AudioSettings -> Frequency -> Html Msg
 viewPitchIndicator pitchSpaceData { pitchStandard, listenRegister, responsiveness } detectedPitch =
     let
         detectedPitchInMoria =
-            Pitch.frequencyToPitchPosition pitchStandard listenRegister detectedPitch
+            Frequency.toPitchPosition pitchStandard listenRegister detectedPitch
 
         position =
             case PitchSpaceData.displayToLayout pitchSpaceData.display of

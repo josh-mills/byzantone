@@ -13,7 +13,8 @@ module Model.AudioSettings exposing
 -}
 
 import Byzantine.Degree exposing (Degree(..))
-import Byzantine.Pitch exposing (PitchStandard(..), Register(..))
+import Byzantine.Frequency exposing (PitchStandard(..))
+import Byzantine.Register exposing (Register(..))
 
 
 type alias AudioSettings =

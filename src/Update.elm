@@ -4,7 +4,9 @@ import Array
 import Browser.Dom as Dom
 import Byzantine.Accidental as Accidental exposing (Accidental)
 import Byzantine.Degree as Degree exposing (Degree(..))
-import Byzantine.Pitch as Pitch exposing (Frequency(..), Pitch, PitchStandard, Register)
+import Byzantine.Frequency exposing (Frequency(..), PitchStandard)
+import Byzantine.Pitch as Pitch exposing (Pitch)
+import Byzantine.Register exposing (Register)
 import Byzantine.Scale exposing (Scale)
 import Maybe.Extra as Maybe
 import Model exposing (Modal, Model)
