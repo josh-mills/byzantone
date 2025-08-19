@@ -148,6 +148,9 @@ accidentalBuilder =
                     Flat2 :: accidentals |> next
 
                 Just Flat2 ->
+                    Natural :: accidentals |> next
+
+                Just Natural ->
                     Sharp2 :: accidentals |> next
 
                 Just Sharp2 ->
