@@ -14,7 +14,7 @@ import Byzantine.Martyria as Martyria
 import Byzantine.Pitch as Pitch exposing (Frequency, Interval, Pitch, PitchString)
 import Html exposing (Html, button, div, li, span, text)
 import Html.Attributes as Attr exposing (class, classList)
-import Html.Attributes.Extra as Attr
+import Html.Attributes.Extra as Attr exposing (attributeMaybe)
 import Html.Events exposing (onClick, onFocus, onMouseEnter, onMouseLeave)
 import Html.Extra exposing (viewIf, viewIfLazy, viewMaybe)
 import Html.Lazy
@@ -599,12 +599,13 @@ pitchButton pitchString isCurrentDegree display isonStatusIndicator pitchPositio
             canBeSelectedAsIson || Maybe.unwrap False Pitch.isInflected decodedPitchToSelect
     in
     button
-        [ onClick <|
-            if canBeSelectedAsIson then
-                SetIson (Maybe.unwrap NoIson Selected decodedDegree)
+        [ attributeMaybe (\degree -> onClick (PitchButtonClicked degree)) decodedDegree
 
-            else
-                SelectPitch decodedPitchToSelect Nothing
+        -- onClick <|
+        --     if canBeSelectedAsIson then
+        --         SetIson (Maybe.unwrap NoIson Selected decodedDegree)
+        --     else
+        --         SelectPitch decodedPitchToSelect Nothing
         , pitchButtonSizeClass
         , class "rounded-full hover:z-20 cursor-pointer relative pb-8"
         , Styles.transition
@@ -737,8 +738,6 @@ pitchElementPosition target display pitchPositions positionWithinRange scalingFa
 -- ACCIDENTAL BUTTONS
 
 
-{-| TODO: need some sort of "natural" button here.
--}
 viewAccidentalButtons : Display -> Maybe Accidental -> Html Msg
 viewAccidentalButtons display maybeAccidental =
     div
@@ -764,7 +763,11 @@ viewAccidentalButtons display maybeAccidental =
         ]
 
 
-{-| TODO: new Msg
+{-| TODO: new Msg.
+
+Also, there appear to be display variants we might be able to use
+that might look better in this context.
+
 -}
 viewAccidentalButton : Maybe Accidental -> Accidental -> Html Msg
 viewAccidentalButton proposedAccidental accidental =
