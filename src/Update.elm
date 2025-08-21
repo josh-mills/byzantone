@@ -120,8 +120,8 @@ update msg model =
                 ( newIson, newCurrentDegree, newAppliedAccidentals ) =
                     case
                         ( model.pitchState.ison
-                        , isCurrentDegree
                         , model.pitchState.proposedAccidental
+                        , isCurrentDegree
                         )
                     of
                         ( SelectingIson _, _, _ ) ->
@@ -132,9 +132,30 @@ update msg model =
                                 model.pitchState.appliedAccidentals
                             )
 
-                        ( ison, _, Just accidental ) ->
+                        ( ison, Just Accidental.Natural, _ ) ->
                             ( ison
                             , model.pitchState.currentDegree
+                            , DegreeDataDict.set degree
+                                Nothing
+                                model.pitchState.appliedAccidentals
+                            )
+
+                        ( ison, Just accidental, True ) ->
+                            ( ison
+                            , model.pitchState.currentDegree
+                            , DegreeDataDict.set degree
+                                (if Pitch.isValidInflection model.modeSettings.scale accidental degree then
+                                    Just accidental
+
+                                 else
+                                    Nothing
+                                )
+                                model.pitchState.appliedAccidentals
+                            )
+
+                        ( ison, Just accidental, False ) ->
+                            ( ison
+                            , Just degree
                             , DegreeDataDict.set degree
                                 (if Pitch.isValidInflection model.modeSettings.scale accidental degree then
                                     Just accidental
@@ -154,14 +175,31 @@ update msg model =
                                 Just degree
                             , model.pitchState.appliedAccidentals
                             )
+
+                newPitch =
+                    Pitch.from
+                        model.modeSettings.scale
+                        (DegreeDataDict.get degree newAppliedAccidentals)
+                        degree
+                        |> Just
             in
             -- TODO: implement all logic here! Set ison, set pitch, cancel pitch.
             ( updatePitchState
                 (\pitchState ->
                     { pitchState
                         | currentDegree = newCurrentDegree
+                        , currentPitch =
+                            if
+                                (pitchState.ison == newIson)
+                                    && (pitchState.currentPitch /= newPitch)
+                            then
+                                newPitch
+
+                            else
+                                Nothing
                         , ison = newIson
                         , appliedAccidentals = newAppliedAccidentals
+                        , proposedAccidental = Nothing
                     }
                 )
                 model
