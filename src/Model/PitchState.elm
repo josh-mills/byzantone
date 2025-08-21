@@ -14,22 +14,27 @@ module Model.PitchState exposing
 import Byzantine.Accidental exposing (Accidental)
 import Byzantine.Degree exposing (Degree)
 import Byzantine.Pitch as Pitch exposing (Pitch)
+import Model.DegreeDataDict as DegreeDataDict exposing (DegreeDataDict)
 import Movement exposing (Movement)
 
 
 type alias PitchState =
-    { currentPitch : Maybe Pitch
+    { currentDegree : Maybe Degree
+    , currentPitch : Maybe Pitch
     , ison : IsonStatus
     , proposedAccidental : Maybe Accidental
+    , appliedAccidentals : DegreeDataDict (Maybe Accidental)
     , proposedMovement : Movement
     }
 
 
 initialPitchState : PitchState
 initialPitchState =
-    { currentPitch = Nothing
+    { currentDegree = Nothing
+    , currentPitch = Nothing
     , ison = NoIson
     , proposedAccidental = Nothing
+    , appliedAccidentals = DegreeDataDict.init (always Nothing)
     , proposedMovement = Movement.None
     }
 

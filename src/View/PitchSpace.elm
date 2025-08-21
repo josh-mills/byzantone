@@ -4,17 +4,18 @@ module View.PitchSpace exposing (view)
 -}
 
 import Array
-import Byzantine.Accidental as Accidental
+import Byzantine.Accidental as Accidental exposing (Accidental)
 import Byzantine.ByzHtml.Accidental as Accidental
 import Byzantine.ByzHtml.Interval as ByzHtmlInterval
 import Byzantine.ByzHtml.Martyria as ByzHtmlMartyria
 import Byzantine.Degree as Degree exposing (Degree)
+import Byzantine.Frequency as Frequency exposing (Frequency)
 import Byzantine.IntervalCharacter as IntervalCharacter
 import Byzantine.Martyria as Martyria
-import Byzantine.Pitch as Pitch exposing (Frequency, Interval, Pitch, PitchString)
+import Byzantine.Pitch as Pitch exposing (Interval, Pitch, PitchString)
 import Html exposing (Html, button, div, li, span, text)
 import Html.Attributes as Attr exposing (class, classList)
-import Html.Attributes.Extra as Attr
+import Html.Attributes.Extra as Attr exposing (attributeMaybe)
 import Html.Events exposing (onClick, onFocus, onMouseEnter, onMouseLeave)
 import Html.Extra exposing (viewIf, viewIfLazy, viewMaybe)
 import Html.Lazy
@@ -65,6 +66,7 @@ view pitchSpaceData audioSettings modeSettings pitchState detectedPitch =
         , viewIf (audioSettings.mode == AudioSettings.Listen)
             (viewPitchTracker pitchSpaceData audioSettings detectedPitch)
         , Html.Lazy.lazy3 viewPitches pitchSpaceData modeSettings pitchState
+        , viewAccidentalButtons pitchSpaceData.display pitchState.proposedAccidental
         ]
 
 
@@ -296,7 +298,7 @@ viewPitchIndicator : PitchSpaceData -> AudioSettings -> Frequency -> Html Msg
 viewPitchIndicator pitchSpaceData { pitchStandard, listenRegister, responsiveness } detectedPitch =
     let
         detectedPitchInMoria =
-            Pitch.frequencyToPitchPosition pitchStandard listenRegister detectedPitch
+            Frequency.toPitchPosition pitchStandard listenRegister detectedPitch
 
         position =
             case PitchSpaceData.displayToLayout pitchSpaceData.display of
@@ -404,6 +406,9 @@ closestDegreeHelper pitchPositions detectedPitch lowerNeighborCandidate =
 -- PITCH COLUMN
 
 
+{-| We'll need additional control over width / height. The interval column and
+the pitch column should no longer be the same.
+-}
 viewPitches : PitchSpaceData -> ModeSettings -> PitchState -> Html Msg
 viewPitches pitchSpaceData modeSettings pitchState =
     let
@@ -595,12 +600,13 @@ pitchButton pitchString isCurrentDegree display isonStatusIndicator pitchPositio
             canBeSelectedAsIson || Maybe.unwrap False Pitch.isInflected decodedPitchToSelect
     in
     button
-        [ onClick <|
-            if canBeSelectedAsIson then
-                SetIson (Maybe.unwrap NoIson Selected decodedDegree)
+        [ attributeMaybe (\degree -> onClick (PitchButtonClicked degree)) decodedDegree
 
-            else
-                SelectPitch decodedPitchToSelect Nothing
+        -- onClick <|
+        --     if canBeSelectedAsIson then
+        --         SetIson (Maybe.unwrap NoIson Selected decodedDegree)
+        --     else
+        --         SelectPitch decodedPitchToSelect Nothing
         , pitchButtonSizeClass
         , class "rounded-full hover:z-20 cursor-pointer relative pb-8"
         , Styles.transition
@@ -727,3 +733,62 @@ pitchElementPosition target display pitchPositions positionWithinRange scalingFa
 
         ( _, Above ) ->
             0
+
+
+
+-- ACCIDENTAL BUTTONS
+
+
+viewAccidentalButtons : Display -> Maybe Accidental -> Html Msg
+viewAccidentalButtons display maybeAccidental =
+    div
+        (if PitchSpaceData.isVertical display then
+            [ Styles.flexCol, class "justify-center me-4" ]
+
+         else
+            [ Styles.flexRow, class "justify-center me-4" ]
+        )
+        [ Html.fieldset
+            [ Styles.borderRounded
+            , if PitchSpaceData.isVertical display then
+                Styles.flexCol
+
+              else
+                Styles.flexRow
+            , class "justify-center"
+            , class "px-2 pb-1 mb-2 gap-2"
+            ]
+            (Html.legend [ class "px-1" ] [ Html.text "Accidental" ]
+                :: List.map (viewAccidentalButton maybeAccidental) Accidental.all
+            )
+        ]
+
+
+{-| TODO: new Msg.
+
+Also, there appear to be display variants we might be able to use
+that might look better in this context.
+
+-}
+viewAccidentalButton : Maybe Accidental -> Accidental -> Html Msg
+viewAccidentalButton proposedAccidental accidental =
+    let
+        isCurrent =
+            proposedAccidental == Just accidental
+    in
+    button
+        [ Styles.buttonClass
+        , class "text-3xl min-w-12 max-w-14"
+        , classList
+            [ ( "text-blue-700 border-2 border-blue-700", isCurrent )
+            , ( "border-2 border-transparent", not isCurrent )
+            ]
+        , onClick
+            (if isCurrent then
+                SelectProposedAccidental Nothing
+
+             else
+                SelectProposedAccidental (Just accidental)
+            )
+        ]
+        [ Accidental.view Accidental.InheritColor accidental ]

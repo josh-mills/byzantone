@@ -3,7 +3,7 @@ module Main exposing (main)
 import Browser
 import Browser.Dom as Dom
 import Browser.Events
-import Byzantine.Pitch exposing (Frequency(..))
+import Byzantine.Frequency exposing (Frequency(..))
 import Model exposing (Model)
 import Ports
 import Task

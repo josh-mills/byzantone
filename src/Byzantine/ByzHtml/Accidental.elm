@@ -10,6 +10,9 @@ are not currently encoded here.
 
 <https://danielgarthur.github.io/byzhtml/#/component-list-neumes>
 
+TODO: consider how to represent Natural, since this emerges from a UI concern
+rather than from a notational one.
+
 -}
 view : Color -> Accidental -> Html msg
 view color accidental =
@@ -23,6 +26,9 @@ view color accidental =
                     [ class "text-red-700" ]
     in
     case accidental of
+        Natural ->
+            Html.text "-"
+
         Sharp2 ->
             node "x-diesis-2" attr []
 

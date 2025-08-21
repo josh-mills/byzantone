@@ -2,7 +2,8 @@ module Byzantine.Accidental exposing (Accidental(..), all, fromString, lower, mo
 
 
 type Accidental
-    = Sharp2
+    = Natural
+    | Sharp2
     | Sharp4
     | Sharp6
     | Sharp8
@@ -17,12 +18,15 @@ type Accidental
 -}
 all : List Accidental
 all =
-    [ Flat8, Flat6, Flat4, Flat2, Sharp2, Sharp4, Sharp6, Sharp8 ]
+    [ Flat8, Flat6, Flat4, Flat2, Natural, Sharp2, Sharp4, Sharp6, Sharp8 ]
 
 
 raise : Accidental -> Maybe Accidental
 raise accidental =
     case accidental of
+        Natural ->
+            Just Sharp2
+
         Sharp2 ->
             Just Sharp4
 
@@ -36,7 +40,7 @@ raise accidental =
             Nothing
 
         Flat2 ->
-            Nothing
+            Just Natural
 
         Flat4 ->
             Just Flat2
@@ -51,8 +55,11 @@ raise accidental =
 lower : Accidental -> Maybe Accidental
 lower accidental =
     case accidental of
+        Natural ->
+            Just Flat2
+
         Sharp2 ->
-            Nothing
+            Just Natural
 
         Sharp4 ->
             Just Sharp2
@@ -79,6 +86,9 @@ lower accidental =
 moriaAdjustment : Accidental -> Int
 moriaAdjustment accidental =
     case accidental of
+        Natural ->
+            0
+
         Sharp2 ->
             2
 
@@ -110,7 +120,10 @@ toString accidental =
         val =
             moriaAdjustment accidental
     in
-    if val > 0 then
+    if val == 0 then
+        "0"
+
+    else if val > 0 then
         "+" ++ String.fromInt val
 
     else
@@ -123,6 +136,9 @@ format "+N" or "-N" where N is a valid moria adjustment (2, 4, 6, or 8).
 fromString : String -> Result String Accidental
 fromString str =
     case str of
+        "0" ->
+            Ok Natural
+
         "+2" ->
             Ok Sharp2
 

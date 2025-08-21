@@ -116,6 +116,9 @@ type alias PitchSpaceData =
 primitives or singletons in here, we will need to construct targeted updates
 that preserve referential equality for values that don't change. Targeted
 updates wouldn't be a bad idea for performance, anyway.
+
+TODO: need to take the appliedAccidentals into account.
+
 -}
 init : LayoutData -> ModeSettings -> PitchState -> PitchSpaceData
 init layoutData modeSettings pitchState =
@@ -577,3 +580,20 @@ canBeSelectedAsIson indicator =
 
         _ ->
             False
+
+
+
+-- PITCH BUTTON CLICKS
+
+
+{-| Okay, new strategy. Rather than passing in the information needed to
+determine the specific Msg to be triggered by clicking on a pitch button,
+instead, just pass in whether or not the button can be clicked, or whether it is
+highlighted (which also means it can be clicked). The determination of what
+updates to the model are needed should happen entirely within the update
+function.
+-}
+type ClickEligibility
+    = Clickable
+    | Disabled
+    | Highlighted

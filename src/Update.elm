@@ -4,11 +4,14 @@ import Array
 import Browser.Dom as Dom
 import Byzantine.Accidental as Accidental exposing (Accidental)
 import Byzantine.Degree as Degree exposing (Degree(..))
-import Byzantine.Pitch as Pitch exposing (Frequency(..), Pitch, PitchStandard, Register)
+import Byzantine.Frequency exposing (Frequency(..), PitchStandard)
+import Byzantine.Pitch as Pitch exposing (Pitch)
+import Byzantine.Register exposing (Register)
 import Byzantine.Scale exposing (Scale)
 import Maybe.Extra as Maybe
 import Model exposing (Modal, Model)
 import Model.AudioSettings as AudioSettings exposing (AudioSettings)
+import Model.DegreeDataDict as DegreeDataDict
 import Model.LayoutData exposing (LayoutData, LayoutSelection)
 import Model.ModeSettings exposing (ModeSettings)
 import Model.PitchSpaceData as PitchSpaceData
@@ -19,12 +22,14 @@ import Task
 
 
 type Msg
-    = DomResult (Result Dom.Error ())
+    = ApplyAccidental Degree (Maybe Accidental)
+    | DomResult (Result Dom.Error ())
     | GotPitchSpaceElement (Result Dom.Error Dom.Element)
     | GotViewport Dom.Viewport
     | ViewportResize Int Int
     | Keydown String
     | NoOp
+    | PitchButtonClicked Degree
     | SelectModal Modal
     | SelectPitch (Maybe Pitch) (Maybe Movement)
     | SelectProposedAccidental (Maybe Accidental)
@@ -49,6 +54,28 @@ update msg model =
     case msg of
         NoOp ->
             ( model, Task.perform GotViewport Dom.getViewport )
+
+        ApplyAccidental degree maybeAccidental ->
+            -- TODO: validate the application first as a double-check,
+            -- in isolation first and then with respect to other inflections.
+            let
+                accidentalIsValid =
+                    True
+            in
+            ( updatePitchState
+                (\pitchState ->
+                    { pitchState
+                        | appliedAccidentals =
+                            DegreeDataDict.set degree
+                                maybeAccidental
+                                pitchState.appliedAccidentals
+                        , proposedAccidental = Nothing
+                    }
+                )
+                model
+                |> resetPitchSpaceData
+            , Cmd.none
+            )
 
         DomResult _ ->
             -- just for dev purposes
@@ -81,6 +108,103 @@ update msg model =
                 [ Task.perform GotViewport Dom.getViewport
                 , Task.perform GotViewport Dom.getViewport
                 ]
+            )
+
+        PitchButtonClicked degree ->
+            let
+                isCurrentDegree =
+                    Just degree == model.pitchState.currentDegree
+
+                -- depending on how this goes, we might want to pull this whole thing
+                -- into the PitchState module.
+                ( newIson, newCurrentDegree, newAppliedAccidentals ) =
+                    case
+                        ( model.pitchState.ison
+                        , model.pitchState.proposedAccidental
+                        , isCurrentDegree
+                        )
+                    of
+                        ( SelectingIson _, _, _ ) ->
+                            ( Selected degree
+                            , model.pitchState.currentDegree
+                            , DegreeDataDict.set degree
+                                Nothing
+                                model.pitchState.appliedAccidentals
+                            )
+
+                        ( ison, Just Accidental.Natural, _ ) ->
+                            ( ison
+                            , model.pitchState.currentDegree
+                            , DegreeDataDict.set degree
+                                Nothing
+                                model.pitchState.appliedAccidentals
+                            )
+
+                        ( ison, Just accidental, True ) ->
+                            ( ison
+                            , model.pitchState.currentDegree
+                            , DegreeDataDict.set degree
+                                (if Pitch.isValidInflection model.modeSettings.scale accidental degree then
+                                    Just accidental
+
+                                 else
+                                    Nothing
+                                )
+                                model.pitchState.appliedAccidentals
+                            )
+
+                        ( ison, Just accidental, False ) ->
+                            ( ison
+                            , Just degree
+                            , DegreeDataDict.set degree
+                                (if Pitch.isValidInflection model.modeSettings.scale accidental degree then
+                                    Just accidental
+
+                                 else
+                                    Nothing
+                                )
+                                model.pitchState.appliedAccidentals
+                            )
+
+                        _ ->
+                            ( model.pitchState.ison
+                            , if model.pitchState.currentDegree == Just degree then
+                                Nothing
+
+                              else
+                                Just degree
+                            , model.pitchState.appliedAccidentals
+                            )
+
+                newPitch =
+                    Pitch.from
+                        model.modeSettings.scale
+                        (DegreeDataDict.get degree newAppliedAccidentals)
+                        degree
+                        |> Just
+            in
+            -- TODO: implement all logic here! Set ison, set pitch, cancel pitch.
+            ( updatePitchState
+                (\pitchState ->
+                    { pitchState
+                        | currentDegree = newCurrentDegree
+                        , currentPitch =
+                            if
+                                (pitchState.ison == newIson)
+                                    && (pitchState.currentPitch /= newPitch)
+                            then
+                                newPitch
+
+                            else
+                                Nothing
+                        , ison = newIson
+                        , appliedAccidentals = newAppliedAccidentals
+                        , proposedAccidental = Nothing
+                    }
+                )
+                model
+                |> resetPitchSpaceData
+            , Cmd.none
             )
 
         SelectModal modal ->
