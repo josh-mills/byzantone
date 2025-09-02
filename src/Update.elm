@@ -11,7 +11,7 @@ import Byzantine.Scale exposing (Scale)
 import Maybe.Extra as Maybe
 import Model exposing (Modal, Model)
 import Model.AudioSettings as AudioSettings exposing (AudioSettings)
-import Model.DegreeDataDict as DegreeDataDict
+import Model.DegreeDataDict as DegreeDataDict exposing (DegreeDataDict)
 import Model.LayoutData exposing (LayoutData, LayoutSelection)
 import Model.ModeSettings exposing (ModeSettings)
 import Model.PitchSpaceData as PitchSpaceData
@@ -164,6 +164,14 @@ update msg model =
                 (\pitchState ->
                     { pitchState
                         | currentDegree = Maybe.map Pitch.unwrapDegree maybePitch
+                        , appliedAccidentals =
+                            Maybe.unwrap pitchState.appliedAccidentals
+                                (\newPitch ->
+                                    DegreeDataDict.set (Pitch.unwrapDegree newPitch)
+                                        (Pitch.unwrapAccidental newPitch)
+                                        pitchState.appliedAccidentals
+                                )
+                                maybePitch
                         , proposedAccidental = Nothing
                         , proposedMovement =
                             if Maybe.isJust maybePitch then
@@ -535,7 +543,16 @@ updatePitchState f model =
     { model | pitchState = f model.pitchState }
 
 
-{-| Still to implement:
+{-| Clicking the pitch button has two different core behaviors, depending on the
+audio mode.
+
+If in Play mode, this is the main means of interacting with the playback engine:
+it will select or deselect the pitch, apply or de-apply accidentals, or set the
+ison.
+
+If in Listen mode, this is used only for setting the accidental.
+
+Still to implement:
 
   - applied accidental verification.
 
@@ -630,13 +647,7 @@ processPitchButtonClick model degree =
                                      else
                                         Nothing
                                     )
-                                |> (case model.pitchState.currentDegree of
-                                        Just currentDegree ->
-                                            DegreeDataDict.set currentDegree Nothing
-
-                                        Nothing ->
-                                            identity
-                                   )
+                                |> clearCurrentDegreeAccidental model.pitchState.currentDegree
                             )
 
                         _ ->
@@ -646,15 +657,10 @@ processPitchButtonClick model degree =
 
                               else
                                 Just degree
-                            , model.pitchState.appliedAccidentals
+                            , clearCurrentDegreeAccidental
+                                model.pitchState.currentDegree
+                                model.pitchState.appliedAccidentals
                             )
-
-                newPitch =
-                    Pitch.from
-                        model.modeSettings.scale
-                        (DegreeDataDict.get degree newAppliedAccidentals)
-                        degree
-                        |> Just
             in
             -- TODO: implement all logic here! Set ison, set pitch, cancel pitch.
             updatePitchState
@@ -668,6 +674,18 @@ processPitchButtonClick model degree =
                 )
                 model
                 |> resetPitchSpaceData
+
+
+clearCurrentDegreeAccidental : Maybe Degree -> DegreeDataDict (Maybe Accidental) -> DegreeDataDict (Maybe Accidental)
+clearCurrentDegreeAccidental currentDegree appliedAccidentals =
+    case currentDegree of
+        Just degree ->
+            DegreeDataDict.set degree
+                Nothing
+                appliedAccidentals
+
+        Nothing ->
+            appliedAccidentals
 
 
 
@@ -687,6 +705,9 @@ moveAndFocus model interval =
             { pitchState
                 | currentDegree = Maybe.map Pitch.unwrapDegree pitch
                 , proposedAccidental = Nothing
+                , appliedAccidentals =
+                    clearCurrentDegreeAccidental pitchState.currentDegree
+                        pitchState.appliedAccidentals
             }
         )
         model
