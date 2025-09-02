@@ -117,7 +117,9 @@ primitives or singletons in here, we will need to construct targeted updates
 that preserve referential equality for values that don't change. Targeted
 updates wouldn't be a bad idea for performance, anyway.
 
-TODO: need to take the appliedAccidentals into account.
+TODO: add a `pitches` dict as well that caches pitches that take into account
+the proposed movement, all applied accidentals, and fthores when we get there.
+Possibly functionally equivalent with the current pitchToSelect field.
 
 -}
 init : LayoutData -> ModeSettings -> PitchState -> PitchSpaceData
@@ -182,7 +184,7 @@ consider additional limits as well.)
 -}
 calculateVisibleRange : ModeSettings -> PitchState -> { start : Pitch, end : Pitch }
 calculateVisibleRange modeSettings pitchState =
-    case pitchState.currentPitch of
+    case PitchState.currentPitch modeSettings.scale pitchState of
         Just currentPitch ->
             let
                 currentDegree =
@@ -224,6 +226,9 @@ pitchButtonSelectPitch { scale } pitchState degree =
         naturalPitch =
             Pitch.natural degree
 
+        currentPitch =
+            PitchState.currentPitch scale pitchState
+
         -- pitch with proposed accidental, if there is a proposed accidental,
         -- and if this is valid in the scale
         pitchWithProposedAccidental =
@@ -232,11 +237,11 @@ pitchButtonSelectPitch { scale } pitchState degree =
                 |> Maybe.andThen Result.toMaybe
 
         proposedInflectedPitchIsCurrentPitch =
-            pitchWithProposedAccidental == pitchState.currentPitch
+            pitchWithProposedAccidental == currentPitch
 
         proposedPitchIsCurrentNaturalPitch =
             (pitchState.proposedAccidental == Nothing)
-                && (pitchState.currentPitch == Just naturalPitch)
+                && (currentPitch == Just naturalPitch)
     in
     if proposedInflectedPitchIsCurrentPitch then
         Just naturalPitch
@@ -250,9 +255,9 @@ pitchButtonSelectPitch { scale } pitchState degree =
             -- proposed pitch be valid?
             inflectedPitchWithResultingMovementWouldBeValid =
                 pitchWithProposedAccidental
-                    |> Maybe.map2 (Pitch.getInterval scale) pitchState.currentPitch
-                    |> Maybe.map (Movement.ofInterval pitchState.currentPitch)
-                    |> Maybe.map2 (Movement.isValid scale) pitchState.currentPitch
+                    |> Maybe.map2 (Pitch.getInterval scale) currentPitch
+                    |> Maybe.map (Movement.ofInterval currentPitch)
+                    |> Maybe.map2 (Movement.isValid scale) currentPitch
         in
         case inflectedPitchWithResultingMovementWouldBeValid of
             Just True ->

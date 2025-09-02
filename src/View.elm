@@ -46,7 +46,7 @@ view model =
                 lazy4 chantEngineNode
                     model.audioSettings
                     model.modeSettings.scale
-                    model.pitchState.currentPitch
+                    (PitchState.currentPitch model.modeSettings.scale model.pitchState)
                     (PitchState.ison model.pitchState.ison)
             )
         , lazy2 backdrop model.menuOpen model.modal
@@ -381,7 +381,7 @@ viewControls audioSettings modeSettings pitchState detectedPitch =
                 div []
                     [ lazy isonButton pitchState.ison
                     , lazy viewIson (PitchState.ison pitchState.ison)
-                    , lazy viewCurrentPitch pitchState.currentPitch
+                    , lazy viewCurrentPitch (PitchState.currentPitch modeSettings.scale pitchState)
                     , lazy gainInput audioSettings
                     ]
         ]

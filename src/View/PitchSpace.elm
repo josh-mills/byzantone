@@ -13,6 +13,7 @@ import Byzantine.Frequency as Frequency exposing (Frequency)
 import Byzantine.IntervalCharacter as IntervalCharacter
 import Byzantine.Martyria as Martyria
 import Byzantine.Pitch as Pitch exposing (Interval, Pitch, PitchString)
+import Byzantine.Scale exposing (Scale)
 import Html exposing (Html, button, div, li, span, text)
 import Html.Attributes as Attr exposing (class, classList)
 import Html.Attributes.Extra as Attr exposing (attributeMaybe)
@@ -33,7 +34,7 @@ import Model.PitchSpaceData as PitchSpaceData
         , PositionWithinVisibleRange(..)
         , calculateVisibleRange
         )
-import Model.PitchState exposing (IsonStatus(..), PitchState)
+import Model.PitchState as PitchState exposing (IsonStatus(..), PitchState)
 import Movement exposing (Movement(..))
 import Result.Extra
 import Round
@@ -96,7 +97,7 @@ viewIntervals : PitchSpaceData -> ModeSettings -> PitchState -> Html Msg
 viewIntervals pitchSpaceData modeSettings pitchState =
     Html.ol (onMouseLeave (SelectProposedMovement None) :: listAttributes pitchSpaceData.display)
         (List.map
-            (viewInterval pitchSpaceData.display pitchSpaceData.scalingFactor pitchState)
+            (viewInterval pitchSpaceData.display pitchSpaceData.scalingFactor modeSettings.scale pitchState)
             (intervalsWithVisibility modeSettings pitchState (calculateVisibleRange modeSettings pitchState))
         )
 
@@ -144,13 +145,14 @@ intervalsWithVisibility modeSettings pitchState visibleRange =
             )
         )
         (Pitch.intervals modeSettings.scale
-            pitchState.currentPitch
+            (PitchState.currentPitch modeSettings.scale pitchState)
+            -- TODO: we'll need the same logic for this as for the pitch positions
             (Movement.unwrapTargetPitch pitchState.proposedMovement)
         )
 
 
-viewInterval : Display -> Float -> PitchState -> ( Interval, PositionWithinVisibleRange ) -> Html Msg
-viewInterval display scalingFactor pitchState ( interval, position ) =
+viewInterval : Display -> Float -> Scale -> PitchState -> ( Interval, PositionWithinVisibleRange ) -> Html Msg
+viewInterval display scalingFactor scale pitchState ( interval, position ) =
     let
         -- _ =
         --     Debug.log "in viewInterval" interval
@@ -165,8 +167,11 @@ viewInterval display scalingFactor pitchState ( interval, position ) =
                 _ ->
                     toFloat interval.moria * scalingFactor
 
+        currentPitch =
+            PitchState.currentPitch scale pitchState
+
         movement =
-            Movement.ofInterval pitchState.currentPitch interval
+            Movement.ofInterval currentPitch interval
 
         moria =
             span [ class "text-gray-600" ]
@@ -179,9 +184,9 @@ viewInterval display scalingFactor pitchState ( interval, position ) =
             [ class "w-full content-center cursor-pointer"
             , classList
                 [ ( "bg-slate-200"
-                  , shouldHighlightInterval pitchState interval
+                  , shouldHighlightInterval currentPitch pitchState interval
                   )
-                , ( "hover:bg-slate-200", Maybe.isJust pitchState.currentPitch )
+                , ( "hover:bg-slate-200", Maybe.isJust pitchState.currentDegree )
                 ]
             , onFocus (SelectProposedMovement movement)
             , onMouseEnter (SelectProposedMovement movement)
@@ -214,7 +219,7 @@ viewInterval display scalingFactor pitchState ( interval, position ) =
                     (onClick (SelectPitch (Just pitch) Nothing {- (Maybe.map DescendTo (Degree.step pitch -1)) -})
                         :: buttonAttrs
                     )
-                    [ viewIntervalCharacter (Maybe.map Pitch.unwrapDegree pitchState.currentPitch) pitch
+                    [ viewIntervalCharacter pitchState.currentDegree pitch
                     , moria
                     ]
 
@@ -223,7 +228,7 @@ viewInterval display scalingFactor pitchState ( interval, position ) =
                     (onClick (SelectPitch (Just pitch) Nothing {- (Maybe.map AscendTo (Degree.step pitch 1)) -})
                         :: buttonAttrs
                     )
-                    [ viewIntervalCharacter (Maybe.map Pitch.unwrapDegree pitchState.currentPitch) pitch
+                    [ viewIntervalCharacter pitchState.currentDegree pitch
                     , moria
                     ]
 
@@ -248,8 +253,8 @@ viewIntervalCharacter currentPitch toPitch =
             (ByzHtmlInterval.view >> List.singleton >> span [ class "me-2" ])
 
 
-shouldHighlightInterval : PitchState -> Interval -> Bool
-shouldHighlightInterval { currentPitch, proposedMovement } interval =
+shouldHighlightInterval : Maybe Pitch -> PitchState -> Interval -> Bool
+shouldHighlightInterval currentPitch { proposedMovement } interval =
     Maybe.unwrap False
         (\current ->
             let
@@ -414,15 +419,18 @@ viewPitches pitchSpaceData modeSettings pitchState =
     let
         proposedMovementTo =
             Movement.unwrapTargetPitch pitchState.proposedMovement
+
+        currentPitch =
+            PitchState.currentPitch modeSettings.scale pitchState
     in
     Html.ol (listAttributes pitchSpaceData.display)
         (List.map
             (\degree ->
                 Html.Lazy.lazy8 viewPitch
-                    (Pitch.wrapDegree pitchState.currentPitch proposedMovementTo degree
+                    (Pitch.wrapDegree currentPitch proposedMovementTo degree
                         |> Pitch.encode modeSettings.scale
                     )
-                    (Just degree == Maybe.map Pitch.unwrapDegree pitchState.currentPitch)
+                    (Just degree == Maybe.map Pitch.unwrapDegree currentPitch)
                     pitchSpaceData.display
                     (DegreeDataDict.get degree pitchSpaceData.isonIndicators)
                     (PitchSpaceData.encodePitchPositionContext pitchSpaceData degree)
@@ -438,6 +446,9 @@ viewPitches pitchSpaceData modeSettings pitchState =
 
 {-| Renders a single pitch element in the pitch space. Prepared for lazy
 rendering.
+
+Is the pitchToSelect still needed?
+
 -}
 viewPitch :
     PitchString

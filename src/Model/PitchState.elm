@@ -1,6 +1,7 @@
 module Model.PitchState exposing
     ( PitchState, initialPitchState
     , IsonStatus(..), ison
+    , currentPitch
     )
 
 {-| User-controlled pitch state.
@@ -9,18 +10,20 @@ module Model.PitchState exposing
 
 @docs IsonStatus, ison
 
+@docs currentPitch
+
 -}
 
 import Byzantine.Accidental exposing (Accidental)
 import Byzantine.Degree exposing (Degree)
 import Byzantine.Pitch as Pitch exposing (Pitch)
+import Byzantine.Scale exposing (Scale)
 import Model.DegreeDataDict as DegreeDataDict exposing (DegreeDataDict)
 import Movement exposing (Movement)
 
 
 type alias PitchState =
     { currentDegree : Maybe Degree
-    , currentPitch : Maybe Pitch
     , ison : IsonStatus
     , proposedAccidental : Maybe Accidental
     , appliedAccidentals : DegreeDataDict (Maybe Accidental)
@@ -31,7 +34,6 @@ type alias PitchState =
 initialPitchState : PitchState
 initialPitchState =
     { currentDegree = Nothing
-    , currentPitch = Nothing
     , ison = NoIson
     , proposedAccidental = Nothing
     , appliedAccidentals = DegreeDataDict.init (always Nothing)
@@ -62,3 +64,17 @@ ison isonStatus =
 
         Selected degree ->
             Just (Pitch.natural degree)
+
+
+{-| Evaluate the current pitch as a function of the current degree with
+reference to the applied accidentals.
+-}
+currentPitch : Scale -> PitchState -> Maybe Pitch
+currentPitch scale pitchState =
+    Maybe.map
+        (\degree ->
+            Pitch.from scale
+                (DegreeDataDict.get degree pitchState.appliedAccidentals)
+                degree
+        )
+        pitchState.currentDegree

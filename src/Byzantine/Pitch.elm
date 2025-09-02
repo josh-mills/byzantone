@@ -184,6 +184,9 @@ inflected scale accidental degree =
 {-| Wrap a degree as a Natural pitch, unless the current pitch or proposed
 movement happens to be inflected and the same degree. In that case, this will
 evaluate to a pitch wrapping the inflected degree.
+
+TODO: this is probably best deprecated.
+
 -}
 wrapDegree : Maybe Pitch -> Maybe Pitch -> Degree -> Pitch
 wrapDegree currentPitch proposedMovementTo degree =
