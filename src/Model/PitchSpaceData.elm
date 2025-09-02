@@ -130,14 +130,41 @@ init layoutData modeSettings pitchState =
             { startDegreeIndex = Degree.indexOf (Pitch.unwrapDegree visibleRange.start)
             , endDegreeIndex = Degree.indexOf (Pitch.unwrapDegree visibleRange.end)
             }
+
+        proposedMovementTo =
+            Movement.unwrapTargetPitch pitchState.proposedMovement
+                |> Maybe.andThen
+                    (\pitch ->
+                        Pitch.unwrapAccidental pitch
+                            |> Maybe.map
+                                (\accidental ->
+                                    ( Pitch.unwrapDegree pitch, accidental )
+                                )
+                    )
+
+        pitchWithAccidental degree =
+            case proposedMovementTo of
+                Just ( movementToDegree, withAccidental ) ->
+                    if degree == movementToDegree then
+                        Pitch.from modeSettings.scale
+                            (Just withAccidental)
+                            degree
+
+                    else
+                        Pitch.from modeSettings.scale
+                            (DegreeDataDict.get degree pitchState.appliedAccidentals)
+                            degree
+
+                Nothing ->
+                    Pitch.from modeSettings.scale
+                        (DegreeDataDict.get degree pitchState.appliedAccidentals)
+                        degree
     in
     { display = determineDisplay layoutData
     , isonIndicators = DegreeDataDict.init (isonSelectionIndicator modeSettings pitchState)
     , pitchPositions =
         DegreeDataDict.init
-            (Pitch.wrapDegree
-                pitchState.currentPitch
-                (Movement.unwrapTargetPitch pitchState.proposedMovement)
+            (pitchWithAccidental
                 >> Pitch.pitchPosition modeSettings.scale
             )
     , pitchToSelect = DegreeDataDict.init (pitchButtonSelectPitch modeSettings pitchState)

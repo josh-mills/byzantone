@@ -614,14 +614,21 @@ processPitchButtonClick model degree =
                         ( ison, Just accidental, False ) ->
                             ( ison
                             , Just degree
-                            , DegreeDataDict.set degree
-                                (if Pitch.isValidInflection model.modeSettings.scale accidental degree then
-                                    Just accidental
+                            , model.pitchState.appliedAccidentals
+                                |> DegreeDataDict.set degree
+                                    (if Pitch.isValidInflection model.modeSettings.scale accidental degree then
+                                        Just accidental
 
-                                 else
-                                    Nothing
-                                )
-                                model.pitchState.appliedAccidentals
+                                     else
+                                        Nothing
+                                    )
+                                |> (case model.pitchState.currentDegree of
+                                        Just currentDegree ->
+                                            DegreeDataDict.set currentDegree Nothing
+
+                                        Nothing ->
+                                            identity
+                                   )
                             )
 
                         _ ->
