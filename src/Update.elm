@@ -22,8 +22,7 @@ import Task
 
 
 type Msg
-    = ApplyAccidental Degree (Maybe Accidental)
-    | DomResult (Result Dom.Error ())
+    = DomResult (Result Dom.Error ())
     | GotPitchSpaceElement (Result Dom.Error Dom.Element)
     | GotViewport Dom.Viewport
     | ViewportResize Int Int
@@ -55,28 +54,64 @@ update msg model =
         NoOp ->
             ( model, Task.perform GotViewport Dom.getViewport )
 
-        ApplyAccidental degree maybeAccidental ->
-            -- TODO: validate the application first as a double-check,
-            -- in isolation first and then with respect to other inflections.
-            let
-                accidentalIsValid =
-                    True
-            in
-            ( updatePitchState
-                (\pitchState ->
-                    { pitchState
-                        | appliedAccidentals =
-                            DegreeDataDict.set degree
-                                maybeAccidental
-                                pitchState.appliedAccidentals
-                        , proposedAccidental = Nothing
-                    }
-                )
-                model
-                |> resetPitchSpaceData
-            , Cmd.none
-            )
-
+        -- ApplyAccidental degree maybeAccidental ->
+        --     -- TODO: validate the application first as a double-check,
+        --     -- in isolation first and then with respect to other inflections.
+        --     let
+        --         maybeAppliedAccidental =
+        --             Maybe.andThen
+        --                 (\accidental ->
+        --                     -- case accidental of
+        --                     --     Accidental.Natural ->
+        --                     --         Nothing
+        --                     --     _ ->
+        --                     let
+        --                         inflection =
+        --                             Accidental.moriaAdjustment accidental
+        --                         inflectedPosition =
+        --                             Pitch.from model.modeSettings.scale (Just accidental) degree
+        --                                 |> Pitch.pitchPosition model.modeSettings.scale
+        --                         nextPitchPosition =
+        --                             if inflection > 0 then
+        --                                 Degree.step degree 1
+        --                                     |> Maybe.map
+        --                                         (\nextStep ->
+        --                                             inflectedPosition < getNextPitchPosition nextStep
+        --                                         )
+        --                                 -- |> Maybe.map (\next -> )
+        --                                 -- else if
+        --                             else if inflection == 0 then
+        --                                 Nothing
+        --                             else
+        --                                 Degree.step degree -1
+        --                                     |> Maybe.map
+        --                                         (\nextStep ->
+        --                                             inflectedPosition < getNextPitchPosition nextStep
+        --                                         )
+        --                         getNextPitchPosition nextDegree =
+        --                             DegreeDataDict.get nextDegree model.pitchSpaceData.pitchPositions
+        --                     in
+        --                     if Pitch.isValidInflection model.modeSettings.scale accidental degree then
+        --                         Just accidental
+        --                     else
+        --                         Nothing
+        --                 )
+        --                 maybeAccidental
+        --     in
+        --     ( updatePitchState
+        --         (\pitchState ->
+        --             { pitchState
+        --                 | appliedAccidentals =
+        --                     DegreeDataDict.set degree
+        --                         maybeAppliedAccidental
+        --                         pitchState.appliedAccidentals
+        --                 , proposedAccidental = Nothing
+        --             }
+        --         )
+        --         model
+        --         |> resetPitchSpaceData
+        --     , Cmd.none
+        --     )
         DomResult _ ->
             -- just for dev purposes
             ( model, Cmd.none )
@@ -111,99 +146,7 @@ update msg model =
             )
 
         PitchButtonClicked degree ->
-            let
-                isCurrentDegree =
-                    Just degree == model.pitchState.currentDegree
-
-                -- depending on how this goes, we might want to pull this whole thing
-                -- into the PitchState module.
-                ( newIson, newCurrentDegree, newAppliedAccidentals ) =
-                    case
-                        ( model.pitchState.ison
-                        , model.pitchState.proposedAccidental
-                        , isCurrentDegree
-                        )
-                    of
-                        ( SelectingIson _, _, _ ) ->
-                            ( Selected degree
-                            , model.pitchState.currentDegree
-                            , DegreeDataDict.set degree
-                                Nothing
-                                model.pitchState.appliedAccidentals
-                            )
-
-                        ( ison, Just Accidental.Natural, _ ) ->
-                            ( ison
-                            , model.pitchState.currentDegree
-                            , DegreeDataDict.set degree
-                                Nothing
-                                model.pitchState.appliedAccidentals
-                            )
-
-                        ( ison, Just accidental, True ) ->
-                            ( ison
-                            , model.pitchState.currentDegree
-                            , DegreeDataDict.set degree
-                                (if Pitch.isValidInflection model.modeSettings.scale accidental degree then
-                                    Just accidental
-
-                                 else
-                                    Nothing
-                                )
-                                model.pitchState.appliedAccidentals
-                            )
-
-                        ( ison, Just accidental, False ) ->
-                            ( ison
-                            , Just degree
-                            , DegreeDataDict.set degree
-                                (if Pitch.isValidInflection model.modeSettings.scale accidental degree then
-                                    Just accidental
-
-                                 else
-                                    Nothing
-                                )
-                                model.pitchState.appliedAccidentals
-                            )
-
-                        _ ->
-                            ( model.pitchState.ison
-                            , if model.pitchState.currentDegree == Just degree then
-                                Nothing
-
-                              else
-                                Just degree
-                            , model.pitchState.appliedAccidentals
-                            )
-
-                newPitch =
-                    Pitch.from
-                        model.modeSettings.scale
-                        (DegreeDataDict.get degree newAppliedAccidentals)
-                        degree
-                        |> Just
-            in
-            -- TODO: implement all logic here! Set ison, set pitch, cancel pitch.
-            ( updatePitchState
-                (\pitchState ->
-                    { pitchState
-                        | currentDegree = newCurrentDegree
-                        , currentPitch =
-                            if
-                                (pitchState.ison == newIson)
-                                    && (pitchState.currentPitch /= newPitch)
-                            then
-                                newPitch
-
-                            else
-                                Nothing
-                        , ison = newIson
-                        , appliedAccidentals = newAppliedAccidentals
-                        , proposedAccidental = Nothing
-                    }
-                )
-                model
-                |> resetPitchSpaceData
+            ( processPitchButtonClick model degree
             , Cmd.none
             )
 
@@ -590,6 +533,135 @@ setPitchState pitchState model =
 updatePitchState : (PitchState -> PitchState) -> Model -> Model
 updatePitchState f model =
     { model | pitchState = f model.pitchState }
+
+
+{-| Still to implement:
+
+  - applied accidental verification.
+
+-}
+processPitchButtonClick : Model -> Degree -> Model
+processPitchButtonClick model degree =
+    case model.audioSettings.mode of
+        AudioSettings.Listen ->
+            updatePitchState
+                (\pitchState ->
+                    { pitchState
+                        | appliedAccidentals =
+                            pitchState.proposedAccidental
+                                |> Maybe.map
+                                    (\newAccidental ->
+                                        DegreeDataDict.set degree
+                                            (case newAccidental of
+                                                Accidental.Natural ->
+                                                    Nothing
+
+                                                accidental ->
+                                                    Just accidental
+                                            )
+                                            pitchState.appliedAccidentals
+                                    )
+                                |> Maybe.withDefault pitchState.appliedAccidentals
+                        , proposedAccidental = Nothing
+                    }
+                )
+                model
+                |> resetPitchSpaceData
+
+        AudioSettings.Play ->
+            let
+                isCurrentDegree =
+                    Just degree == model.pitchState.currentDegree
+
+                -- depending on how this goes, we might want to pull this whole thing
+                -- into the PitchState module.
+                ( newIson, newCurrentDegree, newAppliedAccidentals ) =
+                    case
+                        ( model.pitchState.ison
+                        , model.pitchState.proposedAccidental
+                        , isCurrentDegree
+                        )
+                    of
+                        ( SelectingIson _, _, _ ) ->
+                            ( Selected degree
+                            , model.pitchState.currentDegree
+                            , DegreeDataDict.set degree
+                                Nothing
+                                model.pitchState.appliedAccidentals
+                            )
+
+                        ( ison, Just Accidental.Natural, _ ) ->
+                            ( ison
+                            , model.pitchState.currentDegree
+                            , DegreeDataDict.set degree
+                                Nothing
+                                model.pitchState.appliedAccidentals
+                            )
+
+                        ( ison, Just accidental, True ) ->
+                            ( ison
+                            , model.pitchState.currentDegree
+                            , DegreeDataDict.set degree
+                                (if Pitch.isValidInflection model.modeSettings.scale accidental degree then
+                                    Just accidental
+
+                                 else
+                                    Nothing
+                                )
+                                model.pitchState.appliedAccidentals
+                            )
+
+                        ( ison, Just accidental, False ) ->
+                            ( ison
+                            , Just degree
+                            , DegreeDataDict.set degree
+                                (if Pitch.isValidInflection model.modeSettings.scale accidental degree then
+                                    Just accidental
+
+                                 else
+                                    Nothing
+                                )
+                                model.pitchState.appliedAccidentals
+                            )
+
+                        _ ->
+                            ( model.pitchState.ison
+                            , if model.pitchState.currentDegree == Just degree then
+                                Nothing
+
+                              else
+                                Just degree
+                            , model.pitchState.appliedAccidentals
+                            )
+
+                newPitch =
+                    Pitch.from
+                        model.modeSettings.scale
+                        (DegreeDataDict.get degree newAppliedAccidentals)
+                        degree
+                        |> Just
+            in
+            -- TODO: implement all logic here! Set ison, set pitch, cancel pitch.
+            updatePitchState
+                (\pitchState ->
+                    { pitchState
+                        | currentDegree = newCurrentDegree
+                        , currentPitch =
+                            if
+                                (pitchState.ison == newIson)
+                                    && (pitchState.currentPitch /= newPitch)
+                            then
+                                newPitch
+
+                            else
+                                Nothing
+                        , ison = newIson
+                        , appliedAccidentals = newAppliedAccidentals
+                        , proposedAccidental = Nothing
+                    }
+                )
+                model
+                |> resetPitchSpaceData
 
 
 

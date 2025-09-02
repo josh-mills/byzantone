@@ -278,7 +278,7 @@ shouldHighlightInterval { currentPitch, proposedMovement } interval =
 
 
 
--- INTERVAL TRACKER COLUMN
+-- PITCH TRACKER COLUMN
 
 
 viewPitchTracker : PitchSpaceData -> AudioSettings -> Maybe Frequency -> Html Msg
@@ -751,7 +751,7 @@ viewAccidentalButtons display maybeAccidental =
         [ Html.fieldset
             [ Styles.borderRounded
             , if PitchSpaceData.isVertical display then
-                Styles.flexCol
+                class "flex flex-col-reverse"
 
               else
                 Styles.flexRow
