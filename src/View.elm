@@ -59,7 +59,7 @@ view model =
             [ class "lg:container lg:mx-auto font-serif"
             , case layoutFor model.layoutData of
                 Vertical ->
-                    class "flex flex-row flex-wrap-reverse"
+                    class "flex flex-row flex-wrap"
 
                 Horizontal ->
                     Styles.flexCol
@@ -362,8 +362,6 @@ viewControls audioSettings modeSettings pitchState detectedPitch =
                         (registerRadioConfig "Listen Register" SetListenRegister)
                         audioSettings.listenRegister
                     , lazy2 RadioFieldset.view responsivenessRadioConfig audioSettings.responsiveness
-
-                    -- , lazy viewAccidentalButtons pitchState.proposedAccidental
                     , Html.node "pitch-tracker"
                         [ Attr.attribute "smoothing"
                             (case audioSettings.responsiveness of
@@ -373,6 +371,7 @@ viewControls audioSettings modeSettings pitchState detectedPitch =
                                 AudioSettings.Smooth ->
                                     "smooth"
                             )
+                        , class "hidden sm:block"
                         ]
                         []
                     ]

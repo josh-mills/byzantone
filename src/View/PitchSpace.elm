@@ -56,10 +56,10 @@ view pitchSpaceData audioSettings modeSettings pitchState detectedPitch =
          , Attr.attributeIf LayoutData.showSpacing Styles.border
          ]
             ++ (if PitchSpaceData.isVertical pitchSpaceData.display then
-                    [ Styles.flexRow, class "my-8" ]
+                    [ Styles.flexRow, class "my-8 md:me-12" ]
 
                 else
-                    [ Styles.flexCol, class "mx-8" ]
+                    [ Styles.flexCol, class "mx-8 mb-8" ]
                )
         )
         [ Html.Lazy.lazy3 viewIntervals pitchSpaceData modeSettings pitchState
@@ -73,11 +73,11 @@ view pitchSpaceData audioSettings modeSettings pitchState detectedPitch =
 listAttributes : Display -> List (Html.Attribute Msg)
 listAttributes display =
     if PitchSpaceData.isVertical display then
-        [ class "flex flex-col-reverse justify-end w-36 mx-4" ]
+        [ class "flex flex-col-reverse justify-end mx-4 md:mx-8" ]
 
     else
         [ Styles.flexRowCentered
-        , class "h-24 w-full my-4"
+        , class "w-full my-4"
         ]
 
 
@@ -94,7 +94,16 @@ pitchButtonSizeClass =
 
 viewIntervals : PitchSpaceData -> ModeSettings -> PitchState -> Html Msg
 viewIntervals pitchSpaceData modeSettings pitchState =
-    Html.ol (onMouseLeave (SelectProposedMovement None) :: listAttributes pitchSpaceData.display)
+    Html.ol
+        (onMouseLeave (SelectProposedMovement None)
+            :: (if PitchSpaceData.isVertical pitchSpaceData.display then
+                    class "w-24 md:w-36"
+
+                else
+                    class "h-16 md:h-24"
+               )
+            :: listAttributes pitchSpaceData.display
+        )
         (List.map
             (viewInterval pitchSpaceData.display pitchSpaceData.scalingFactor modeSettings.scale pitchState)
             (PitchSpaceData.intervalsWithVisibility pitchSpaceData)
@@ -709,12 +718,12 @@ viewAccidentalButtons display maybeAccidental =
         [ Html.fieldset
             [ Styles.borderRounded
             , if PitchSpaceData.isVertical display then
-                class "flex flex-col-reverse"
+                class "flex flex-col-reverse flex-wrap content-center"
 
               else
                 Styles.flexRow
             , class "justify-center"
-            , class "px-2 pb-1 mb-2 gap-2"
+            , class "px-2 pb-1 mb-2 gap-1"
             ]
             (Html.legend [ class "px-1" ] [ Html.text "Accidental" ]
                 :: List.map (viewAccidentalButton maybeAccidental) Accidental.all
@@ -736,7 +745,7 @@ viewAccidentalButton proposedAccidental accidental =
     in
     button
         [ Styles.buttonClass
-        , class "text-3xl min-w-12 max-w-14"
+        , class "text-3xl min-w-12 max-w-14 m-1"
         , classList
             [ ( "text-blue-700 border-2 border-blue-700", isCurrent )
             , ( "border-2 border-transparent", not isCurrent )
