@@ -3,6 +3,7 @@ module Model.PitchSpaceData exposing
     , Display, displayToLayout, isVertical, pitchButtonSize
     , PositionWithinVisibleRange(..), calculateVisibleRange, positionIsVisible
     , PitchPositionContextString, encodePitchPositionContext, decodePitchPositionContext
+    , intervalsWithVisibility
     , IsonSelectionIndicator, isCurrentIson, canBeSelectedAsIson
     )
 
@@ -31,6 +32,11 @@ as a result of model updates.
 @docs PitchPositionContextString, encodePitchPositionContext, decodePitchPositionContext
 
 
+# Intervals
+
+@docs intervalsWithVisibility
+
+
 # Ison
 
 @docs IsonSelectionIndicator, isCurrentIson, canBeSelectedAsIson
@@ -39,7 +45,7 @@ as a result of model updates.
 
 import Basics.Extra exposing (flip)
 import Byzantine.Degree as Degree exposing (Degree)
-import Byzantine.Pitch as Pitch exposing (Pitch)
+import Byzantine.Pitch as Pitch exposing (Interval, Pitch)
 import Maybe.Extra
 import Model.DegreeDataDict as DegreeDataDict exposing (DegreeDataDict)
 import Model.LayoutData as LayoutData exposing (Layout(..), LayoutData)
@@ -557,6 +563,63 @@ canBeSelectedAsIson indicator =
 
         _ ->
             False
+
+
+
+-- INTERVALS
+
+
+intervalsWithVisibility : PitchSpaceData -> List ( Interval, PositionWithinVisibleRange )
+intervalsWithVisibility pitchSpaceData =
+    Degree.gamutList
+        |> List.map
+            (\degree ->
+                ( DegreeDataDict.get degree pitchSpaceData.pitches
+                , DegreeDataDict.get degree pitchSpaceData.pitchPositions
+                )
+            )
+        |> intervalsHelper pitchSpaceData
+
+
+intervalsHelper :
+    PitchSpaceData
+    -> List ( Pitch, Int )
+    -> List ( Interval, PositionWithinVisibleRange )
+intervalsHelper pitchSpaceData pitchesWithPositions =
+    case pitchesWithPositions of
+        a :: b :: rest ->
+            getIntervalWithVisibility pitchSpaceData a b
+                :: intervalsHelper pitchSpaceData (b :: rest)
+
+        _ ->
+            []
+
+
+getIntervalWithVisibility :
+    PitchSpaceData
+    -> ( Pitch, Int )
+    -> ( Pitch, Int )
+    -> ( Interval, PositionWithinVisibleRange )
+getIntervalWithVisibility { visibleRangeStart, visibleRangeEnd } ( fromPitch, fromPitchPosition ) ( toPitch, toPitchPosition ) =
+    ( { from = fromPitch
+      , to = toPitch
+      , moria = toPitchPosition - fromPitchPosition
+      }
+    , if toPitchPosition <= visibleRangeStart then
+        Below
+
+      else if fromPitchPosition >= visibleRangeEnd then
+        Above
+
+      else if visibleRangeStart == fromPitchPosition then
+        LowerBoundary
+
+      else if visibleRangeEnd == toPitchPosition then
+        UpperBoundary
+
+      else
+        Within
+    )
 
 
 

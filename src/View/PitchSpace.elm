@@ -32,7 +32,6 @@ import Model.PitchSpaceData as PitchSpaceData
         , PitchPositionContextString
         , PitchSpaceData
         , PositionWithinVisibleRange(..)
-        , calculateVisibleRange
         )
 import Model.PitchState as PitchState exposing (IsonStatus(..), PitchState)
 import Movement exposing (Movement(..))
@@ -98,56 +97,7 @@ viewIntervals pitchSpaceData modeSettings pitchState =
     Html.ol (onMouseLeave (SelectProposedMovement None) :: listAttributes pitchSpaceData.display)
         (List.map
             (viewInterval pitchSpaceData.display pitchSpaceData.scalingFactor modeSettings.scale pitchState)
-            (intervalsWithVisibility modeSettings pitchState (calculateVisibleRange modeSettings pitchState))
-        )
-
-
-intervalsWithVisibility :
-    ModeSettings
-    -> PitchState
-    -> { start : Pitch, end : Pitch }
-    -> List ( Interval, PositionWithinVisibleRange )
-intervalsWithVisibility modeSettings pitchState visibleRange =
-    let
-        lowerBoundIndex =
-            Degree.indexOf (Pitch.unwrapDegree visibleRange.start)
-
-        upperBoundIndex =
-            Degree.indexOf (Pitch.unwrapDegree visibleRange.end)
-
-        visibility interval =
-            let
-                intervalFromIndex =
-                    Degree.indexOf (Pitch.unwrapDegree interval.from)
-
-                intervalToIndex =
-                    Degree.indexOf (Pitch.unwrapDegree interval.to)
-            in
-            if intervalToIndex <= lowerBoundIndex then
-                Below
-
-            else if intervalFromIndex >= upperBoundIndex then
-                Above
-
-            else if lowerBoundIndex == intervalFromIndex then
-                LowerBoundary
-
-            else if upperBoundIndex == intervalToIndex then
-                UpperBoundary
-
-            else
-                Within
-    in
-    List.map
-        (\interval ->
-            ( interval
-            , visibility interval
-            )
-        )
-        (Pitch.intervals modeSettings.scale
-            (PitchState.currentPitch modeSettings.scale pitchState)
-            -- TODO: we'll need the same logic for this as for the pitch positions
-            (Movement.unwrapTargetPitch pitchState.proposedMovement)
+            (PitchSpaceData.intervalsWithVisibility pitchSpaceData)
         )
 
 
