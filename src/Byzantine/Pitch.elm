@@ -1,12 +1,12 @@
 module Byzantine.Pitch exposing
     ( Pitch
-    , natural, inflected, from, wrapDegree, applyAccidental
+    , natural, inflected, from, applyAccidental
     , PitchString, encode, decode
     , unwrapDegree, unwrapAccidental
     , isInflected, isValidInflection, toString
     , pitchPosition, pitchPositions
     , getPitchFrequency
-    , Interval, intervals, intervalsFrom, getInterval
+    , Interval
     )
 
 {-| Pitch positions and derived intervals. Di is fixed at 84.
@@ -24,7 +24,7 @@ attractions and inflections.
 
 ## Construct
 
-@docs natural, inflected, from, wrapDegree, applyAccidental
+@docs natural, inflected, from, applyAccidental
 
 
 ## Encode
@@ -54,7 +54,7 @@ attractions and inflections.
 
 # Intervals
 
-@docs Interval, intervals, intervalsFrom, getInterval
+@docs Interval
 
 -}
 
@@ -179,25 +179,6 @@ inflected scale accidental degree =
                 ++ Accidental.toString accidental
                 ++ " accidental."
             )
-
-
-{-| Wrap a degree as a Natural pitch, unless the current pitch or proposed
-movement happens to be inflected and the same degree. In that case, this will
-evaluate to a pitch wrapping the inflected degree.
-
-TODO: this is probably best deprecated.
-
--}
-wrapDegree : Maybe Pitch -> Maybe Pitch -> Degree -> Pitch
-wrapDegree currentPitch proposedMovementTo degree =
-    if Maybe.map unwrapDegree currentPitch == Just degree then
-        Maybe.withDefault (Natural degree) currentPitch
-
-    else if Maybe.map unwrapDegree proposedMovementTo == Just degree then
-        Maybe.withDefault (Natural degree) proposedMovementTo
-
-    else
-        Natural degree
 
 
 {-| Apply the accidental to the given pitch. This will evaluate to Natural
@@ -400,42 +381,10 @@ getPitchFrequency pitchStandard register scale pitch =
 -- INTERVALS
 
 
+{-| TODO: this should be reconsidered.
+-}
 type alias Interval =
     { from : Pitch
     , to : Pitch
     , moria : Int
     }
-
-
-getInterval : Scale -> Pitch -> Pitch -> Interval
-getInterval scale from_ to =
-    { from = from_
-    , to = to
-    , moria = pitchPosition scale to - pitchPosition scale from_
-    }
-
-
-{-| Intervals between all natural degrees in the given scale
--}
-intervals : Scale -> Maybe Pitch -> Maybe Pitch -> List Interval
-intervals scale currentPitch proposedMovementTo =
-    Degree.gamutList
-        |> List.map (wrapDegree currentPitch proposedMovementTo)
-        |> intervalsHelper scale
-
-
-intervalsFrom : Scale -> Pitch -> Pitch -> List Interval
-intervalsFrom scale lower upper =
-    Degree.range (unwrapDegree lower) (unwrapDegree upper)
-        |> List.map Natural
-        |> intervalsHelper scale
-
-
-intervalsHelper : Scale -> List Pitch -> List Interval
-intervalsHelper scale degrees =
-    case degrees of
-        a :: b :: rest ->
-            getInterval scale a b :: intervalsHelper scale (b :: rest)
-
-        _ ->
-            []
