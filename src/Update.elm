@@ -14,7 +14,7 @@ import Model.AudioSettings as AudioSettings exposing (AudioSettings)
 import Model.DegreeDataDict as DegreeDataDict exposing (DegreeDataDict)
 import Model.LayoutData exposing (LayoutData, LayoutSelection)
 import Model.ModeSettings exposing (ModeSettings)
-import Model.PitchSpaceData as PitchSpaceData
+import Model.PitchSpaceData as PitchSpaceData exposing (PitchSpaceData)
 import Model.PitchState as PitchState exposing (IsonStatus(..), PitchState)
 import Movement exposing (Movement)
 import Platform.Cmd as Cmd
@@ -54,64 +54,6 @@ update msg model =
         NoOp ->
             ( model, Task.perform GotViewport Dom.getViewport )
 
-        -- ApplyAccidental degree maybeAccidental ->
-        --     -- TODO: validate the application first as a double-check,
-        --     -- in isolation first and then with respect to other inflections.
-        --     let
-        --         maybeAppliedAccidental =
-        --             Maybe.andThen
-        --                 (\accidental ->
-        --                     -- case accidental of
-        --                     --     Accidental.Natural ->
-        --                     --         Nothing
-        --                     --     _ ->
-        --                     let
-        --                         inflection =
-        --                             Accidental.moriaAdjustment accidental
-        --                         inflectedPosition =
-        --                             Pitch.from model.modeSettings.scale (Just accidental) degree
-        --                                 |> Pitch.pitchPosition model.modeSettings.scale
-        --                         nextPitchPosition =
-        --                             if inflection > 0 then
-        --                                 Degree.step degree 1
-        --                                     |> Maybe.map
-        --                                         (\nextStep ->
-        --                                             inflectedPosition < getNextPitchPosition nextStep
-        --                                         )
-        --                                 -- |> Maybe.map (\next -> )
-        --                                 -- else if
-        --                             else if inflection == 0 then
-        --                                 Nothing
-        --                             else
-        --                                 Degree.step degree -1
-        --                                     |> Maybe.map
-        --                                         (\nextStep ->
-        --                                             inflectedPosition < getNextPitchPosition nextStep
-        --                                         )
-        --                         getNextPitchPosition nextDegree =
-        --                             DegreeDataDict.get nextDegree model.pitchSpaceData.pitchPositions
-        --                     in
-        --                     if Pitch.isValidInflection model.modeSettings.scale accidental degree then
-        --                         Just accidental
-        --                     else
-        --                         Nothing
-        --                 )
-        --                 maybeAccidental
-        --     in
-        --     ( updatePitchState
-        --         (\pitchState ->
-        --             { pitchState
-        --                 | appliedAccidentals =
-        --                     DegreeDataDict.set degree
-        --                         maybeAppliedAccidental
-        --                         pitchState.appliedAccidentals
-        --                 , proposedAccidental = Nothing
-        --             }
-        --         )
-        --         model
-        --         |> resetPitchSpaceData
-        --     , Cmd.none
-        --     )
         DomResult _ ->
             -- just for dev purposes
             ( model, Cmd.none )
@@ -618,14 +560,10 @@ processPitchButtonClick model degree =
                         ( ison, Just accidental, True ) ->
                             ( ison
                             , model.pitchState.currentDegree
-                            , DegreeDataDict.set degree
-                                (if Pitch.isValidInflection model.modeSettings.scale accidental degree then
-                                    Just accidental
-
-                                 else
-                                    Nothing
-                                )
-                                model.pitchState.appliedAccidentals
+                            , applyAccidentalWithValidation model.modeSettings.scale
+                                model.pitchSpaceData
+                                model.pitchState
+                                degree
                             )
 
                         ( ison, Nothing, True ) ->
@@ -639,14 +577,10 @@ processPitchButtonClick model degree =
                         ( ison, Just accidental, False ) ->
                             ( ison
                             , Just degree
-                            , model.pitchState.appliedAccidentals
-                                |> DegreeDataDict.set degree
-                                    (if Pitch.isValidInflection model.modeSettings.scale accidental degree then
-                                        Just accidental
-
-                                     else
-                                        Nothing
-                                    )
+                            , applyAccidentalWithValidation model.modeSettings.scale
+                                model.pitchSpaceData
+                                model.pitchState
+                                degree
                                 |> clearCurrentDegreeAccidental model.pitchState.currentDegree
                             )
 
@@ -662,7 +596,6 @@ processPitchButtonClick model degree =
                                 model.pitchState.appliedAccidentals
                             )
             in
-            -- TODO: implement all logic here! Set ison, set pitch, cancel pitch.
             updatePitchState
                 (\pitchState ->
                     { pitchState
@@ -674,6 +607,49 @@ processPitchButtonClick model degree =
                 )
                 model
                 |> resetPitchSpaceData
+
+
+applyAccidentalWithValidation : Scale -> PitchSpaceData -> PitchState -> Degree -> DegreeDataDict (Maybe Accidental)
+applyAccidentalWithValidation scale { pitchPositions } pitchState degree =
+    case pitchState.proposedAccidental of
+        Just accidental ->
+            let
+                isValidInflection =
+                    Pitch.isValidInflection scale accidental degree
+
+                inflection =
+                    Accidental.moriaAdjustment accidental
+
+                positonWithInflection =
+                    DegreeDataDict.get degree pitchPositions + inflection
+
+                wouldNotBeInversion =
+                    if inflection > 0 then
+                        Maybe.unwrap False
+                            (\degreeHigher ->
+                                DegreeDataDict.get degreeHigher pitchPositions > positonWithInflection
+                            )
+                            (Degree.step degree 1)
+
+                    else
+                        Maybe.unwrap False
+                            (\degreeLower ->
+                                DegreeDataDict.get degreeLower pitchPositions < positonWithInflection
+                            )
+                            (Degree.step degree -1)
+            in
+            if isValidInflection && wouldNotBeInversion then
+                DegreeDataDict.set degree pitchState.proposedAccidental pitchState.appliedAccidentals
+
+            else
+                pitchState.appliedAccidentals
+
+        Nothing ->
+            if Maybe.isJust (DegreeDataDict.get degree pitchState.appliedAccidentals) then
+                DegreeDataDict.set degree Nothing pitchState.appliedAccidentals
+
+            else
+                pitchState.appliedAccidentals
 
 
 clearCurrentDegreeAccidental : Maybe Degree -> DegreeDataDict (Maybe Accidental) -> DegreeDataDict (Maybe Accidental)
