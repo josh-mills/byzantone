@@ -417,26 +417,42 @@ the pitch column should no longer be the same.
 viewPitches : PitchSpaceData -> ModeSettings -> PitchState -> Html Msg
 viewPitches pitchSpaceData modeSettings pitchState =
     let
-        proposedMovementTo =
-            Movement.unwrapTargetPitch pitchState.proposedMovement
-
         currentPitch =
             PitchState.currentPitch modeSettings.scale pitchState
+
+        shouldHighlight degree =
+            canBeSelectedAsIson degree || wouldBeValidInflection degree
+
+        canBeSelectedAsIson degree =
+            PitchSpaceData.canBeSelectedAsIson
+                (DegreeDataDict.get degree pitchSpaceData.isonIndicators)
+
+        wouldBeValidInflection degree =
+            pitchState.proposedAccidental
+                |> Maybe.map
+                    (\accidental ->
+                        case accidental of
+                            Accidental.Natural ->
+                                DegreeDataDict.get degree pitchState.appliedAccidentals
+                                    |> Maybe.isJust
+
+                            _ ->
+                                Pitch.isValidInflection modeSettings.scale accidental degree
+                    )
+                |> Maybe.withDefault False
     in
     Html.ol (listAttributes pitchSpaceData.display)
         (List.map
             (\degree ->
                 Html.Lazy.lazy8 viewPitch
-                    (Pitch.wrapDegree currentPitch proposedMovementTo degree
+                    (DegreeDataDict.get degree pitchSpaceData.pitches
                         |> Pitch.encode modeSettings.scale
                     )
                     (Just degree == Maybe.map Pitch.unwrapDegree currentPitch)
                     pitchSpaceData.display
                     (DegreeDataDict.get degree pitchSpaceData.isonIndicators)
                     (PitchSpaceData.encodePitchPositionContext pitchSpaceData degree)
-                    (DegreeDataDict.get degree pitchSpaceData.pitchToSelect
-                        |> Maybe.unwrap "nothing" (Pitch.encode modeSettings.scale)
-                    )
+                    (shouldHighlight degree)
                     (DegreeDataDict.get degree pitchSpaceData.pitchVisibility)
                     pitchSpaceData.scalingFactor
             )
@@ -446,9 +462,6 @@ viewPitches pitchSpaceData modeSettings pitchState =
 
 {-| Renders a single pitch element in the pitch space. Prepared for lazy
 rendering.
-
-Is the pitchToSelect still needed?
-
 -}
 viewPitch :
     PitchString
@@ -456,11 +469,11 @@ viewPitch :
     -> Display
     -> IsonSelectionIndicator
     -> PitchPositionContextString
-    -> PitchString
+    -> Bool
     -> PositionWithinVisibleRange
     -> Float
     -> Html Msg
-viewPitch pitchString isCurrentDegree display isonStatusIndicator pitchPositions pitchToSelect positionWithinRange scalingFactor =
+viewPitch pitchString isCurrentDegree display isonStatusIndicator pitchPositions shouldHighlight positionWithinRange scalingFactor =
     let
         degree =
             Pitch.decode pitchString
@@ -543,9 +556,8 @@ viewPitch pitchString isCurrentDegree display isonStatusIndicator pitchPositions
                     pitchString
                     isCurrentDegree
                     display
-                    isonStatusIndicator
                     pitchPositions
-                    pitchToSelect
+                    shouldHighlight
                     positionWithinRange
                     scalingFactor
             )
@@ -574,31 +586,25 @@ TODO: To enable lazy rendering, we're dropping the proposed movement argument
 won't highlight when it is the target of the proposed movement. If this behavior
 is still desirable, we'll need a way of getting this back in.
 
+Since lazy view is covered at a higher level, we shouldn't need to re-decode the
+pitch string.
+
 -}
 pitchButton :
     PitchString
     -> Bool
     -> Display
-    -> IsonSelectionIndicator
     -> PitchPositionContextString
-    -> PitchString
+    -> Bool
     -> PositionWithinVisibleRange
     -> Float
     -> Html Msg
-pitchButton pitchString isCurrentDegree display isonStatusIndicator pitchPositions pitchToSelect positionWithinRange scalingFactor =
+pitchButton pitchString isCurrentDegree display pitchPositions shouldHighlight positionWithinRange scalingFactor =
     let
         ( decodedScale, decodedPitch, decodedDegree ) =
             Result.Extra.unwrap ( Nothing, Nothing, Nothing )
                 (\( s, p ) -> ( Just s, Just p, Just (Pitch.unwrapDegree p) ))
                 (Pitch.decode pitchString)
-
-        decodedPitchToSelect =
-            Pitch.decode pitchToSelect
-                |> Result.toMaybe
-                |> Maybe.map Tuple.second
-
-        canBeSelectedAsIson =
-            PitchSpaceData.canBeSelectedAsIson isonStatusIndicator
 
         position =
             pitchElementPosition PitchButton
@@ -606,18 +612,9 @@ pitchButton pitchString isCurrentDegree display isonStatusIndicator pitchPositio
                 pitchPositions
                 positionWithinRange
                 scalingFactor
-
-        shouldHighlight =
-            canBeSelectedAsIson || Maybe.unwrap False Pitch.isInflected decodedPitchToSelect
     in
     button
         [ attributeMaybe (\degree -> onClick (PitchButtonClicked degree)) decodedDegree
-
-        -- onClick <|
-        --     if canBeSelectedAsIson then
-        --         SetIson (Maybe.unwrap NoIson Selected decodedDegree)
-        --     else
-        --         SelectPitch decodedPitchToSelect Nothing
         , pitchButtonSizeClass
         , class "rounded-full hover:z-20 cursor-pointer relative pb-8"
         , Styles.transition
