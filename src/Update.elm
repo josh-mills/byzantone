@@ -15,7 +15,7 @@ import Model.DegreeDataDict as DegreeDataDict exposing (DegreeDataDict)
 import Model.LayoutData exposing (LayoutData, LayoutSelection)
 import Model.ModeSettings exposing (ModeSettings)
 import Model.PitchSpaceData as PitchSpaceData exposing (PitchSpaceData)
-import Model.PitchState as PitchState exposing (IsonStatus(..), PitchState)
+import Model.PitchState as PitchState exposing (IsonStatus(..), PitchState, ProposedAccidental(..), unwrapProposedAccidental)
 import Movement exposing (Movement)
 import Platform.Cmd as Cmd
 import Task
@@ -31,7 +31,7 @@ type Msg
     | PitchButtonClicked Degree
     | SelectModal Modal
     | SelectPitch (Maybe Pitch) (Maybe Movement)
-    | SelectProposedAccidental (Maybe Accidental)
+    | SelectProposedAccidental ProposedAccidental
     | SelectProposedMovement Movement
     | SetAudioMode AudioSettings.Mode
     | SetDetectedPitch (Maybe Frequency)
@@ -114,7 +114,7 @@ update msg model =
                                         pitchState.appliedAccidentals
                                 )
                                 maybePitch
-                        , proposedAccidental = Nothing
+                        , proposedAccidental = NoProposedAccidental
                         , proposedMovement =
                             if Maybe.isJust maybePitch then
                                 Maybe.withDefault model.pitchState.proposedMovement maybeMovement
@@ -128,9 +128,9 @@ update msg model =
             , Cmd.none
             )
 
-        SelectProposedAccidental maybeAccidental ->
+        SelectProposedAccidental proposedAccidental ->
             ( updatePitchState
-                (\pitchState -> { pitchState | proposedAccidental = maybeAccidental })
+                (\pitchState -> { pitchState | proposedAccidental = proposedAccidental })
                 model
                 |> resetPitchSpaceData
             , Cmd.none
@@ -141,7 +141,7 @@ update msg model =
                 movementWithProposedAccidental =
                     Movement.applyAccidental
                         model.modeSettings.scale
-                        model.pitchState.proposedAccidental
+                        (PitchState.unwrapProposedAccidental model.pitchState.proposedAccidental)
                         movement
             in
             ( updatePitchState
@@ -417,11 +417,16 @@ update msg model =
                             { pitchState
                                 | proposedAccidental =
                                     case pitchState.proposedAccidental of
-                                        Just accidental ->
-                                            Accidental.lower accidental
+                                        Apply accidental ->
+                                            case Accidental.lower accidental of
+                                                Just lowerAccidental ->
+                                                    Apply lowerAccidental
 
-                                        Nothing ->
-                                            Just Accidental.Flat2
+                                                Nothing ->
+                                                    CancelAccidental
+
+                                        _ ->
+                                            Apply Accidental.Flat2
                             }
                         )
                         model
@@ -434,11 +439,16 @@ update msg model =
                             { pitchState
                                 | proposedAccidental =
                                     case pitchState.proposedAccidental of
-                                        Just accidental ->
-                                            Accidental.raise accidental
+                                        Apply accidental ->
+                                            case Accidental.raise accidental of
+                                                Just raisedAccidental ->
+                                                    Apply raisedAccidental
 
-                                        Nothing ->
-                                            Just Accidental.Sharp2
+                                                Nothing ->
+                                                    CancelAccidental
+
+                                        _ ->
+                                            Apply Accidental.Sharp2
                             }
                         )
                         model
@@ -507,21 +517,20 @@ processPitchButtonClick model degree =
                 (\pitchState ->
                     { pitchState
                         | appliedAccidentals =
-                            pitchState.proposedAccidental
-                                |> Maybe.map
-                                    (\newAccidental ->
-                                        DegreeDataDict.set degree
-                                            (case newAccidental of
-                                                Accidental.Natural ->
-                                                    Nothing
+                            case pitchState.proposedAccidental of
+                                Apply newAccidental ->
+                                    DegreeDataDict.set degree
+                                        (Just newAccidental)
+                                        pitchState.appliedAccidentals
 
-                                                accidental ->
-                                                    Just accidental
-                                            )
-                                            pitchState.appliedAccidentals
-                                    )
-                                |> Maybe.withDefault pitchState.appliedAccidentals
-                        , proposedAccidental = Nothing
+                                CancelAccidental ->
+                                    DegreeDataDict.set degree
+                                        Nothing
+                                        pitchState.appliedAccidentals
+
+                                NoProposedAccidental ->
+                                    pitchState.appliedAccidentals
+                        , proposedAccidental = NoProposedAccidental
                     }
                 )
                 model
@@ -549,7 +558,7 @@ processPitchButtonClick model degree =
                                 model.pitchState.appliedAccidentals
                             )
 
-                        ( ison, Just Accidental.Natural, _ ) ->
+                        ( ison, CancelAccidental, _ ) ->
                             ( ison
                             , model.pitchState.currentDegree
                             , DegreeDataDict.set degree
@@ -557,7 +566,7 @@ processPitchButtonClick model degree =
                                 model.pitchState.appliedAccidentals
                             )
 
-                        ( ison, Just accidental, True ) ->
+                        ( ison, Apply accidental, True ) ->
                             ( ison
                             , model.pitchState.currentDegree
                             , applyAccidentalWithValidation model.modeSettings.scale
@@ -566,7 +575,7 @@ processPitchButtonClick model degree =
                                 degree
                             )
 
-                        ( ison, Nothing, True ) ->
+                        ( ison, NoProposedAccidental, True ) ->
                             ( ison
                             , Nothing
                             , DegreeDataDict.set degree
@@ -574,7 +583,7 @@ processPitchButtonClick model degree =
                                 model.pitchState.appliedAccidentals
                             )
 
-                        ( ison, Just accidental, False ) ->
+                        ( ison, Apply accidental, False ) ->
                             ( ison
                             , Just degree
                             , applyAccidentalWithValidation model.modeSettings.scale
@@ -602,7 +611,7 @@ processPitchButtonClick model degree =
                         | currentDegree = newCurrentDegree
                         , ison = newIson
                         , appliedAccidentals = newAppliedAccidentals
-                        , proposedAccidental = Nothing
+                        , proposedAccidental = NoProposedAccidental
                     }
                 )
                 model
@@ -612,7 +621,7 @@ processPitchButtonClick model degree =
 applyAccidentalWithValidation : Scale -> PitchSpaceData -> PitchState -> Degree -> DegreeDataDict (Maybe Accidental)
 applyAccidentalWithValidation scale { pitchPositions } pitchState degree =
     case pitchState.proposedAccidental of
-        Just accidental ->
+        Apply accidental ->
             let
                 isValidInflection =
                     Pitch.isValidInflection scale accidental degree
@@ -639,12 +648,15 @@ applyAccidentalWithValidation scale { pitchPositions } pitchState degree =
                             (Degree.step degree -1)
             in
             if isValidInflection && wouldNotBeInversion then
-                DegreeDataDict.set degree pitchState.proposedAccidental pitchState.appliedAccidentals
+                DegreeDataDict.set degree (Just accidental) pitchState.appliedAccidentals
 
             else
                 pitchState.appliedAccidentals
 
-        Nothing ->
+        CancelAccidental ->
+            DegreeDataDict.set degree Nothing pitchState.appliedAccidentals
+
+        NoProposedAccidental ->
             if Maybe.isJust (DegreeDataDict.get degree pitchState.appliedAccidentals) then
                 DegreeDataDict.set degree Nothing pitchState.appliedAccidentals
 
@@ -674,13 +686,16 @@ moveAndFocus model interval =
         pitch =
             model.pitchState.currentDegree
                 |> Maybe.andThen (\degree -> Degree.step degree interval)
-                |> Maybe.map (Pitch.from model.modeSettings.scale model.pitchState.proposedAccidental)
+                |> Maybe.map
+                    (Pitch.from model.modeSettings.scale
+                        (PitchState.unwrapProposedAccidental model.pitchState.proposedAccidental)
+                    )
     in
     ( updatePitchState
         (\pitchState ->
             { pitchState
                 | currentDegree = Maybe.map Pitch.unwrapDegree pitch
-                , proposedAccidental = Nothing
+                , proposedAccidental = NoProposedAccidental
                 , appliedAccidentals =
                     clearCurrentDegreeAccidental pitchState.currentDegree
                         pitchState.appliedAccidentals
@@ -714,7 +729,7 @@ setAndFocus model degree =
                 (\pitchState ->
                     { pitchState
                         | currentDegree = Just degree
-                        , proposedAccidental = Nothing
+                        , proposedAccidental = NoProposedAccidental
                     }
                 )
                 model

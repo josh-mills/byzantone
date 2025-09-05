@@ -33,7 +33,7 @@ import Model.PitchSpaceData as PitchSpaceData
         , PitchSpaceData
         , PositionWithinVisibleRange(..)
         )
-import Model.PitchState as PitchState exposing (IsonStatus(..), PitchState)
+import Model.PitchState as PitchState exposing (IsonStatus(..), PitchState, ProposedAccidental(..))
 import Movement exposing (Movement(..))
 import Result.Extra
 import Round
@@ -387,18 +387,16 @@ viewPitches pitchSpaceData modeSettings pitchState =
                 (DegreeDataDict.get degree pitchSpaceData.isonIndicators)
 
         wouldBeValidInflection degree =
-            pitchState.proposedAccidental
-                |> Maybe.map
-                    (\accidental ->
-                        case accidental of
-                            Accidental.Natural ->
-                                DegreeDataDict.get degree pitchState.appliedAccidentals
-                                    |> Maybe.isJust
+            case pitchState.proposedAccidental of
+                Apply accidental ->
+                    Pitch.isValidInflection modeSettings.scale accidental degree
 
-                            _ ->
-                                Pitch.isValidInflection modeSettings.scale accidental degree
-                    )
-                |> Maybe.withDefault False
+                CancelAccidental ->
+                    DegreeDataDict.get degree pitchState.appliedAccidentals
+                        |> Maybe.isJust
+
+                NoProposedAccidental ->
+                    False
     in
     Html.ol (listAttributes pitchSpaceData.display)
         (List.map
@@ -706,8 +704,8 @@ pitchElementPosition target display pitchPositions positionWithinRange scalingFa
 -- ACCIDENTAL BUTTONS
 
 
-viewAccidentalButtons : Display -> Maybe Accidental -> Html Msg
-viewAccidentalButtons display maybeAccidental =
+viewAccidentalButtons : Display -> ProposedAccidental -> Html Msg
+viewAccidentalButtons display proposedAccidental =
     div
         (if PitchSpaceData.isVertical display then
             [ Styles.flexCol, class "justify-center me-4" ]
@@ -726,7 +724,13 @@ viewAccidentalButtons display maybeAccidental =
             , class "px-2 pb-1 mb-2 gap-1"
             ]
             (Html.legend [ class "px-1" ] [ Html.text "Accidental" ]
-                :: List.map (viewAccidentalButton maybeAccidental) Accidental.all
+                :: List.concat
+                    [ Accidental.allFlats
+                        |> List.map (viewAccidentalButton proposedAccidental << Apply)
+                    , [ viewAccidentalButton proposedAccidental CancelAccidental ]
+                    , Accidental.allSharps
+                        |> List.map (viewAccidentalButton proposedAccidental << Apply)
+                    ]
             )
         ]
 
@@ -737,11 +741,22 @@ Also, there appear to be display variants we might be able to use
 that might look better in this context.
 
 -}
-viewAccidentalButton : Maybe Accidental -> Accidental -> Html Msg
-viewAccidentalButton proposedAccidental accidental =
+viewAccidentalButton : ProposedAccidental -> ProposedAccidental -> Html Msg
+viewAccidentalButton currentProposedAccidental buttonProposedAccidental =
     let
         isCurrent =
-            proposedAccidental == Just accidental
+            currentProposedAccidental == buttonProposedAccidental
+
+        buttonContent =
+            case buttonProposedAccidental of
+                Apply accidental ->
+                    Accidental.view Accidental.InheritColor accidental
+
+                CancelAccidental ->
+                    Html.text "×"
+
+                NoProposedAccidental ->
+                    Html.Extra.nothing
     in
     button
         [ Styles.buttonClass
@@ -752,10 +767,10 @@ viewAccidentalButton proposedAccidental accidental =
             ]
         , onClick
             (if isCurrent then
-                SelectProposedAccidental Nothing
+                SelectProposedAccidental NoProposedAccidental
 
              else
-                SelectProposedAccidental (Just accidental)
+                SelectProposedAccidental buttonProposedAccidental
             )
         ]
-        [ Accidental.view Accidental.InheritColor accidental ]
+        [ buttonContent ]

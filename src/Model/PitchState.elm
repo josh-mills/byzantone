@@ -1,6 +1,7 @@
 module Model.PitchState exposing
     ( PitchState, initialPitchState
     , IsonStatus(..), ison
+    , ProposedAccidental(..), unwrapProposedAccidental
     , currentPitch
     )
 
@@ -9,6 +10,8 @@ module Model.PitchState exposing
 @docs PitchState, initialPitchState
 
 @docs IsonStatus, ison
+
+@docs ProposedAccidental, unwrapProposedAccidental
 
 @docs currentPitch
 
@@ -25,7 +28,7 @@ import Movement exposing (Movement)
 type alias PitchState =
     { currentDegree : Maybe Degree
     , ison : IsonStatus
-    , proposedAccidental : Maybe Accidental
+    , proposedAccidental : ProposedAccidental
     , appliedAccidentals : DegreeDataDict (Maybe Accidental)
     , proposedMovement : Movement
     }
@@ -35,7 +38,7 @@ initialPitchState : PitchState
 initialPitchState =
     { currentDegree = Nothing
     , ison = NoIson
-    , proposedAccidental = Nothing
+    , proposedAccidental = NoProposedAccidental
     , appliedAccidentals = DegreeDataDict.init (always Nothing)
     , proposedMovement = Movement.None
     }
@@ -78,3 +81,22 @@ currentPitch scale pitchState =
                 degree
         )
         pitchState.currentDegree
+
+
+type ProposedAccidental
+    = Apply Accidental
+    | CancelAccidental
+    | NoProposedAccidental
+
+
+unwrapProposedAccidental : ProposedAccidental -> Maybe Accidental
+unwrapProposedAccidental proposedAccidental =
+    case proposedAccidental of
+        Apply accidental ->
+            Just accidental
+
+        CancelAccidental ->
+            Nothing
+
+        NoProposedAccidental ->
+            Nothing
