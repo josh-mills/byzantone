@@ -1,12 +1,14 @@
 module View exposing (view)
 
-import Byzantine.Accidental as Accidental exposing (Accidental)
+import Byzantine.Accidental as Accidental
 import Byzantine.ByzHtml.Accidental as Accidental
 import Byzantine.ByzHtml.Martyria as Martyria
 import Byzantine.Degree as Degree exposing (Degree(..))
+import Byzantine.Frequency as Frequency exposing (Frequency, PitchStandard(..))
 import Byzantine.IntervalCharacter exposing (..)
 import Byzantine.Martyria as Martyria
-import Byzantine.Pitch as Pitch exposing (Frequency, Pitch, PitchStandard(..), Register(..))
+import Byzantine.Pitch as Pitch exposing (Pitch)
+import Byzantine.Register as Register exposing (Register(..))
 import Byzantine.Scale as Scale exposing (Scale(..))
 import Copy
 import Html exposing (Html, button, datalist, div, h1, h2, input, main_, p, span, text)
@@ -44,7 +46,7 @@ view model =
                 lazy4 chantEngineNode
                     model.audioSettings
                     model.modeSettings.scale
-                    model.pitchState.currentPitch
+                    (PitchState.currentPitch model.modeSettings.scale model.pitchState)
                     (PitchState.ison model.pitchState.ison)
             )
         , lazy2 backdrop model.menuOpen model.modal
@@ -57,7 +59,7 @@ view model =
             [ class "lg:container lg:mx-auto font-serif"
             , case layoutFor model.layoutData of
                 Vertical ->
-                    class "flex flex-row flex-wrap-reverse"
+                    class "flex flex-row flex-wrap"
 
                 Horizontal ->
                     Styles.flexCol
@@ -98,12 +100,11 @@ chantEngineNode : AudioSettings -> Scale -> Maybe Pitch -> Maybe Pitch -> Html m
 chantEngineNode audioSettings scale currentPitch currentIson =
     let
         frequency pitch =
-            Pitch.frequency audioSettings.pitchStandard
+            Pitch.getPitchFrequency audioSettings.pitchStandard
                 audioSettings.playbackRegister
                 scale
                 pitch
-                |> Pitch.unwrapFrequency
-                |> String.fromFloat
+                |> Frequency.preciseString
     in
     Html.node "chant-engine"
         [ audioSettings.gain
@@ -234,7 +235,7 @@ layoutRadioConfig =
 
 registerRadioConfig : String -> (Register -> Msg) -> RadioFieldset.Config Register Msg
 registerRadioConfig legendText onSelect =
-    { itemToString = Pitch.registerToString
+    { itemToString = Register.toString
     , legendText = legendText
     , onSelect = onSelect
     , options = [ Treble, Bass ]
@@ -254,7 +255,7 @@ responsivenessRadioConfig =
 
 pitchStandardRadioConfig : RadioFieldset.Config PitchStandard Msg
 pitchStandardRadioConfig =
-    { itemToString = Pitch.pitchStandardToString
+    { itemToString = Frequency.pitchStandardToString
     , legendText = "Pitch Standard"
     , onSelect = SetPitchStandard
     , options = [ Ni256, Ke440 ]
@@ -361,8 +362,6 @@ viewControls audioSettings modeSettings pitchState detectedPitch =
                         (registerRadioConfig "Listen Register" SetListenRegister)
                         audioSettings.listenRegister
                     , lazy2 RadioFieldset.view responsivenessRadioConfig audioSettings.responsiveness
-
-                    -- , lazy viewAccidentalButtons pitchState.proposedAccidental
                     , Html.node "pitch-tracker"
                         [ Attr.attribute "smoothing"
                             (case audioSettings.responsiveness of
@@ -372,6 +371,7 @@ viewControls audioSettings modeSettings pitchState detectedPitch =
                                 AudioSettings.Smooth ->
                                     "smooth"
                             )
+                        , class "hidden sm:block"
                         ]
                         []
                     ]
@@ -380,8 +380,7 @@ viewControls audioSettings modeSettings pitchState detectedPitch =
                 div []
                     [ lazy isonButton pitchState.ison
                     , lazy viewIson (PitchState.ison pitchState.ison)
-                    , lazy viewCurrentPitch pitchState.currentPitch
-                    , lazy viewAccidentalButtons pitchState.proposedAccidental
+                    , lazy viewCurrentPitch (PitchState.currentPitch modeSettings.scale pitchState)
                     , lazy gainInput audioSettings
                     ]
         ]
@@ -411,6 +410,7 @@ isonButton : IsonStatus -> Html Msg
 isonButton ison =
     button
         [ Styles.buttonClass
+        , class "my-2"
         , id "select-ison-button"
         , onClick
             (SetIson
@@ -474,47 +474,11 @@ viewCurrentPitch pitch =
         ]
 
 
-viewAccidentalButtons : Maybe Accidental -> Html Msg
-viewAccidentalButtons maybeAccidental =
-    Html.fieldset
-        [ Styles.borderRounded
-        , class "px-2 pb-1 mb-2"
-        , class "flex flex-row flex-wrap gap-2 mt-2"
-        ]
-        (Html.legend [ class "px-1" ] [ Html.text "Accidental" ]
-            :: List.map (viewAccidentalButton maybeAccidental) Accidental.all
-        )
-
-
-viewAccidentalButton : Maybe Accidental -> Accidental -> Html Msg
-viewAccidentalButton proposedAccidental accidental =
-    let
-        isCurrent =
-            proposedAccidental == Just accidental
-    in
-    button
-        [ Styles.buttonClass
-        , class "text-3xl min-w-12"
-        , classList
-            [ ( "text-blue-700 border-2 border-blue-700", isCurrent )
-            , ( "border-2 border-transparent", not isCurrent )
-            ]
-        , onClick
-            (if isCurrent then
-                SelectProposedAccidental Nothing
-
-             else
-                SelectProposedAccidental (Just accidental)
-            )
-        ]
-        [ Accidental.view Accidental.InheritColor accidental ]
-
-
 clearButton : Msg -> Html Msg
 clearButton msg =
     button
         [ Styles.buttonClass
-        , class "mx-2"
+        , class "my-2 mx-2"
         , onClick msg
         ]
         [ text "clear" ]
@@ -533,7 +497,7 @@ gainInput { gain } =
     div []
         [ button
             [ Styles.buttonClass
-            , class "w-24 mr-4"
+            , class "w-24 my-2 mr-4"
             , onClick msg
             ]
             [ text buttonText ]

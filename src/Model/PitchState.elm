@@ -1,6 +1,8 @@
 module Model.PitchState exposing
     ( PitchState, initialPitchState
     , IsonStatus(..), ison
+    , ProposedAccidental(..), unwrapProposedAccidental
+    , currentPitch
     )
 
 {-| User-controlled pitch state.
@@ -9,27 +11,35 @@ module Model.PitchState exposing
 
 @docs IsonStatus, ison
 
+@docs ProposedAccidental, unwrapProposedAccidental
+
+@docs currentPitch
+
 -}
 
 import Byzantine.Accidental exposing (Accidental)
 import Byzantine.Degree exposing (Degree)
 import Byzantine.Pitch as Pitch exposing (Pitch)
+import Byzantine.Scale exposing (Scale)
+import Model.DegreeDataDict as DegreeDataDict exposing (DegreeDataDict)
 import Movement exposing (Movement)
 
 
 type alias PitchState =
-    { currentPitch : Maybe Pitch
+    { currentDegree : Maybe Degree
     , ison : IsonStatus
-    , proposedAccidental : Maybe Accidental
+    , proposedAccidental : ProposedAccidental
+    , appliedAccidentals : DegreeDataDict (Maybe Accidental)
     , proposedMovement : Movement
     }
 
 
 initialPitchState : PitchState
 initialPitchState =
-    { currentPitch = Nothing
+    { currentDegree = Nothing
     , ison = NoIson
-    , proposedAccidental = Nothing
+    , proposedAccidental = NoProposedAccidental
+    , appliedAccidentals = DegreeDataDict.init (always Nothing)
     , proposedMovement = Movement.None
     }
 
@@ -57,3 +67,36 @@ ison isonStatus =
 
         Selected degree ->
             Just (Pitch.natural degree)
+
+
+{-| Evaluate the current pitch as a function of the current degree with
+reference to the applied accidentals.
+-}
+currentPitch : Scale -> PitchState -> Maybe Pitch
+currentPitch scale pitchState =
+    Maybe.map
+        (\degree ->
+            Pitch.from scale
+                (DegreeDataDict.get degree pitchState.appliedAccidentals)
+                degree
+        )
+        pitchState.currentDegree
+
+
+type ProposedAccidental
+    = Apply Accidental
+    | CancelAccidental
+    | NoProposedAccidental
+
+
+unwrapProposedAccidental : ProposedAccidental -> Maybe Accidental
+unwrapProposedAccidental proposedAccidental =
+    case proposedAccidental of
+        Apply accidental ->
+            Just accidental
+
+        CancelAccidental ->
+            Nothing
+
+        NoProposedAccidental ->
+            Nothing

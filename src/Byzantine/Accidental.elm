@@ -1,4 +1,4 @@
-module Byzantine.Accidental exposing (Accidental(..), all, fromString, lower, moriaAdjustment, raise, toString)
+module Byzantine.Accidental exposing (Accidental(..), all, allFlats, allSharps, fromString, lower, moriaAdjustment, raise, toString)
 
 
 type Accidental
@@ -18,6 +18,20 @@ type Accidental
 all : List Accidental
 all =
     [ Flat8, Flat6, Flat4, Flat2, Sharp2, Sharp4, Sharp6, Sharp8 ]
+
+
+{-| Lists all flat accidentals in order from most flat to least flat.
+-}
+allFlats : List Accidental
+allFlats =
+    [ Flat8, Flat6, Flat4, Flat2 ]
+
+
+{-| Lists all sharp accidentals in order from least sharp to most sharp.
+-}
+allSharps : List Accidental
+allSharps =
+    [ Sharp2, Sharp4, Sharp6, Sharp8 ]
 
 
 raise : Accidental -> Maybe Accidental

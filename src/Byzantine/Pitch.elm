@@ -1,14 +1,12 @@
 module Byzantine.Pitch exposing
     ( Pitch
-    , natural, inflected, from, wrapDegree, applyAccidental
+    , natural, inflected, from, applyAccidental
     , PitchString, encode, decode
     , unwrapDegree, unwrapAccidental
     , isInflected, isValidInflection, toString
     , pitchPosition, pitchPositions
-    , Frequency(..), frequency, frequencyToPitchPosition, unwrapFrequency
-    , PitchStandard(..), pitchStandardToString
-    , Register(..), registerToString
-    , Interval, intervals, intervalsFrom, getInterval
+    , getPitchFrequency
+    , Interval
     )
 
 {-| Pitch positions and derived intervals. Di is fixed at 84.
@@ -26,7 +24,7 @@ attractions and inflections.
 
 ## Construct
 
-@docs natural, inflected, from, wrapDegree, applyAccidental
+@docs natural, inflected, from, applyAccidental
 
 
 ## Encode
@@ -51,28 +49,20 @@ attractions and inflections.
 
 # Frequency
 
-@docs Frequency, frequency, frequencyToPitchPosition, unwrapFrequency
-
-
-## PitchStandard
-
-@docs PitchStandard, pitchStandardToString
-
-
-## Register
-
-@docs Register, registerToString
+@docs getPitchFrequency
 
 
 # Intervals
 
-@docs Interval, intervals, intervalsFrom, getInterval
+@docs Interval
 
 -}
 
 import Array exposing (Array)
 import Byzantine.Accidental as Accidental exposing (Accidental)
 import Byzantine.Degree as Degree exposing (Degree)
+import Byzantine.Frequency as Frequency exposing (Frequency, PitchStandard)
+import Byzantine.Register as Register exposing (Register)
 import Byzantine.Scale as Scale exposing (Scale(..))
 import Maybe.Extra
 import Result exposing (Result)
@@ -189,22 +179,6 @@ inflected scale accidental degree =
                 ++ Accidental.toString accidental
                 ++ " accidental."
             )
-
-
-{-| Wrap a degree as a Natural pitch, unless the current pitch or proposed
-movement happens to be inflected and the same degree. In that case, this will
-evaluate to a pitch wrapping the inflected degree.
--}
-wrapDegree : Maybe Pitch -> Maybe Pitch -> Degree -> Pitch
-wrapDegree currentPitch proposedMovementTo degree =
-    if Maybe.map unwrapDegree currentPitch == Just degree then
-        Maybe.withDefault (Natural degree) currentPitch
-
-    else if Maybe.map unwrapDegree proposedMovementTo == Just degree then
-        Maybe.withDefault (Natural degree) proposedMovementTo
-
-    else
-        Natural degree
 
 
 {-| Apply the accidental to the given pitch. This will evaluate to Natural
@@ -395,135 +369,22 @@ hardChromaticPitchPositions =
     Array.fromList [ 0, 12, 18, 38, 42, 54, 60, 80, 84, 96, 102, 122, 126, 136, 144 ]
 
 
-
--- FREQUENCY
-
-
-{-| Pitch standard for frequency. Ni = 256 Hz is the default standard, but the
-slightly higher Ke = 440 Hz is available to align with the A440 western
-classical standard.
+{-| Calculate frequency for a pitch using the given pitch standard and register.
 -}
-type PitchStandard
-    = Ni256
-    | Ke440
-
-
-pitchStandardToString : PitchStandard -> String
-pitchStandardToString pitchStandard =
-    case pitchStandard of
-        Ni256 ->
-            "Ni256"
-
-        Ke440 ->
-            "Ke440"
-
-
-{-| Di is used as a fixed point of reference.
--}
-diFrequency : PitchStandard -> Float
-diFrequency pitchStandard =
-    case pitchStandard of
-        Ni256 ->
-            384.0
-
-        Ke440 ->
-            391.995
-
-
-type Register
-    = Treble
-    | Bass
-
-
-registerToString : Register -> String
-registerToString register =
-    case register of
-        Treble ->
-            "Treble"
-
-        Bass ->
-            "Bass"
-
-
-registerFactor : Register -> Float
-registerFactor register =
-    case register of
-        Treble ->
-            1.0
-
-        Bass ->
-            0.5
-
-
-type Frequency
-    = Frequency Float
-
-
-{-| Frequency relative to a fixed pitch for Natural Di, according to the given pitch
-standard and register.
--}
-frequency : PitchStandard -> Register -> Scale -> Pitch -> Frequency
-frequency pitchStandard register scale pitch =
-    let
-        position =
-            toFloat (pitchPosition scale pitch - 84)
-    in
-    2 ^ (position / 72) * diFrequency pitchStandard * registerFactor register |> Frequency
-
-
-{-| For a given frequency (in Hz), evaluate the pitch position in moria relative
-to a fixed position of Natural Di of 84.
--}
-frequencyToPitchPosition : PitchStandard -> Register -> Frequency -> Float
-frequencyToPitchPosition pitchStandard register (Frequency frequency_) =
-    72 * logBase 2 (frequency_ / (diFrequency pitchStandard * registerFactor register)) + 84
-
-
-unwrapFrequency : Frequency -> Float
-unwrapFrequency (Frequency frequency_) =
-    frequency_
+getPitchFrequency : PitchStandard -> Register -> Scale -> Pitch -> Frequency
+getPitchFrequency pitchStandard register scale pitch =
+    pitchPosition scale pitch
+        |> Frequency.frequency pitchStandard register
 
 
 
 -- INTERVALS
 
 
+{-| TODO: this should be reconsidered.
+-}
 type alias Interval =
     { from : Pitch
     , to : Pitch
     , moria : Int
     }
-
-
-getInterval : Scale -> Pitch -> Pitch -> Interval
-getInterval scale from_ to =
-    { from = from_
-    , to = to
-    , moria = pitchPosition scale to - pitchPosition scale from_
-    }
-
-
-{-| Intervals between all natural degrees in the given scale
--}
-intervals : Scale -> Maybe Pitch -> Maybe Pitch -> List Interval
-intervals scale currentPitch proposedMovementTo =
-    Degree.gamutList
-        |> List.map (wrapDegree currentPitch proposedMovementTo)
-        |> intervalsHelper scale
-
-
-intervalsFrom : Scale -> Pitch -> Pitch -> List Interval
-intervalsFrom scale lower upper =
-    Degree.range (unwrapDegree lower) (unwrapDegree upper)
-        |> List.map Natural
-        |> intervalsHelper scale
-
-
-intervalsHelper : Scale -> List Pitch -> List Interval
-intervalsHelper scale degrees =
-    case degrees of
-        a :: b :: rest ->
-            getInterval scale a b :: intervalsHelper scale (b :: rest)
-
-        _ ->
-            []

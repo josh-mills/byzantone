@@ -3,6 +3,7 @@ module Model.PitchSpaceData exposing
     , Display, displayToLayout, isVertical, pitchButtonSize
     , PositionWithinVisibleRange(..), calculateVisibleRange, positionIsVisible
     , PitchPositionContextString, encodePitchPositionContext, decodePitchPositionContext
+    , intervalsWithVisibility
     , IsonSelectionIndicator, isCurrentIson, canBeSelectedAsIson
     )
 
@@ -31,6 +32,11 @@ as a result of model updates.
 @docs PitchPositionContextString, encodePitchPositionContext, decodePitchPositionContext
 
 
+# Intervals
+
+@docs intervalsWithVisibility
+
+
 # Ison
 
 @docs IsonSelectionIndicator, isCurrentIson, canBeSelectedAsIson
@@ -39,7 +45,7 @@ as a result of model updates.
 
 import Basics.Extra exposing (flip)
 import Byzantine.Degree as Degree exposing (Degree)
-import Byzantine.Pitch as Pitch exposing (Pitch)
+import Byzantine.Pitch as Pitch exposing (Interval, Pitch)
 import Maybe.Extra
 import Model.DegreeDataDict as DegreeDataDict exposing (DegreeDataDict)
 import Model.LayoutData as LayoutData exposing (Layout(..), LayoutData)
@@ -62,14 +68,13 @@ Elements include:
   - **`isonIndicators`** – a `DegreeDataDict IsonSelectionIndicator`, indicating
     whether or not the degree is or can be selected as the ison.
 
+  - **`pitches`** – a `DegreedataDict Pitch`, indicating the specific pitch to
+    display in the pitch column.
+
   - **`pitchPositions`** – a `DegreeDataDict Int`, representing the pitch
     position (in moria) of each degree with respect to the given scale, current
     pitch, and proposed movement with proposed accidental applied as
     appropriate.
-
-  - **`pitchToSelect`** – a `DegreeDataDict (Maybe Pitch)`, representing the
-    pitch that will be given as a payload for the `SelectPitch` message for the
-    pitch button onclick.
 
   - **`pitchVisibility`** – a `DegreeDataDict PositionWithinVisibleRange`,
     indicating the visibility of each degree in the current pitch space.
@@ -103,8 +108,8 @@ To consider:
 type alias PitchSpaceData =
     { display : Display
     , isonIndicators : DegreeDataDict IsonSelectionIndicator
+    , pitches : DegreeDataDict Pitch
     , pitchPositions : DegreeDataDict Int
-    , pitchToSelect : DegreeDataDict (Maybe Pitch)
     , pitchVisibility : DegreeDataDict PositionWithinVisibleRange
     , scalingFactor : Float
     , visibleRangeStart : Int
@@ -127,17 +132,50 @@ init layoutData modeSettings pitchState =
             { startDegreeIndex = Degree.indexOf (Pitch.unwrapDegree visibleRange.start)
             , endDegreeIndex = Degree.indexOf (Pitch.unwrapDegree visibleRange.end)
             }
+
+        proposedMovementTo =
+            Movement.unwrapTargetPitch pitchState.proposedMovement
+                |> Maybe.andThen
+                    (\pitch ->
+                        Pitch.unwrapAccidental pitch
+                            |> Maybe.map
+                                (\accidental ->
+                                    ( Pitch.unwrapDegree pitch, accidental )
+                                )
+                    )
+
+        pitchWithAccidental degree =
+            case proposedMovementTo of
+                Just ( movementToDegree, withAccidental ) ->
+                    if degree == movementToDegree then
+                        Pitch.from modeSettings.scale
+                            (Just withAccidental)
+                            degree
+
+                    else
+                        Pitch.from modeSettings.scale
+                            (DegreeDataDict.get degree pitchState.appliedAccidentals)
+                            degree
+
+                Nothing ->
+                    Pitch.from modeSettings.scale
+                        (DegreeDataDict.get degree pitchState.appliedAccidentals)
+                        degree
     in
     { display = determineDisplay layoutData
     , isonIndicators = DegreeDataDict.init (isonSelectionIndicator modeSettings pitchState)
+    , pitches =
+        DegreeDataDict.init
+            (\degree ->
+                Pitch.from modeSettings.scale
+                    (DegreeDataDict.get degree pitchState.appliedAccidentals)
+                    degree
+            )
     , pitchPositions =
         DegreeDataDict.init
-            (Pitch.wrapDegree
-                pitchState.currentPitch
-                (Movement.unwrapTargetPitch pitchState.proposedMovement)
+            (pitchWithAccidental
                 >> Pitch.pitchPosition modeSettings.scale
             )
-    , pitchToSelect = DegreeDataDict.init (pitchButtonSelectPitch modeSettings pitchState)
     , pitchVisibility = DegreeDataDict.init (visibility visibleRangeIndexes)
     , scalingFactor = 10
     , visibleRangeStart = Pitch.pitchPosition modeSettings.scale visibleRange.start
@@ -152,7 +190,7 @@ consider additional limits as well.)
 -}
 calculateVisibleRange : ModeSettings -> PitchState -> { start : Pitch, end : Pitch }
 calculateVisibleRange modeSettings pitchState =
-    case pitchState.currentPitch of
+    case PitchState.currentPitch modeSettings.scale pitchState of
         Just currentPitch ->
             let
                 currentDegree =
@@ -176,63 +214,6 @@ calculateVisibleRange modeSettings pitchState =
             { start = Pitch.natural modeSettings.rangeStart
             , end = Pitch.natural modeSettings.rangeEnd
             }
-
-
-{-| The idea here is to pull the logic out of the PitchSpace.pitchButton so that
-we can move the domain logic out of the view code.
-
-Compare the `Pitch.wrapDegree` function. There's overlap here. We should
-probably liquidate that function; it encompasses controller logic that's outside
-the scope of the type proper. But we'd need a way of getting intervals out of
-the pitch module as well, which we _should_ do, but there's a good amount of
-refactors needed for that.
-
--}
-pitchButtonSelectPitch : ModeSettings -> PitchState -> Degree -> Maybe Pitch
-pitchButtonSelectPitch { scale } pitchState degree =
-    let
-        naturalPitch =
-            Pitch.natural degree
-
-        -- pitch with proposed accidental, if there is a proposed accidental,
-        -- and if this is valid in the scale
-        pitchWithProposedAccidental =
-            pitchState.proposedAccidental
-                |> Maybe.map (\accidental -> Pitch.inflected scale accidental degree)
-                |> Maybe.andThen Result.toMaybe
-
-        proposedInflectedPitchIsCurrentPitch =
-            pitchWithProposedAccidental == pitchState.currentPitch
-
-        proposedPitchIsCurrentNaturalPitch =
-            (pitchState.proposedAccidental == Nothing)
-                && (pitchState.currentPitch == Just naturalPitch)
-    in
-    if proposedInflectedPitchIsCurrentPitch then
-        Just naturalPitch
-
-    else if proposedPitchIsCurrentNaturalPitch then
-        Nothing
-
-    else
-        let
-            -- if there is a current pitch, would the resulting interval to the
-            -- proposed pitch be valid?
-            inflectedPitchWithResultingMovementWouldBeValid =
-                pitchWithProposedAccidental
-                    |> Maybe.map2 (Pitch.getInterval scale) pitchState.currentPitch
-                    |> Maybe.map (Movement.ofInterval pitchState.currentPitch)
-                    |> Maybe.map2 (Movement.isValid scale) pitchState.currentPitch
-        in
-        case inflectedPitchWithResultingMovementWouldBeValid of
-            Just True ->
-                pitchWithProposedAccidental
-
-            Just False ->
-                Just naturalPitch
-
-            Nothing ->
-                Just (Pitch.from scale pitchState.proposedAccidental degree)
 
 
 
@@ -577,3 +558,77 @@ canBeSelectedAsIson indicator =
 
         _ ->
             False
+
+
+
+-- INTERVALS
+
+
+intervalsWithVisibility : PitchSpaceData -> List ( Interval, PositionWithinVisibleRange )
+intervalsWithVisibility pitchSpaceData =
+    Degree.gamutList
+        |> List.map
+            (\degree ->
+                ( DegreeDataDict.get degree pitchSpaceData.pitches
+                , DegreeDataDict.get degree pitchSpaceData.pitchPositions
+                )
+            )
+        |> intervalsHelper pitchSpaceData
+
+
+intervalsHelper :
+    PitchSpaceData
+    -> List ( Pitch, Int )
+    -> List ( Interval, PositionWithinVisibleRange )
+intervalsHelper pitchSpaceData pitchesWithPositions =
+    case pitchesWithPositions of
+        a :: b :: rest ->
+            getIntervalWithVisibility pitchSpaceData a b
+                :: intervalsHelper pitchSpaceData (b :: rest)
+
+        _ ->
+            []
+
+
+getIntervalWithVisibility :
+    PitchSpaceData
+    -> ( Pitch, Int )
+    -> ( Pitch, Int )
+    -> ( Interval, PositionWithinVisibleRange )
+getIntervalWithVisibility { visibleRangeStart, visibleRangeEnd } ( fromPitch, fromPitchPosition ) ( toPitch, toPitchPosition ) =
+    ( { from = fromPitch
+      , to = toPitch
+      , moria = toPitchPosition - fromPitchPosition
+      }
+    , if toPitchPosition <= visibleRangeStart then
+        Below
+
+      else if fromPitchPosition >= visibleRangeEnd then
+        Above
+
+      else if visibleRangeStart == fromPitchPosition then
+        LowerBoundary
+
+      else if visibleRangeEnd == toPitchPosition then
+        UpperBoundary
+
+      else
+        Within
+    )
+
+
+
+-- PITCH BUTTON CLICKS
+{--| Okay, new strategy. Rather than passing in the information needed to
+determine the specific Msg to be triggered by clicking on a pitch button,
+instead, just pass in whether or not the button can be clicked, or whether it is
+highlighted (which also means it can be clicked). The determination of what
+updates to the model are needed should happen entirely within the update
+function.
+
+Implement with future work.
+-}
+-- type ClickEligibility
+--     = Clickable
+--     | Disabled
+--     | Highlighted

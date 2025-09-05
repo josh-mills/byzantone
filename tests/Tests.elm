@@ -116,6 +116,9 @@ accidentalTests =
         [ test "Accidental.all is complete and unique" <|
             \_ ->
                 Expect.equalLists accidentalBuilder Accidental.all
+        , test "allFlats ++ allSharps equals all" <|
+            \_ ->
+                Expect.equalLists (Accidental.allFlats ++ Accidental.allSharps) Accidental.all
         , describe "accidentals in the Accidental.all function are in ascending order" <|
             (Accidental.all
                 |> List.map Accidental.moriaAdjustment
