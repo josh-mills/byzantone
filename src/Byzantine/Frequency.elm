@@ -4,7 +4,7 @@ module Byzantine.Frequency exposing
     , frequency, toPitchPosition
     )
 
-{-| Frequency-related types and functions for Byzantine music.
+{-| Frequency-related types and functions.
 
 
 # Frequency

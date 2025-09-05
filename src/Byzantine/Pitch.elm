@@ -61,8 +61,8 @@ attractions and inflections.
 import Array exposing (Array)
 import Byzantine.Accidental as Accidental exposing (Accidental)
 import Byzantine.Degree as Degree exposing (Degree)
-import Byzantine.Frequency as Frequency
-import Byzantine.Register as Register
+import Byzantine.Frequency as Frequency exposing (Frequency, PitchStandard)
+import Byzantine.Register as Register exposing (Register)
 import Byzantine.Scale as Scale exposing (Scale(..))
 import Maybe.Extra
 import Result exposing (Result)
@@ -371,7 +371,7 @@ hardChromaticPitchPositions =
 
 {-| Calculate frequency for a pitch using the given pitch standard and register.
 -}
-getPitchFrequency : Frequency.PitchStandard -> Register.Register -> Scale -> Pitch -> Frequency.Frequency
+getPitchFrequency : PitchStandard -> Register -> Scale -> Pitch -> Frequency
 getPitchFrequency pitchStandard register scale pitch =
     pitchPosition scale pitch
         |> Frequency.frequency pitchStandard register

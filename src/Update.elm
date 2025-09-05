@@ -504,10 +504,6 @@ ison.
 
 If in Listen mode, this is used only for setting the accidental.
 
-Still to implement:
-
-  - applied accidental verification.
-
 -}
 processPitchButtonClick : Model -> Degree -> Model
 processPitchButtonClick model degree =
@@ -517,19 +513,10 @@ processPitchButtonClick model degree =
                 (\pitchState ->
                     { pitchState
                         | appliedAccidentals =
-                            case pitchState.proposedAccidental of
-                                Apply newAccidental ->
-                                    DegreeDataDict.set degree
-                                        (Just newAccidental)
-                                        pitchState.appliedAccidentals
-
-                                CancelAccidental ->
-                                    DegreeDataDict.set degree
-                                        Nothing
-                                        pitchState.appliedAccidentals
-
-                                NoProposedAccidental ->
-                                    pitchState.appliedAccidentals
+                            applyAccidentalWithValidation model.modeSettings.scale
+                                model.pitchSpaceData
+                                model.pitchState
+                                degree
                         , proposedAccidental = NoProposedAccidental
                     }
                 )

@@ -370,9 +370,6 @@ closestDegreeHelper pitchPositions detectedPitch lowerNeighborCandidate =
 -- PITCH COLUMN
 
 
-{-| We'll need additional control over width / height. The interval column and
-the pitch column should no longer be the same.
--}
 viewPitches : PitchSpaceData -> ModeSettings -> PitchState -> Html Msg
 viewPitches pitchSpaceData modeSettings pitchState =
     let
@@ -735,12 +732,6 @@ viewAccidentalButtons display proposedAccidental =
         ]
 
 
-{-| TODO: new Msg.
-
-Also, there appear to be display variants we might be able to use
-that might look better in this context.
-
--}
 viewAccidentalButton : ProposedAccidental -> ProposedAccidental -> Html Msg
 viewAccidentalButton currentProposedAccidental buttonProposedAccidental =
     let
