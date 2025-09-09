@@ -33,7 +33,7 @@ type Msg
     | SelectPitch (Maybe Pitch) (Maybe Movement)
     | SelectProposedAccidental ProposedAccidental
     | SelectProposedMovement Movement
-    | SetAudioMode AudioSettings.Mode
+    | SetAudioMode AudioSettings.AudioMode
     | SetDetectedPitch (Maybe Frequency)
     | SetGain Float
     | SetIson IsonStatus
@@ -170,7 +170,7 @@ update msg model =
 
         SetAudioMode mode ->
             ( { model | pitchState = PitchState.initialPitchState }
-                |> updateAudioSettings (\audioSettings -> { audioSettings | mode = mode })
+                |> updateAudioSettings (\audioSettings -> { audioSettings | audioMode = mode })
                 |> resetPitchSpaceData
             , Cmd.none
             )
@@ -507,7 +507,7 @@ If in Listen mode, this is used only for setting the accidental.
 -}
 processPitchButtonClick : Model -> Degree -> Model
 processPitchButtonClick model degree =
-    case model.audioSettings.mode of
+    case model.audioSettings.audioMode of
         AudioSettings.Listen ->
             updatePitchState
                 (\pitchState ->

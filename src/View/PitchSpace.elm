@@ -63,7 +63,7 @@ view pitchSpaceData audioSettings modeSettings pitchState detectedPitch =
                )
         )
         [ Html.Lazy.lazy3 viewIntervals pitchSpaceData modeSettings pitchState
-        , viewIf (audioSettings.mode == AudioSettings.Listen)
+        , viewIf (audioSettings.audioMode == AudioSettings.Listen)
             (viewPitchTracker pitchSpaceData audioSettings detectedPitch)
         , Html.Lazy.lazy3 viewPitches pitchSpaceData modeSettings pitchState
         , viewAccidentalButtons pitchSpaceData.display pitchState.proposedAccidental

@@ -1,13 +1,13 @@
 module Model.AudioSettings exposing
     ( AudioSettings, defaultAudioSettings
-    , Mode(..), audioModeToString, modes
+    , AudioMode(..), audioModeToString, modes
     , Responsiveness(..), responsivenessToString
     )
 
 {-|
 
 @docs AudioSettings, defaultAudioSettings
-@docs Mode, audioModeToString, modes
+@docs AudioMode, audioModeToString, modes
 @docs Responsiveness, responsivenessToString
 
 -}
@@ -19,7 +19,7 @@ import Byzantine.Register exposing (Register(..))
 
 type alias AudioSettings =
     { gain : Float
-    , mode : Mode
+    , audioMode : AudioMode
     , pitchStandard : PitchStandard
     , playbackRegister : Register
     , listenRegister : Register
@@ -30,7 +30,7 @@ type alias AudioSettings =
 defaultAudioSettings : AudioSettings
 defaultAudioSettings =
     { gain = 0.3
-    , mode = Play
+    , audioMode = Play
     , pitchStandard = Ni256
     , playbackRegister = Treble
     , listenRegister = Bass
@@ -38,17 +38,17 @@ defaultAudioSettings =
     }
 
 
-type Mode
+type AudioMode
     = Play
     | Listen
 
 
-modes : List Mode
+modes : List AudioMode
 modes =
     [ Play, Listen ]
 
 
-audioModeToString : Mode -> String
+audioModeToString : AudioMode -> String
 audioModeToString mode =
     case mode of
         Play ->

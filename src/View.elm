@@ -39,9 +39,8 @@ import View.PitchSpace as PitchSpace
 
 view : Model -> Html Msg
 view model =
-    div
-        [ class "p-4" ]
-        [ Html.Extra.viewIfLazy (model.audioSettings.mode == AudioSettings.Play)
+    div [ class "h-screen" ]
+        [ Html.Extra.viewIfLazy (model.audioSettings.audioMode == AudioSettings.Play)
             (\_ ->
                 lazy4 chantEngineNode
                     model.audioSettings
@@ -354,8 +353,8 @@ viewControls : AudioSettings -> ModeSettings -> PitchState -> Maybe Frequency ->
 viewControls audioSettings modeSettings pitchState detectedPitch =
     div [ class "w-max", classList [ ( "    mt-8", LayoutData.showSpacing ) ] ]
         [ lazy2 RadioFieldset.view scaleRadioConfig modeSettings.scale
-        , lazy2 RadioFieldset.view playModeRadioConfig audioSettings.mode
-        , case audioSettings.mode of
+        , lazy2 RadioFieldset.view playModeRadioConfig audioSettings.audioMode
+        , case audioSettings.audioMode of
             AudioSettings.Listen ->
                 div []
                     [ lazy2 RadioFieldset.view
@@ -396,7 +395,7 @@ scaleRadioConfig =
     }
 
 
-playModeRadioConfig : RadioFieldset.Config AudioSettings.Mode Msg
+playModeRadioConfig : RadioFieldset.Config AudioSettings.AudioMode Msg
 playModeRadioConfig =
     { itemToString = AudioSettings.audioModeToString
     , legendText = "Audio Mode"
