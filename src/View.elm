@@ -29,6 +29,7 @@ import Model.PitchState as PitchState exposing (IsonStatus, PitchState)
 import Movement exposing (Movement(..))
 import RadioFieldset
 import Styles
+import Svg.Attributes
 import Update exposing (Msg(..))
 import View.PitchSpace as PitchSpace
 
@@ -135,7 +136,7 @@ header =
             [ class "w-7 mt-2 self-start"
             , onClick ToggleMenu
             ]
-            [ Icons.bars ]
+            [ Icons.bars [ Svg.Attributes.fill "currentColor", Svg.Attributes.class "w-6 h-6" ] ]
         ]
 
 
@@ -190,7 +191,7 @@ viewModal audioSettings layoutData modeSettings modal =
                         [ class "w-8 p-2"
                         , onClick (SelectModal NoModal)
                         ]
-                        [ Icons.xmark ]
+                        [ Icons.xmark [ Svg.Attributes.fill "currentColor", Svg.Attributes.class "w-6 h-6" ] ]
                     ]
                 , modalContent audioSettings layoutData modeSettings modal
                 ]
