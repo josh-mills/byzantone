@@ -56,7 +56,8 @@ view pitchSpaceData audioSettings modeSettings pitchState detectedPitch =
          , Attr.attributeIf LayoutData.showSpacing Styles.border
          ]
             ++ (if PitchSpaceData.isVertical pitchSpaceData.display then
-                    [ Styles.flexRow, class "my-8 md:me-12" ]
+                    -- TODO: centering, or padding, for responsiveness?
+                    [ Styles.flexRow, class "my-8 md:me-12 pb-8" ]
 
                 else
                     [ Styles.flexCol, class "mx-8 mb-8" ]
