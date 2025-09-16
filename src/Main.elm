@@ -4,7 +4,9 @@ import Browser
 import Browser.Dom as Dom
 import Browser.Events
 import Byzantine.Frequency exposing (Frequency(..))
+import Json.Decode as Decode
 import Model exposing (Model)
+import Model.DeviceInfo as DeviceInfo
 import Ports
 import Task
 import Update exposing (Msg(..), update)
@@ -15,7 +17,7 @@ import View exposing (view)
 -- MAIN
 
 
-main : Program () Model Msg
+main : Program Decode.Value Model Msg
 main =
     Browser.element
         { init = init
@@ -25,9 +27,11 @@ main =
         }
 
 
-init : () -> ( Model, Cmd Msg )
-init _ =
-    ( Model.initialModel
+init : Decode.Value -> ( Model, Cmd Msg )
+init flags =
+    ( Decode.decodeValue DeviceInfo.decoder flags
+        |> Result.withDefault DeviceInfo.default
+        |> Model.initialModel
     , Task.perform GotViewport Dom.getViewport
     )
 

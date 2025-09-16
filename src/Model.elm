@@ -11,11 +11,6 @@ module Model exposing
 @docs Model, initialModel
 
 
-# Controls Menus
-
-@docs ControlMenu
-
-
 ## Modal
 
 @docs Modal, modalOpen, modalToString
@@ -27,6 +22,7 @@ import Byzantine.Frequency exposing (Frequency)
 import Byzantine.Scale exposing (Scale(..))
 import ControlsMenu exposing (OpenControlMenus)
 import Model.AudioSettings as AudioSettings exposing (AudioSettings)
+import Model.DeviceInfo exposing (DeviceInfo)
 import Model.LayoutData as LayoutData exposing (LayoutData)
 import Model.ModeSettings as ModeSettings exposing (ModeSettings)
 import Model.PitchSpaceData as PitchSpaceData exposing (PitchSpaceData)
@@ -37,6 +33,7 @@ import Movement exposing (Movement(..))
 type alias Model =
     { audioSettings : AudioSettings
     , detectedPitch : Maybe Frequency
+    , deviceInfo : DeviceInfo
     , layoutData : LayoutData
     , menuOpen : Bool
     , modal : Modal
@@ -47,10 +44,11 @@ type alias Model =
     }
 
 
-initialModel : Model
-initialModel =
+initialModel : DeviceInfo -> Model
+initialModel deviceInfo =
     { audioSettings = AudioSettings.defaultAudioSettings
     , detectedPitch = Nothing
+    , deviceInfo = deviceInfo
     , layoutData = LayoutData.initialLayoutData
     , menuOpen = False
     , modal = NoModal

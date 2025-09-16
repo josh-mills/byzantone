@@ -25,18 +25,34 @@
         <script src="dist/elm.js"></script>
         <div id="elm-app"></div>
         <script>
+            function getDeviceInfo() {
+                const userAgent =
+                    navigator.userAgent || navigator.vendor || window.opera;
+
+                const isMobileDevice =
+                    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+                        userAgent,
+                    );
+
+                const hasTouchScreen =
+                    "maxTouchPoints" in navigator &&
+                    navigator.maxTouchPoints > 0;
+
+                return {
+                    userAgent,
+                    isMobileDevice,
+                    hasTouchScreen,
+                };
+            }
             const elm = Elm.Main.init({
                 node: document.getElementById("elm-app"),
+                flags: getDeviceInfo(),
             });
 
-            // Event listener for pitch detected events
             document.addEventListener("pitchDetected", (event) => {
                 if (elm.ports && elm.ports.pitchDetected) {
                     elm.ports.pitchDetected.send({
-                        pitch:
-                            event.detail.pitch === null
-                                ? null
-                                : event.detail.pitch,
+                        pitch: event.detail.pitch,
                     });
                 }
             });
