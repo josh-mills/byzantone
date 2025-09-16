@@ -354,10 +354,7 @@ viewControls audioSettings modeSettings pitchState detectedPitch =
         [ class "w-max hidden md:flex md:flex-col"
         , classList [ ( "mt-8", LayoutData.showSpacing ) ]
         ]
-        [ lazy2 RadioFieldset.view scaleRadioConfig modeSettings.scale
-
-        -- , lazy2 RadioFieldset.view playModeRadioConfig audioSettings.audioMode
-        , case audioSettings.audioMode of
+        [ case audioSettings.audioMode of
             AudioSettings.Listen ->
                 div []
                     [ lazy2 RadioFieldset.view
@@ -384,16 +381,6 @@ viewControls audioSettings modeSettings pitchState detectedPitch =
                     , lazy viewCurrentPitch (PitchState.currentPitch modeSettings.scale pitchState)
                     ]
         ]
-
-
-scaleRadioConfig : RadioFieldset.Config Scale Msg
-scaleRadioConfig =
-    { itemToString = Scale.name
-    , legendText = "Select Scale"
-    , onSelect = SetScale
-    , options = Scale.all
-    , viewItem = Nothing
-    }
 
 
 isonButton : IsonStatus -> Html Msg

@@ -3,6 +3,7 @@ module View.Controls exposing
     , view
     )
 
+import Byzantine.Scale as Scale exposing (Scale(..))
 import ControlsMenu exposing (MenuOption(..), OpenControlMenus)
 import Html exposing (Html, div, text)
 import Html.Attributes as Attr exposing (class, classList)
@@ -82,6 +83,16 @@ optionHeaderText openControlMenus menuOption =
                     ]
                 ]
 
+        ScaleMenu ->
+            div [ Styles.flexRow, class "justify-between" ]
+                [ div [] [ text "Scale" ]
+                , div
+                    [ class "w-6 transition-transform duration-300 ease-in-out"
+                    , classList [ ( "rotate-180", isOpen ) ]
+                    ]
+                    [ Icons.chevronDown [] ]
+                ]
+
         VolumeMenu ->
             div [ Styles.flexRow, class "justify-between" ]
                 [ div [] [ text "Volume" ]
@@ -122,6 +133,10 @@ optionContent audioSettings modeSettings pitchState openControlMenus menuOption 
                     -- TODO: more things here
                     ]
 
+            ScaleMenu ->
+                div [ class "m-2" ]
+                    [ lazy2 RadioFieldset.view scaleRadioConfig modeSettings.scale ]
+
             VolumeMenu ->
                 gainInput audioSettings
         ]
@@ -147,6 +162,16 @@ playModeRadioConfig =
     , legendText = "Audio Mode"
     , onSelect = Update.SetAudioMode
     , options = AudioSettings.modes
+    , viewItem = Nothing
+    }
+
+
+scaleRadioConfig : RadioFieldset.Config Scale Msg
+scaleRadioConfig =
+    { itemToString = Scale.name
+    , legendText = "Select Scale"
+    , onSelect = Update.SetScale
+    , options = Scale.all
     , viewItem = Nothing
     }
 
