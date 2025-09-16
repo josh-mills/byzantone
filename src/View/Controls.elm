@@ -1,0 +1,166 @@
+module View.Controls exposing
+    ( gainInput
+    , view
+    )
+
+import ControlsMenu exposing (MenuOption(..), OpenControlMenus)
+import Html exposing (Html, div, text)
+import Html.Attributes as Attr exposing (class, classList)
+import Html.Attributes.Extra exposing (attributeIf)
+import Html.Events exposing (onClick, onInput)
+import Html.Extra
+import Html.Lazy exposing (..)
+import Icons
+import Model exposing (Model)
+import Model.AudioSettings as AudioSettings exposing (AudioSettings)
+import Model.ModeSettings exposing (ModeSettings)
+import Model.PitchState exposing (PitchState)
+import RadioFieldset
+import Styles
+import Update exposing (Msg)
+
+
+view : AudioSettings -> ModeSettings -> PitchState -> OpenControlMenus -> Html Msg
+view audioSettings modeSettings pitchState openControlMenus =
+    Html.menu
+        [ class "w-full sm:w-64"
+        , class ""
+        ]
+        (List.map
+            (item audioSettings modeSettings pitchState openControlMenus)
+            ControlsMenu.menuOptions
+        )
+
+
+item : AudioSettings -> ModeSettings -> PitchState -> OpenControlMenus -> MenuOption -> Html Msg
+item audioSettings modeSettings pitchState openControlMenus menuOption =
+    let
+        isOpen =
+            ControlsMenu.isOpen openControlMenus menuOption
+    in
+    Html.li
+        [ class "grid transition-[grid-template-rows] duration-300 ease-in-out"
+        , classList
+            [ ( "grid-rows-[auto_0fr]", not isOpen )
+            , ( "grid-rows-[auto_1fr]", isOpen )
+            ]
+        ]
+        [ optionHeader menuOption
+        , optionContent audioSettings modeSettings pitchState openControlMenus menuOption
+        ]
+
+
+optionHeader : MenuOption -> Html Msg
+optionHeader menuOption =
+    Html.button
+        [ class "w-full h-12"
+        , Styles.buttonClass
+        , Styles.border
+        , onClick (Update.ToggleControlMenu menuOption)
+        ]
+        [ optionHeaderText menuOption ]
+
+
+{-| Include iconss for these too?
+-}
+optionHeaderText : MenuOption -> Html Msg
+optionHeaderText menuOption =
+    case menuOption of
+        AudioModeMenu ->
+            div [ Styles.flexRow, class "justify-between" ]
+                [ div [] [ text "Audio" ]
+                , div [ class "w-6" ] [ Icons.chevronDown [] ]
+                ]
+
+        VolumeMenu ->
+            div [ Styles.flexRow, class "justify-between" ]
+                [ div [] [ text "Volume" ]
+                , div [ class "w-6" ] [ Icons.chevronDown [] ]
+                ]
+
+
+optionContent : AudioSettings -> ModeSettings -> PitchState -> OpenControlMenus -> MenuOption -> Html Msg
+optionContent audioSettings modeSettings pitchState openControlMenus menuOption =
+    let
+        isOpen =
+            ControlsMenu.isOpen openControlMenus menuOption
+    in
+    div
+        [ if isOpen then
+            Styles.border
+
+          else
+            Styles.borderTransparent
+        , classList [ ( "mb-2 -OPEp-2", isOpen ) ]
+        , class "overflow-hidden"
+        ]
+        [ case menuOption of
+            AudioModeMenu ->
+                div [ class "m-2" ]
+                    [ lazy2 RadioFieldset.view playModeRadioConfig audioSettings.audioMode
+                    , case audioSettings.audioMode of
+                        AudioSettings.Listen ->
+                            lazy2 RadioFieldset.view responsivenessRadioConfig audioSettings.responsiveness
+
+                        AudioSettings.Play ->
+                            Html.Extra.nothing
+
+                    -- TODO: more things here
+                    ]
+
+            VolumeMenu ->
+                gainInput audioSettings
+        ]
+
+
+
+-- CONTENT
+
+
+responsivenessRadioConfig : RadioFieldset.Config AudioSettings.Responsiveness Msg
+responsivenessRadioConfig =
+    { itemToString = AudioSettings.responsivenessToString
+    , legendText = "Responsiveness"
+    , onSelect = Update.SetResponsiveness
+    , options = [ AudioSettings.Sensitive, AudioSettings.Smooth ]
+    , viewItem = Nothing
+    }
+
+
+playModeRadioConfig : RadioFieldset.Config AudioSettings.AudioMode Msg
+playModeRadioConfig =
+    { itemToString = AudioSettings.audioModeToString
+    , legendText = "Audio Mode"
+    , onSelect = Update.SetAudioMode
+    , options = AudioSettings.modes
+    , viewItem = Nothing
+    }
+
+
+gainInput : AudioSettings -> Html Msg
+gainInput { gain } =
+    let
+        ( buttonText, msg ) =
+            if gain > 0 then
+                ( "mute", Update.SetGain 0 )
+
+            else
+                ( "unmute", Update.SetGain 0.2 )
+    in
+    div []
+        [ Html.button
+            [ Styles.buttonClass
+            , class "w-24 my-2 mr-4"
+            , onClick msg
+            ]
+            [ text buttonText ]
+        , Html.input
+            [ Attr.type_ "range"
+            , Attr.min "0"
+            , Attr.max "1"
+            , Attr.step "0.02"
+            , Attr.value (String.fromFloat gain)
+            , onInput (Update.SetGain << Maybe.withDefault gain << String.toFloat)
+            ]
+            []
+        ]

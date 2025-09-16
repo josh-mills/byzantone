@@ -10,6 +10,7 @@ import Byzantine.Martyria as Martyria
 import Byzantine.Pitch as Pitch exposing (Pitch)
 import Byzantine.Register as Register exposing (Register(..))
 import Byzantine.Scale as Scale exposing (Scale(..))
+import ControlsMenu
 import Copy
 import Html exposing (Html, button, datalist, div, h1, h2, input, main_, p, span, text)
 import Html.Attributes as Attr exposing (class, classList, id, type_)
@@ -31,6 +32,7 @@ import RadioFieldset
 import Styles
 import Svg.Attributes
 import Update exposing (Msg(..))
+import View.Controls
 import View.PitchSpace as PitchSpace
 
 
@@ -59,7 +61,7 @@ view model =
             [ class "lg:container lg:mx-auto font-serif"
             , case layoutFor model.layoutData of
                 Vertical ->
-                    class "flex flex-row flex-wrap"
+                    class "flex flex-col md:flex-row flex-wrap"
 
                 Horizontal ->
                     Styles.flexCol
@@ -72,6 +74,11 @@ view model =
                 model.modeSettings
                 model.pitchState
                 model.detectedPitch
+            , View.Controls.view
+                model.audioSettings
+                model.modeSettings
+                model.pitchState
+                model.openControlMenus
             , lazy4 viewControls model.audioSettings model.modeSettings model.pitchState model.detectedPitch
             ]
         ]
@@ -122,7 +129,7 @@ chantEngineNode audioSettings scale currentPitch currentIson =
 
 header : Html Msg
 header =
-    Html.header [ Styles.flexRowCentered ]
+    Html.header [ Styles.flexRowCentered, class "p-4" ]
         [ div [ class "w-7" ] []
         , div [ Styles.flexCol, class "flex-1 mb-4 mx-4" ]
             [ h1 [ class "font-heading text-4xl text-center" ]
@@ -218,7 +225,8 @@ settings audioSettings layoutData modeSettings =
             (registerRadioConfig "Playback Register" SetPlaybackRegister)
             audioSettings.playbackRegister
         , lazy2 RadioFieldset.view pitchStandardRadioConfig audioSettings.pitchStandard
-        , lazy gainInput audioSettings
+
+        -- , lazy gainInput audioSettings
         , lazy rangeFieldset modeSettings
         ]
 
@@ -239,16 +247,6 @@ registerRadioConfig legendText onSelect =
     , legendText = legendText
     , onSelect = onSelect
     , options = [ Treble, Bass ]
-    , viewItem = Nothing
-    }
-
-
-responsivenessRadioConfig : RadioFieldset.Config AudioSettings.Responsiveness Msg
-responsivenessRadioConfig =
-    { itemToString = AudioSettings.responsivenessToString
-    , legendText = "Responsiveness"
-    , onSelect = SetResponsiveness
-    , options = [ AudioSettings.Sensitive, AudioSettings.Smooth ]
     , viewItem = Nothing
     }
 
@@ -352,16 +350,19 @@ viewPitchStandard pitchStandard =
 
 viewControls : AudioSettings -> ModeSettings -> PitchState -> Maybe Frequency -> Html Msg
 viewControls audioSettings modeSettings pitchState detectedPitch =
-    div [ class "w-max", classList [ ( "    mt-8", LayoutData.showSpacing ) ] ]
+    div
+        [ class "w-max hidden md:flex md:flex-col"
+        , classList [ ( "mt-8", LayoutData.showSpacing ) ]
+        ]
         [ lazy2 RadioFieldset.view scaleRadioConfig modeSettings.scale
-        , lazy2 RadioFieldset.view playModeRadioConfig audioSettings.audioMode
+
+        -- , lazy2 RadioFieldset.view playModeRadioConfig audioSettings.audioMode
         , case audioSettings.audioMode of
             AudioSettings.Listen ->
                 div []
                     [ lazy2 RadioFieldset.view
                         (registerRadioConfig "Listen Register" SetListenRegister)
                         audioSettings.listenRegister
-                    , lazy2 RadioFieldset.view responsivenessRadioConfig audioSettings.responsiveness
                     , Html.node "pitch-tracker"
                         [ Attr.attribute "smoothing"
                             (case audioSettings.responsiveness of
@@ -381,7 +382,6 @@ viewControls audioSettings modeSettings pitchState detectedPitch =
                     [ lazy isonButton pitchState.ison
                     , lazy viewIson (PitchState.ison pitchState.ison)
                     , lazy viewCurrentPitch (PitchState.currentPitch modeSettings.scale pitchState)
-                    , lazy gainInput audioSettings
                     ]
         ]
 
@@ -392,16 +392,6 @@ scaleRadioConfig =
     , legendText = "Select Scale"
     , onSelect = SetScale
     , options = Scale.all
-    , viewItem = Nothing
-    }
-
-
-playModeRadioConfig : RadioFieldset.Config AudioSettings.AudioMode Msg
-playModeRadioConfig =
-    { itemToString = AudioSettings.audioModeToString
-    , legendText = "Audio Mode"
-    , onSelect = SetAudioMode
-    , options = AudioSettings.modes
     , viewItem = Nothing
     }
 
@@ -484,36 +474,20 @@ clearButton msg =
         [ text "clear" ]
 
 
-gainInput : AudioSettings -> Html Msg
-gainInput { gain } =
-    let
-        ( buttonText, msg ) =
-            if gain > 0 then
-                ( "mute", SetGain 0 )
 
-            else
-                ( "unmute", SetGain 0.2 )
-    in
-    div []
-        [ button
-            [ Styles.buttonClass
-            , class "w-24 my-2 mr-4"
-            , onClick msg
-            ]
-            [ text buttonText ]
-        , input
-            [ type_ "range"
-            , Attr.min "0"
-            , Attr.max "1"
-            , Attr.step "0.02"
-            , Attr.value <| String.fromFloat gain
-            , onInput (SetGain << Maybe.withDefault gain << String.toFloat)
-            ]
-            []
-        ]
-
-
-
+-- MOBILE CONTROLS
+-- viewMobileControls : AudioSettings -> ModeSettings -> PitchState -> Html Msg
+-- viewMobileControls audioSettings modeSettings pitchState =
+--     div
+--         [ Styles.flexRow
+--         , Styles.border
+--         , class "md:hidden"
+--         , class "h-12"
+--         -- , class "bg-gray-100 "
+--         , class "sticky bottom-0"
+--         ]
+--         [ mobileControlsMenu audioSettings modeSettings pitchState
+--         ]
 -- HELPERS
 
 

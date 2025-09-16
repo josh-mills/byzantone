@@ -2,7 +2,7 @@ module Styles exposing
     ( height, width
     , left, top
     , flexRow, flexRowCentered, flexCol
-    , border, borderRounded, buttonClass, transition
+    , border, borderTransparent, borderRounded, buttonClass, transition
     )
 
 {-| Style attribute helpers and common Tailwind class combinations
@@ -31,7 +31,7 @@ module Styles exposing
 
 ## Misc
 
-@docs border, borderRounded, buttonClass, transition
+@docs border, borderTransparent, borderRounded, buttonClass, transition
 
 -}
 
@@ -152,6 +152,13 @@ flexCol =
 border : Html.Attribute msg
 border =
     class "border border-gray-300"
+
+
+{-| `class "border border-transparent"`
+-}
+borderTransparent : Html.Attribute msg
+borderTransparent =
+    class "border border-transparent"
 
 
 {-| `class "border border-gray-300 rounded-md"`

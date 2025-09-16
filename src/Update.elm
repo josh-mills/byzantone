@@ -8,6 +8,7 @@ import Byzantine.Frequency exposing (Frequency(..), PitchStandard)
 import Byzantine.Pitch as Pitch exposing (Pitch)
 import Byzantine.Register exposing (Register)
 import Byzantine.Scale exposing (Scale)
+import ControlsMenu
 import Maybe.Extra as Maybe
 import Model exposing (Modal, Model)
 import Model.AudioSettings as AudioSettings exposing (AudioSettings)
@@ -45,6 +46,7 @@ type Msg
     | SetListenRegister Register
     | SetResponsiveness AudioSettings.Responsiveness
     | SetScale Scale
+    | ToggleControlMenu ControlsMenu.MenuOption
     | ToggleMenu
 
 
@@ -267,6 +269,14 @@ update msg model =
 
         SetDetectedPitch pitchFrequency ->
             ( { model | detectedPitch = pitchFrequency }
+            , Cmd.none
+            )
+
+        ToggleControlMenu menuOption ->
+            ( { model
+                | openControlMenus =
+                    ControlsMenu.toggle menuOption model.openControlMenus
+              }
             , Cmd.none
             )
 
