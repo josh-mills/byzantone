@@ -45,37 +45,51 @@ item audioSettings modeSettings pitchState openControlMenus menuOption =
             , ( "grid-rows-[auto_1fr]", isOpen )
             ]
         ]
-        [ optionHeader menuOption
+        [ optionHeader openControlMenus menuOption
         , optionContent audioSettings modeSettings pitchState openControlMenus menuOption
         ]
 
 
-optionHeader : MenuOption -> Html Msg
-optionHeader menuOption =
+optionHeader : OpenControlMenus -> MenuOption -> Html Msg
+optionHeader openControlMenus menuOption =
     Html.button
         [ class "w-full h-12"
         , Styles.buttonClass
         , Styles.border
         , onClick (Update.ToggleControlMenu menuOption)
         ]
-        [ optionHeaderText menuOption ]
+        [ optionHeaderText openControlMenus menuOption ]
 
 
-{-| Include iconss for these too?
+{-| Include icons for these too?
 -}
-optionHeaderText : MenuOption -> Html Msg
-optionHeaderText menuOption =
+optionHeaderText : OpenControlMenus -> MenuOption -> Html Msg
+optionHeaderText openControlMenus menuOption =
+    let
+        isOpen =
+            ControlsMenu.isOpen openControlMenus menuOption
+    in
     case menuOption of
         AudioModeMenu ->
             div [ Styles.flexRow, class "justify-between" ]
                 [ div [] [ text "Audio" ]
-                , div [ class "w-6" ] [ Icons.chevronDown [] ]
+                , div
+                    [ class "w-6 transition-transform duration-300 ease-in-out"
+                    , classList [ ( "rotate-180", isOpen ) ]
+                    ]
+                    [ Icons.chevronDown
+                        []
+                    ]
                 ]
 
         VolumeMenu ->
             div [ Styles.flexRow, class "justify-between" ]
                 [ div [] [ text "Volume" ]
-                , div [ class "w-6" ] [ Icons.chevronDown [] ]
+                , div
+                    [ class "w-6 transition-transform duration-300 ease-in-out"
+                    , classList [ ( "rotate-180", isOpen ) ]
+                    ]
+                    [ Icons.chevronDown [] ]
                 ]
 
 
