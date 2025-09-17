@@ -9,10 +9,9 @@ import Byzantine.IntervalCharacter exposing (..)
 import Byzantine.Martyria as Martyria
 import Byzantine.Pitch as Pitch exposing (Pitch)
 import Byzantine.Register as Register exposing (Register(..))
-import Byzantine.Scale as Scale exposing (Scale(..))
-import ControlsMenu
+import Byzantine.Scale exposing (Scale(..))
 import Copy
-import Html exposing (Html, button, datalist, div, h1, h2, input, main_, p, span, text)
+import Html exposing (Html, button, datalist, div, h1, h2, main_, p, span, text)
 import Html.Attributes as Attr exposing (class, classList, id, type_)
 import Html.Attributes.Extra as Attr
 import Html.Events exposing (onClick, onInput)

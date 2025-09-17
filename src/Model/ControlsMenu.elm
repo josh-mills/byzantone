@@ -1,4 +1,4 @@
-module ControlsMenu exposing
+module Model.ControlsMenu exposing
     ( OpenControlMenus, init
     , MenuOption(..), menuOptions
     , isOpen, toggle

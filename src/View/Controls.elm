@@ -4,16 +4,14 @@ module View.Controls exposing
     )
 
 import Byzantine.Scale as Scale exposing (Scale(..))
-import ControlsMenu exposing (MenuOption(..), OpenControlMenus)
 import Html exposing (Html, div, text)
 import Html.Attributes as Attr exposing (class, classList)
-import Html.Attributes.Extra exposing (attributeIf)
 import Html.Events exposing (onClick, onInput)
 import Html.Extra
 import Html.Lazy exposing (..)
 import Icons
-import Model exposing (Model)
 import Model.AudioSettings as AudioSettings exposing (AudioSettings)
+import Model.ControlsMenu as ControlsMenu exposing (MenuOption(..), OpenControlMenus)
 import Model.ModeSettings exposing (ModeSettings)
 import Model.PitchState exposing (PitchState)
 import RadioFieldset

@@ -8,10 +8,10 @@ import Byzantine.Frequency exposing (Frequency(..), PitchStandard)
 import Byzantine.Pitch as Pitch exposing (Pitch)
 import Byzantine.Register exposing (Register)
 import Byzantine.Scale exposing (Scale)
-import ControlsMenu
 import Maybe.Extra as Maybe
 import Model exposing (Modal, Model)
 import Model.AudioSettings as AudioSettings exposing (AudioSettings)
+import Model.ControlsMenu as ControlsMenu
 import Model.DegreeDataDict as DegreeDataDict exposing (DegreeDataDict)
 import Model.LayoutData exposing (LayoutData, LayoutSelection)
 import Model.ModeSettings exposing (ModeSettings)
