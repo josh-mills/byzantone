@@ -1,5 +1,5 @@
 module Model exposing
-    ( Model, initialModel
+    ( Model, init
     , Modal(..), modalOpen, modalToString
     )
 
@@ -8,7 +8,7 @@ module Model exposing
 
 # Model
 
-@docs Model, initialModel
+@docs Model, init
 
 
 ## Modal
@@ -44,19 +44,23 @@ type alias Model =
     }
 
 
-initialModel : DeviceInfo -> Model
-initialModel deviceInfo =
+init : DeviceInfo -> { width : Float, height : Float } -> Model
+init deviceInfo viewportDimensions =
+    let
+        layoutData =
+            LayoutData.init viewportDimensions
+    in
     { audioSettings = AudioSettings.defaultAudioSettings
     , detectedPitch = Nothing
     , deviceInfo = deviceInfo
-    , layoutData = LayoutData.initialLayoutData
+    , layoutData = layoutData
     , menuOpen = False
     , modal = NoModal
     , modeSettings = ModeSettings.initialModeSettings
     , openControlMenus = ControlsMenu.init
     , pitchSpaceData =
         PitchSpaceData.init
-            LayoutData.initialLayoutData
+            layoutData
             ModeSettings.initialModeSettings
             PitchState.initialPitchState
     , pitchState = PitchState.initialPitchState

@@ -1,5 +1,5 @@
 module Model.LayoutData exposing
-    ( LayoutData, initialLayoutData
+    ( LayoutData, init
     , LayoutSelection(..), Layout(..), layoutFor, layoutString
     , showSpacing
     )
@@ -10,7 +10,7 @@ and user-controlled settings.
 
 # LayoutData
 
-@docs LayoutData, initialLayoutData
+@docs LayoutData, init
 
 
 ## Layout and LayoutSelection
@@ -39,21 +39,18 @@ type alias LayoutData =
     }
 
 
-initialLayoutData : LayoutData
-initialLayoutData =
+init : { width : Float, height : Float } -> LayoutData
+init viewportDimensions =
     { layoutSelection = Auto
     , pitchSpace = defaultElement
-    , viewport = defaultViewport
+    , viewport = initViewport viewportDimensions
     }
 
 
-{-| Initial hardcoded height 256 prevents negative width settings which
-enables a smooth css transition.
--}
-defaultViewport : Dom.Viewport
-defaultViewport =
+initViewport : { width : Float, height : Float } -> Dom.Viewport
+initViewport { width, height } =
     { scene = { width = 0, height = 0 }
-    , viewport = { x = 0, y = 0, width = 0, height = 256 }
+    , viewport = { x = 0, y = 0, width = width, height = height }
     }
 
 

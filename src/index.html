@@ -44,9 +44,20 @@
                     hasTouchScreen,
                 };
             }
+
+            function getViewportInfo() {
+                return {
+                    width: window.innerWidth,
+                    height: window.innerHeight,
+                };
+            }
+
             const elm = Elm.Main.init({
                 node: document.getElementById("elm-app"),
-                flags: getDeviceInfo(),
+                flags: {
+                    deviceInfo: getDeviceInfo(),
+                    viewport: getViewportInfo(),
+                },
             });
 
             document.addEventListener("pitchDetected", (event) => {
