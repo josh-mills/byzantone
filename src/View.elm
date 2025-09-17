@@ -220,12 +220,7 @@ settings : AudioSettings -> LayoutData -> ModeSettings -> Html Msg
 settings audioSettings layoutData modeSettings =
     div [ Styles.flexCol, class "gap-2" ]
         [ lazy2 RadioFieldset.view layoutRadioConfig layoutData.layoutSelection
-        , lazy2 RadioFieldset.view
-            (registerRadioConfig "Playback Register" SetPlaybackRegister)
-            audioSettings.playbackRegister
         , lazy2 RadioFieldset.view pitchStandardRadioConfig audioSettings.pitchStandard
-
-        -- , lazy gainInput audioSettings
         , lazy rangeFieldset modeSettings
         ]
 
@@ -236,16 +231,6 @@ layoutRadioConfig =
     , legendText = "Layout"
     , onSelect = SetLayout
     , options = [ Auto, Manual Vertical, Manual Horizontal ]
-    , viewItem = Nothing
-    }
-
-
-registerRadioConfig : String -> (Register -> Msg) -> RadioFieldset.Config Register Msg
-registerRadioConfig legendText onSelect =
-    { itemToString = Register.toString
-    , legendText = legendText
-    , onSelect = onSelect
-    , options = [ Treble, Bass ]
     , viewItem = Nothing
     }
 
@@ -356,10 +341,7 @@ viewControls audioSettings modeSettings pitchState detectedPitch =
         [ case audioSettings.audioMode of
             AudioSettings.Listen ->
                 div []
-                    [ lazy2 RadioFieldset.view
-                        (registerRadioConfig "Listen Register" SetListenRegister)
-                        audioSettings.listenRegister
-                    , Html.node "pitch-tracker"
+                    [ Html.node "pitch-tracker"
                         [ Attr.attribute "smoothing"
                             (case audioSettings.responsiveness of
                                 AudioSettings.Sensitive ->

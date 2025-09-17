@@ -3,11 +3,11 @@ module View.Controls exposing
     , view
     )
 
+import Byzantine.Register as Register exposing (Register)
 import Byzantine.Scale as Scale exposing (Scale(..))
 import Html exposing (Html, div, text)
 import Html.Attributes as Attr exposing (class, classList)
 import Html.Events exposing (onClick, onInput)
-import Html.Extra
 import Html.Lazy exposing (..)
 import Icons
 import Model.AudioSettings as AudioSettings exposing (AudioSettings)
@@ -16,7 +16,7 @@ import Model.ModeSettings exposing (ModeSettings)
 import Model.PitchState exposing (PitchState)
 import RadioFieldset
 import Styles
-import Update exposing (Msg)
+import Update exposing (Msg(..))
 
 
 view : AudioSettings -> ModeSettings -> PitchState -> OpenControlMenus -> Html Msg
@@ -81,6 +81,18 @@ optionHeaderText openControlMenus menuOption =
                     ]
                 ]
 
+        AudioSettingsMenu ->
+            div [ Styles.flexRow, class "justify-between" ]
+                [ div [] [ text "Audio Settings" ]
+                , div
+                    [ class "w-6 transition-transform duration-300 ease-in-out"
+                    , classList [ ( "rotate-180", isOpen ) ]
+                    ]
+                    [ Icons.chevronDown
+                        []
+                    ]
+                ]
+
         ScaleMenu ->
             div [ Styles.flexRow, class "justify-between" ]
                 [ div [] [ text "Scale" ]
@@ -120,16 +132,24 @@ optionContent audioSettings modeSettings pitchState openControlMenus menuOption 
         [ case menuOption of
             AudioModeMenu ->
                 div [ class "m-2" ]
-                    [ lazy2 RadioFieldset.view playModeRadioConfig audioSettings.audioMode
-                    , case audioSettings.audioMode of
+                    [ lazy2 RadioFieldset.view audioModeRadioConfig audioSettings.audioMode ]
+
+            AudioSettingsMenu ->
+                div [ class "m-2" ]
+                    (case audioSettings.audioMode of
                         AudioSettings.Listen ->
-                            lazy2 RadioFieldset.view responsivenessRadioConfig audioSettings.responsiveness
+                            [ lazy2 RadioFieldset.view
+                                (registerRadioConfig "Listen Register" Update.SetListenRegister)
+                                audioSettings.listenRegister
+                            , lazy2 RadioFieldset.view responsivenessRadioConfig audioSettings.responsiveness
+                            ]
 
                         AudioSettings.Play ->
-                            Html.Extra.nothing
-
-                    -- TODO: more things here
-                    ]
+                            [ lazy2 RadioFieldset.view
+                                (registerRadioConfig "Set Playback Register" Update.SetPlaybackRegister)
+                                audioSettings.playbackRegister
+                            ]
+                    )
 
             ScaleMenu ->
                 div [ class "m-2" ]
@@ -144,22 +164,32 @@ optionContent audioSettings modeSettings pitchState openControlMenus menuOption 
 -- CONTENT
 
 
-responsivenessRadioConfig : RadioFieldset.Config AudioSettings.Responsiveness Msg
-responsivenessRadioConfig =
-    { itemToString = AudioSettings.responsivenessToString
-    , legendText = "Responsiveness"
-    , onSelect = Update.SetResponsiveness
-    , options = [ AudioSettings.Sensitive, AudioSettings.Smooth ]
-    , viewItem = Nothing
-    }
-
-
-playModeRadioConfig : RadioFieldset.Config AudioSettings.AudioMode Msg
-playModeRadioConfig =
+audioModeRadioConfig : RadioFieldset.Config AudioSettings.AudioMode Msg
+audioModeRadioConfig =
     { itemToString = AudioSettings.audioModeToString
     , legendText = "Audio Mode"
     , onSelect = Update.SetAudioMode
     , options = AudioSettings.modes
+    , viewItem = Nothing
+    }
+
+
+registerRadioConfig : String -> (Register -> Msg) -> RadioFieldset.Config Register Msg
+registerRadioConfig legendText onSelect =
+    { itemToString = Register.toString
+    , legendText = legendText
+    , onSelect = onSelect
+    , options = [ Register.Treble, Register.Bass ]
+    , viewItem = Nothing
+    }
+
+
+responsivenessRadioConfig : RadioFieldset.Config AudioSettings.Responsiveness Msg
+responsivenessRadioConfig =
+    { itemToString = AudioSettings.responsivenessToString
+    , legendText = "Listening Sensitivity"
+    , onSelect = Update.SetResponsiveness
+    , options = [ AudioSettings.Sensitive, AudioSettings.Smooth ]
     , viewItem = Nothing
     }
 

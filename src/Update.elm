@@ -16,7 +16,7 @@ import Model.DegreeDataDict as DegreeDataDict exposing (DegreeDataDict)
 import Model.LayoutData exposing (LayoutData, LayoutSelection)
 import Model.ModeSettings exposing (ModeSettings)
 import Model.PitchSpaceData as PitchSpaceData exposing (PitchSpaceData)
-import Model.PitchState as PitchState exposing (IsonStatus(..), PitchState, ProposedAccidental(..), unwrapProposedAccidental)
+import Model.PitchState as PitchState exposing (IsonStatus(..), PitchState, ProposedAccidental(..))
 import Movement exposing (Movement)
 import Platform.Cmd as Cmd
 import Task
