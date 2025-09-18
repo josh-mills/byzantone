@@ -3,17 +3,21 @@ module View.Controls exposing
     , view
     )
 
+import Byzantine.Degree as Degree
+import Byzantine.Pitch as Pitch exposing (Pitch)
 import Byzantine.Register as Register exposing (Register)
 import Byzantine.Scale as Scale exposing (Scale(..))
-import Html exposing (Html, div, span, text)
-import Html.Attributes as Attr exposing (class, classList)
+import Html exposing (Html, button, div, span, text)
+import Html.Attributes as Attr exposing (class, classList, id)
 import Html.Events exposing (onClick, onInput)
+import Html.Extra exposing (viewIf)
 import Html.Lazy exposing (..)
 import Icons
+import Maybe.Extra as Maybe
 import Model.AudioSettings as AudioSettings exposing (AudioSettings)
 import Model.ControlsMenu as ControlsMenu exposing (MenuOption(..), OpenControlMenus)
 import Model.ModeSettings exposing (ModeSettings)
-import Model.PitchState exposing (PitchState)
+import Model.PitchState as PitchState exposing (IsonStatus, PitchState)
 import RadioFieldset
 import Styles
 import Svg.Attributes as Svg
@@ -75,6 +79,9 @@ optionHeader audioSettings openControlMenus menuOption =
 
             AudioSettingsMenu ->
                 wrapper "Audio Settings" Icons.sliders
+
+            IsonMenu ->
+                wrapper "Ison" Icons.music
 
             ScaleMenu ->
                 wrapper "Scale" Icons.music
@@ -148,6 +155,12 @@ optionContent audioSettings modeSettings pitchState openControlMenus menuOption 
                             ]
                     )
 
+            IsonMenu ->
+                wrapper
+                    [ lazy isonButton pitchState.ison
+                    , lazy viewIsonStatus (PitchState.ison pitchState.ison)
+                    ]
+
             ScaleMenu ->
                 wrapper [ lazy2 RadioFieldset.view scaleRadioConfig modeSettings.scale ]
 
@@ -188,6 +201,59 @@ responsivenessRadioConfig =
     , options = [ AudioSettings.Sensitive, AudioSettings.Smooth ]
     , viewItem = Nothing
     }
+
+
+isonButton : IsonStatus -> Html Msg
+isonButton ison =
+    button
+        [ Styles.buttonClass
+        , class "my-2"
+        , id "select-ison-button"
+        , onClick
+            (Update.SetIson
+                (case ison of
+                    PitchState.NoIson ->
+                        PitchState.SelectingIson Nothing
+
+                    PitchState.SelectingIson (Just ison_) ->
+                        PitchState.Selected ison_
+
+                    PitchState.SelectingIson Nothing ->
+                        PitchState.NoIson
+
+                    PitchState.Selected _ ->
+                        PitchState.SelectingIson
+                            (PitchState.ison ison
+                                |> Maybe.map Pitch.unwrapDegree
+                            )
+                )
+            )
+        ]
+        [ text "Select Ison" ]
+
+
+viewIsonStatus : Maybe Pitch -> Html Msg
+viewIsonStatus pitch =
+    div [ class "mt-2" ]
+        [ text "Current Ison: "
+        , case pitch of
+            Nothing ->
+                text "none"
+
+            Just p ->
+                Degree.text (Pitch.unwrapDegree p)
+        , viewIf (Maybe.isJust pitch) clearIsonButton
+        ]
+
+
+clearIsonButton : Html Msg
+clearIsonButton =
+    button
+        [ Styles.buttonClass
+        , class "mx-2"
+        , onClick (Update.SetIson PitchState.NoIson)
+        ]
+        [ text "clear" ]
 
 
 scaleRadioConfig : RadioFieldset.Config Scale Msg

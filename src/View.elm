@@ -8,7 +8,7 @@ import Byzantine.Frequency as Frequency exposing (Frequency, PitchStandard(..))
 import Byzantine.IntervalCharacter exposing (..)
 import Byzantine.Martyria as Martyria
 import Byzantine.Pitch as Pitch exposing (Pitch)
-import Byzantine.Register as Register exposing (Register(..))
+import Byzantine.Register exposing (Register(..))
 import Byzantine.Scale exposing (Scale(..))
 import Copy
 import Html exposing (Html, button, datalist, div, h1, h2, main_, p, span, text)
@@ -25,7 +25,7 @@ import Model exposing (Modal(..), Model)
 import Model.AudioSettings as AudioSettings exposing (AudioSettings)
 import Model.LayoutData as LayoutData exposing (Layout(..), LayoutData, LayoutSelection(..), layoutFor)
 import Model.ModeSettings exposing (ModeSettings)
-import Model.PitchState as PitchState exposing (IsonStatus, PitchState)
+import Model.PitchState as PitchState exposing (PitchState)
 import Movement exposing (Movement(..))
 import RadioFieldset
 import Styles
@@ -357,53 +357,8 @@ viewControls audioSettings modeSettings pitchState detectedPitch =
 
             AudioSettings.Play ->
                 div []
-                    [ lazy isonButton pitchState.ison
-                    , lazy viewIson (PitchState.ison pitchState.ison)
-                    , lazy viewCurrentPitch (PitchState.currentPitch modeSettings.scale pitchState)
+                    [ lazy viewCurrentPitch (PitchState.currentPitch modeSettings.scale pitchState)
                     ]
-        ]
-
-
-isonButton : IsonStatus -> Html Msg
-isonButton ison =
-    button
-        [ Styles.buttonClass
-        , class "my-2"
-        , id "select-ison-button"
-        , onClick
-            (SetIson
-                (case ison of
-                    PitchState.NoIson ->
-                        PitchState.SelectingIson Nothing
-
-                    PitchState.SelectingIson (Just ison_) ->
-                        PitchState.Selected ison_
-
-                    PitchState.SelectingIson Nothing ->
-                        PitchState.NoIson
-
-                    PitchState.Selected _ ->
-                        PitchState.SelectingIson
-                            (PitchState.ison ison
-                                |> Maybe.map Pitch.unwrapDegree
-                            )
-                )
-            )
-        ]
-        [ text "Select Ison" ]
-
-
-viewIson : Maybe Pitch -> Html Msg
-viewIson pitch =
-    div [ class "mt-2" ]
-        [ text <| "Current Ison: "
-        , case pitch of
-            Nothing ->
-                text "none"
-
-            Just p ->
-                Degree.text (Pitch.unwrapDegree p)
-        , viewIf (Maybe.isJust pitch) (clearButton (SetIson PitchState.NoIson))
         ]
 
 

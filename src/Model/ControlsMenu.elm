@@ -21,18 +21,20 @@ For mobile, only one at a time.
 type MenuOption
     = AudioModeMenu
     | AudioSettingsMenu
+    | IsonMenu
     | ScaleMenu
     | VolumeMenu
 
 
 menuOptions : List MenuOption
 menuOptions =
-    [ AudioModeMenu, AudioSettingsMenu, ScaleMenu, VolumeMenu ]
+    [ AudioModeMenu, AudioSettingsMenu, IsonMenu, ScaleMenu, VolumeMenu ]
 
 
 type alias OpenControlMenus =
     { audioModeIsOpen : Bool
     , audioSettingsMenuIsOpen : Bool
+    , isonMenuIsOpen : Bool
     , scaleMenuIsOpen : Bool
     , volumeMenuIsOpen : Bool
     }
@@ -42,6 +44,7 @@ init : OpenControlMenus
 init =
     { audioModeIsOpen = False
     , audioSettingsMenuIsOpen = False
+    , isonMenuIsOpen = False
     , scaleMenuIsOpen = False
     , volumeMenuIsOpen = False
     }
@@ -55,6 +58,9 @@ isOpen openControlMenus menuOption =
 
         AudioSettingsMenu ->
             openControlMenus.audioSettingsMenuIsOpen
+
+        IsonMenu ->
+            openControlMenus.isonMenuIsOpen
 
         ScaleMenu ->
             openControlMenus.scaleMenuIsOpen
@@ -71,6 +77,9 @@ toggle controlMenu openControlMenus =
 
         AudioSettingsMenu ->
             { openControlMenus | audioSettingsMenuIsOpen = not openControlMenus.audioSettingsMenuIsOpen }
+
+        IsonMenu ->
+            { openControlMenus | isonMenuIsOpen = not openControlMenus.isonMenuIsOpen }
 
         ScaleMenu ->
             { openControlMenus | scaleMenuIsOpen = not openControlMenus.scaleMenuIsOpen }
