@@ -5,7 +5,7 @@ module View.Controls exposing
 
 import Byzantine.Register as Register exposing (Register)
 import Byzantine.Scale as Scale exposing (Scale(..))
-import Html exposing (Html, div, text)
+import Html exposing (Html, div, span, text)
 import Html.Attributes as Attr exposing (class, classList)
 import Html.Events exposing (onClick, onInput)
 import Html.Lazy exposing (..)
@@ -16,15 +16,13 @@ import Model.ModeSettings exposing (ModeSettings)
 import Model.PitchState exposing (PitchState)
 import RadioFieldset
 import Styles
+import Svg.Attributes as Svg
 import Update exposing (Msg(..))
 
 
 view : AudioSettings -> ModeSettings -> PitchState -> OpenControlMenus -> Html Msg
 view audioSettings modeSettings pitchState openControlMenus =
-    Html.menu
-        [ class "w-full sm:w-64"
-        , class ""
-        ]
+    Html.menu [ class "w-full sm:w-72" ]
         (List.map
             (item audioSettings modeSettings pitchState openControlMenus)
             ControlsMenu.menuOptions
@@ -44,74 +42,70 @@ item audioSettings modeSettings pitchState openControlMenus menuOption =
             , ( "grid-rows-[auto_1fr]", isOpen )
             ]
         ]
-        [ optionHeader openControlMenus menuOption
+        [ optionHeader audioSettings openControlMenus menuOption
         , optionContent audioSettings modeSettings pitchState openControlMenus menuOption
         ]
 
 
-optionHeader : OpenControlMenus -> MenuOption -> Html Msg
-optionHeader openControlMenus menuOption =
+optionHeader : AudioSettings -> OpenControlMenus -> MenuOption -> Html Msg
+optionHeader audioSettings openControlMenus menuOption =
+    let
+        wrapper headerText icon =
+            optionHeaderWrapper
+                (ControlsMenu.isOpen openControlMenus menuOption)
+                headerText
+                (icon [ Svg.fill "grey", Svg.width "24" ])
+    in
     Html.button
         [ class "w-full h-12"
         , Styles.buttonClass
         , Styles.border
         , onClick (Update.ToggleControlMenu menuOption)
         ]
-        [ optionHeaderText openControlMenus menuOption ]
+        [ case menuOption of
+            AudioModeMenu ->
+                wrapper "Audio"
+                    (case audioSettings.audioMode of
+                        AudioSettings.Listen ->
+                            Icons.microphone
+
+                        AudioSettings.Play ->
+                            Icons.headphones
+                    )
+
+            AudioSettingsMenu ->
+                wrapper "Audio Settings" Icons.sliders
+
+            ScaleMenu ->
+                wrapper "Scale" Icons.music
+
+            VolumeMenu ->
+                wrapper "Volume"
+                    (if audioSettings.gain == 0 then
+                        Icons.volumeOff
+
+                     else if audioSettings.gain <= 0.5 then
+                        Icons.volumeLow
+
+                     else
+                        Icons.volumeHigh
+                    )
+        ]
 
 
-{-| Include icons for these too?
--}
-optionHeaderText : OpenControlMenus -> MenuOption -> Html Msg
-optionHeaderText openControlMenus menuOption =
-    let
-        isOpen =
-            ControlsMenu.isOpen openControlMenus menuOption
-    in
-    case menuOption of
-        AudioModeMenu ->
-            div [ Styles.flexRow, class "justify-between" ]
-                [ div [] [ text "Audio" ]
-                , div
-                    [ class "w-6 transition-transform duration-300 ease-in-out"
-                    , classList [ ( "rotate-180", isOpen ) ]
-                    ]
-                    [ Icons.chevronDown
-                        []
-                    ]
-                ]
-
-        AudioSettingsMenu ->
-            div [ Styles.flexRow, class "justify-between" ]
-                [ div [] [ text "Audio Settings" ]
-                , div
-                    [ class "w-6 transition-transform duration-300 ease-in-out"
-                    , classList [ ( "rotate-180", isOpen ) ]
-                    ]
-                    [ Icons.chevronDown
-                        []
-                    ]
-                ]
-
-        ScaleMenu ->
-            div [ Styles.flexRow, class "justify-between" ]
-                [ div [] [ text "Scale" ]
-                , div
-                    [ class "w-6 transition-transform duration-300 ease-in-out"
-                    , classList [ ( "rotate-180", isOpen ) ]
-                    ]
-                    [ Icons.chevronDown [] ]
-                ]
-
-        VolumeMenu ->
-            div [ Styles.flexRow, class "justify-between" ]
-                [ div [] [ text "Volume" ]
-                , div
-                    [ class "w-6 transition-transform duration-300 ease-in-out"
-                    , classList [ ( "rotate-180", isOpen ) ]
-                    ]
-                    [ Icons.chevronDown [] ]
-                ]
+optionHeaderWrapper : Bool -> String -> Html msg -> Html msg
+optionHeaderWrapper isOpen optionHeaderText icon =
+    div [ Styles.flexRow, class "justify-between" ]
+        [ div [ Styles.flexRow ]
+            [ icon
+            , span [ class "ml-2" ] [ text optionHeaderText ]
+            ]
+        , div
+            [ class "w-6 transition-transform duration-300 ease-in-out"
+            , classList [ ( "rotate-180", isOpen ) ]
+            ]
+            [ Icons.chevronDown [ Svg.fill "grey" ] ]
+        ]
 
 
 optionContent : AudioSettings -> ModeSettings -> PitchState -> OpenControlMenus -> MenuOption -> Html Msg
@@ -119,6 +113,9 @@ optionContent audioSettings modeSettings pitchState openControlMenus menuOption 
     let
         isOpen =
             ControlsMenu.isOpen openControlMenus menuOption
+
+        wrapper =
+            div [ class "m-2" ]
     in
     div
         [ if isOpen then
@@ -126,16 +123,16 @@ optionContent audioSettings modeSettings pitchState openControlMenus menuOption 
 
           else
             Styles.borderTransparent
-        , classList [ ( "mb-2 -OPEp-2", isOpen ) ]
+        , classList [ ( "mb-2", isOpen ) ]
         , class "overflow-hidden"
         ]
         [ case menuOption of
             AudioModeMenu ->
-                div [ class "m-2" ]
+                wrapper
                     [ lazy2 RadioFieldset.view audioModeRadioConfig audioSettings.audioMode ]
 
             AudioSettingsMenu ->
-                div [ class "m-2" ]
+                wrapper
                     (case audioSettings.audioMode of
                         AudioSettings.Listen ->
                             [ lazy2 RadioFieldset.view
@@ -152,11 +149,10 @@ optionContent audioSettings modeSettings pitchState openControlMenus menuOption 
                     )
 
             ScaleMenu ->
-                div [ class "m-2" ]
-                    [ lazy2 RadioFieldset.view scaleRadioConfig modeSettings.scale ]
+                wrapper [ lazy2 RadioFieldset.view scaleRadioConfig modeSettings.scale ]
 
             VolumeMenu ->
-                gainInput audioSettings
+                wrapper [ gainInput audioSettings ]
         ]
 
 
