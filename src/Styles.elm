@@ -2,7 +2,9 @@ module Styles exposing
     ( height, width
     , left, top
     , flexRow, flexRowCentered, flexCol
-    , border, borderTransparent, borderRounded, buttonClass, transition
+    , border, borderTransparent, borderRounded
+    , transition, transitionQuick
+    , buttonClass
     )
 
 {-| Style attribute helpers and common Tailwind class combinations
@@ -29,9 +31,19 @@ module Styles exposing
 @docs flexRow, flexRowCentered, flexCol
 
 
+## Borders
+
+@docs border, borderTransparent, borderRounded
+
+
+## Transition
+
+@docs transition, transitionQuick
+
+
 ## Misc
 
-@docs border, borderTransparent, borderRounded, buttonClass, transition
+@docs buttonClass
 
 -}
 
@@ -144,7 +156,7 @@ flexCol =
 
 
 
--- TAILWIND CLASSES: MISC
+-- TAILWIND CLASSES: BORDER
 
 
 {-| `class "border border-gray-300"`
@@ -168,6 +180,10 @@ borderRounded =
     class "border border-gray-300 rounded-md"
 
 
+
+-- TAILWIND CLASSES: MISC
+
+
 {-| `class "bg-gray-200 hover:bg-gray-300 py-1 px-3 rounded-md cursor-pointer"`
 -}
 buttonClass : Html.Attribute msg
@@ -175,8 +191,19 @@ buttonClass =
     class "bg-gray-200 hover:bg-gray-300 py-1 px-3 rounded-md cursor-pointer"
 
 
-{-| `class "transition-all duration-800"`
+
+-- TAILWIND CLASSES: TRANSITION
+
+
+{-| `class "transition-all duration-800"`. For domain content animation.
 -}
 transition : Html.Attribute msg
 transition =
     class "transition-all duration-800"
+
+
+{-| `class "transition-all duration-300"`. For control content animation.
+-}
+transitionQuick : Html.Attribute msg
+transitionQuick =
+    class "transition-all duration-300"

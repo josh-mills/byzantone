@@ -1,7 +1,5 @@
 module View exposing (view)
 
-import Byzantine.Accidental as Accidental
-import Byzantine.ByzHtml.Accidental as Accidental
 import Byzantine.ByzHtml.Martyria as Martyria
 import Byzantine.Degree as Degree exposing (Degree(..))
 import Byzantine.Frequency as Frequency exposing (Frequency, PitchStandard(..))
@@ -78,7 +76,7 @@ view model =
                 model.modeSettings
                 model.pitchState
                 model.openControlMenus
-            , lazy4 viewControls model.audioSettings model.modeSettings model.pitchState model.detectedPitch
+            , lazy3 pitchTracker model.audioSettings model.pitchState model.detectedPitch
             ]
         ]
 
@@ -328,73 +326,27 @@ viewPitchStandard pitchStandard =
         ]
 
 
+pitchTracker : AudioSettings -> PitchState -> Maybe Frequency -> Html Msg
+pitchTracker audioSettings pitchState detectedPitch =
+    case audioSettings.audioMode of
+        AudioSettings.Listen ->
+            div [ class "m-4" ]
+                [ Html.node "pitch-tracker"
+                    [ Attr.attribute "smoothing"
+                        (case audioSettings.responsiveness of
+                            AudioSettings.Sensitive ->
+                                "sensitive"
 
--- CONTROLS
-
-
-viewControls : AudioSettings -> ModeSettings -> PitchState -> Maybe Frequency -> Html Msg
-viewControls audioSettings modeSettings pitchState detectedPitch =
-    div
-        [ class "w-max hidden md:flex md:flex-col"
-        , classList [ ( "mt-8", LayoutData.showSpacing ) ]
-        ]
-        [ case audioSettings.audioMode of
-            AudioSettings.Listen ->
-                div []
-                    [ Html.node "pitch-tracker"
-                        [ Attr.attribute "smoothing"
-                            (case audioSettings.responsiveness of
-                                AudioSettings.Sensitive ->
-                                    "sensitive"
-
-                                AudioSettings.Smooth ->
-                                    "smooth"
-                            )
-                        , class "hidden sm:block"
-                        ]
-                        []
-                    ]
-
-            AudioSettings.Play ->
-                div []
-                    [ lazy viewCurrentPitch (PitchState.currentPitch modeSettings.scale pitchState)
-                    ]
-        ]
-
-
-viewCurrentPitch : Maybe Pitch -> Html Msg
-viewCurrentPitch pitch =
-    div [ class "mt-2" ]
-        [ text <| "Current Pitch: "
-        , case pitch of
-            Nothing ->
-                text "none"
-
-            Just pitch_ ->
-                span []
-                    [ Degree.text (Pitch.unwrapDegree pitch_)
-                    , Html.Extra.viewMaybe
-                        (\accidental ->
-                            span []
-                                [ text " ("
-                                , text (Accidental.toString accidental)
-                                , text ")"
-                                ]
+                            AudioSettings.Smooth ->
+                                "smooth"
                         )
-                        (Pitch.unwrapAccidental pitch_)
+                    , class "hidden sm:block"
                     ]
-        , viewIf (Maybe.isJust pitch) (clearButton (SelectPitch Nothing Nothing))
-        ]
+                    []
+                ]
 
-
-clearButton : Msg -> Html Msg
-clearButton msg =
-    button
-        [ Styles.buttonClass
-        , class "my-2 mx-2"
-        , onClick msg
-        ]
-        [ text "clear" ]
+        AudioSettings.Play ->
+            Html.Extra.nothing
 
 
 

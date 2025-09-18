@@ -1,7 +1,4 @@
-module View.Controls exposing
-    ( gainInput
-    , view
-    )
+module View.Controls exposing (view)
 
 import Byzantine.Degree as Degree
 import Byzantine.Pitch as Pitch exposing (Pitch)
@@ -28,7 +25,7 @@ view : AudioSettings -> ModeSettings -> PitchState -> OpenControlMenus -> Html M
 view audioSettings modeSettings pitchState openControlMenus =
     Html.menu [ class "w-full sm:w-72" ]
         (List.map
-            (item audioSettings modeSettings pitchState openControlMenus)
+            (lazy5 item audioSettings modeSettings pitchState openControlMenus)
             ControlsMenu.menuOptions
         )
 
@@ -46,17 +43,16 @@ item audioSettings modeSettings pitchState openControlMenus menuOption =
             , ( "grid-rows-[auto_1fr]", isOpen )
             ]
         ]
-        [ optionHeader audioSettings openControlMenus menuOption
-        , optionContent audioSettings modeSettings pitchState openControlMenus menuOption
+        [ optionHeader audioSettings isOpen menuOption
+        , optionContent audioSettings modeSettings pitchState isOpen menuOption
         ]
 
 
-optionHeader : AudioSettings -> OpenControlMenus -> MenuOption -> Html Msg
-optionHeader audioSettings openControlMenus menuOption =
+optionHeader : AudioSettings -> Bool -> MenuOption -> Html Msg
+optionHeader audioSettings isOpen menuOption =
     let
         wrapper headerText icon =
-            optionHeaderWrapper
-                (ControlsMenu.isOpen openControlMenus menuOption)
+            optionHeaderWrapper isOpen
                 headerText
                 (icon [ Svg.fill "grey", Svg.width "24" ])
     in
@@ -64,6 +60,8 @@ optionHeader audioSettings openControlMenus menuOption =
         [ class "w-full h-12"
         , Styles.buttonClass
         , Styles.border
+        , Styles.transitionQuick
+        , classList [ ( "rounded-b-none", isOpen ) ]
         , onClick (Update.ToggleControlMenu menuOption)
         ]
         [ case menuOption of
@@ -115,12 +113,9 @@ optionHeaderWrapper isOpen optionHeaderText icon =
         ]
 
 
-optionContent : AudioSettings -> ModeSettings -> PitchState -> OpenControlMenus -> MenuOption -> Html Msg
-optionContent audioSettings modeSettings pitchState openControlMenus menuOption =
+optionContent : AudioSettings -> ModeSettings -> PitchState -> Bool -> MenuOption -> Html Msg
+optionContent audioSettings modeSettings pitchState isOpen menuOption =
     let
-        isOpen =
-            ControlsMenu.isOpen openControlMenus menuOption
-
         wrapper =
             div [ class "m-2" ]
     in
@@ -130,7 +125,7 @@ optionContent audioSettings modeSettings pitchState openControlMenus menuOption 
 
           else
             Styles.borderTransparent
-        , classList [ ( "mb-2", isOpen ) ]
+        , classList [ ( "mb-2 rounded-b-md", isOpen ) ]
         , class "overflow-hidden"
         ]
         [ case menuOption of
@@ -165,7 +160,7 @@ optionContent audioSettings modeSettings pitchState openControlMenus menuOption 
                 wrapper [ lazy2 RadioFieldset.view scaleRadioConfig modeSettings.scale ]
 
             VolumeMenu ->
-                wrapper [ gainInput audioSettings ]
+                wrapper [ lazy gainInput audioSettings ]
         ]
 
 
