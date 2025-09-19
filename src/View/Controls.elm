@@ -1,6 +1,8 @@
 module View.Controls exposing (view)
 
+import Byzantine.ByzHtml.Interval as ByzHtmlInterval
 import Byzantine.Degree as Degree
+import Byzantine.IntervalCharacter as Character
 import Byzantine.Pitch as Pitch exposing (Pitch)
 import Byzantine.Register as Register exposing (Register)
 import Byzantine.Scale as Scale exposing (Scale(..))
@@ -17,6 +19,7 @@ import Model.ModeSettings exposing (ModeSettings)
 import Model.PitchState as PitchState exposing (IsonStatus, PitchState)
 import RadioFieldset
 import Styles
+import Svg
 import Svg.Attributes as Svg
 import Update exposing (Msg(..))
 
@@ -43,19 +46,18 @@ item audioSettings modeSettings pitchState openControlMenus menuOption =
             , ( "grid-rows-[auto_1fr]", isOpen )
             ]
         ]
-        [ optionHeader audioSettings isOpen menuOption
+        [ lazy3 optionHeader audioSettings isOpen menuOption
         , optionContent audioSettings modeSettings pitchState isOpen menuOption
         ]
 
 
+type IconType msg
+    = SvgIcon (List (Svg.Attribute msg) -> Html msg)
+    | ByzHtmlIcon (Html msg)
+
+
 optionHeader : AudioSettings -> Bool -> MenuOption -> Html Msg
 optionHeader audioSettings isOpen menuOption =
-    let
-        wrapper headerText icon =
-            optionHeaderWrapper isOpen
-                headerText
-                (icon [ Svg.fill "grey", Svg.width "24" ])
-    in
     Html.button
         [ class "w-full h-12"
         , Styles.buttonClass
@@ -66,43 +68,52 @@ optionHeader audioSettings isOpen menuOption =
         ]
         [ case menuOption of
             AudioModeMenu ->
-                wrapper "Audio"
+                optionHeaderWrapper isOpen
+                    "Audio"
                     (case audioSettings.audioMode of
                         AudioSettings.Listen ->
-                            Icons.microphone
+                            SvgIcon Icons.microphone
 
                         AudioSettings.Play ->
-                            Icons.headphones
+                            SvgIcon Icons.headphones
                     )
 
             AudioSettingsMenu ->
-                wrapper "Audio Settings" Icons.sliders
+                optionHeaderWrapper isOpen "Audio Settings" (SvgIcon Icons.sliders)
 
             IsonMenu ->
-                wrapper "Ison" Icons.music
+                optionHeaderWrapper isOpen
+                    "Ison"
+                    (ByzHtmlIcon (ByzHtmlInterval.view Character.Ison))
 
             ScaleMenu ->
-                wrapper "Scale" Icons.music
+                optionHeaderWrapper isOpen "Scale" (SvgIcon Icons.music)
 
             VolumeMenu ->
-                wrapper "Volume"
+                optionHeaderWrapper isOpen
+                    "Volume"
                     (if audioSettings.gain == 0 then
-                        Icons.volumeOff
+                        SvgIcon Icons.volumeOff
 
                      else if audioSettings.gain <= 0.5 then
-                        Icons.volumeLow
+                        SvgIcon Icons.volumeLow
 
                      else
-                        Icons.volumeHigh
+                        SvgIcon Icons.volumeHigh
                     )
         ]
 
 
-optionHeaderWrapper : Bool -> String -> Html msg -> Html msg
+optionHeaderWrapper : Bool -> String -> IconType Msg -> Html Msg
 optionHeaderWrapper isOpen optionHeaderText icon =
     div [ Styles.flexRow, class "justify-between" ]
         [ div [ Styles.flexRow ]
-            [ icon
+            [ case icon of
+                SvgIcon svg ->
+                    svg [ Svg.fill "grey", Svg.width "24" ]
+
+                ByzHtmlIcon html ->
+                    span [ class "text-neutral-500" ] [ html ]
             , span [ class "ml-2" ] [ text optionHeaderText ]
             ]
         , div
