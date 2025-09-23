@@ -1,7 +1,7 @@
 module Model.ControlsMenu exposing
     ( OpenControlMenus, init
     , MenuOption(..), menuOptions
-    , isOpen, toggle
+    , anyOpen, isOpen, toggle
     )
 
 {-|
@@ -10,7 +10,7 @@ module Model.ControlsMenu exposing
 
 @docs MenuOption, menuOptions
 
-@docs isOpen, toggle
+@docs anyOpen, isOpen, toggle
 
 For desktop, we'll allow for multiple open menus.
 For mobile, only one at a time.
@@ -48,6 +48,11 @@ init =
     , scaleMenuIsOpen = False
     , volumeMenuIsOpen = False
     }
+
+
+anyOpen : OpenControlMenus -> Bool
+anyOpen openControlMenus =
+    List.any (isOpen openControlMenus) menuOptions
 
 
 isOpen : OpenControlMenus -> MenuOption -> Bool

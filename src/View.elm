@@ -58,7 +58,7 @@ view model =
             [ class "lg:container lg:mx-auto font-serif"
             , case layoutFor model.layoutData of
                 Vertical ->
-                    class "flex flex-col md:flex-row flex-wrap"
+                    class "flex flex-col md:flex-row flex-wrap pb-8"
 
                 Horizontal ->
                     Styles.flexCol
@@ -71,10 +71,14 @@ view model =
                 model.modeSettings
                 model.pitchState
                 model.detectedPitch
+
+            -- TODO: view detected pitch here?
             , View.Controls.view
                 model.audioSettings
                 model.modeSettings
                 model.pitchState
+                model.openControlMenus
+            , View.Controls.viewOverlay
                 model.openControlMenus
             , lazy3 pitchTracker model.audioSettings model.pitchState model.detectedPitch
             ]

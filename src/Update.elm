@@ -23,7 +23,8 @@ import Task
 
 
 type Msg
-    = DomResult (Result Dom.Error ())
+    = CloseControlMenus
+    | DomResult (Result Dom.Error ())
     | GotPitchSpaceElement (Result Dom.Error Dom.Element)
     | GotViewport Dom.Viewport
     | ViewportResize Int Int
@@ -55,6 +56,11 @@ update msg model =
     case msg of
         NoOp ->
             ( model, Task.perform GotViewport Dom.getViewport )
+
+        CloseControlMenus ->
+            ( { model | openControlMenus = ControlsMenu.init }
+            , Cmd.none
+            )
 
         DomResult _ ->
             -- just for dev purposes

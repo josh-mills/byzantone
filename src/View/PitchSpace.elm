@@ -57,7 +57,10 @@ view pitchSpaceData audioSettings modeSettings pitchState detectedPitch =
          ]
             ++ (if PitchSpaceData.isVertical pitchSpaceData.display then
                     -- TODO: centering, or padding, for responsiveness?
-                    [ Styles.flexRow, class "my-8 md:me-12 pb-8" ]
+                    [ Styles.flexRow
+                    , class "justify-around"
+                    , class "my-8 md:me-12 pb-12"
+                    ]
 
                 else
                     [ Styles.flexCol, class "mx-8 mb-8" ]
@@ -250,7 +253,7 @@ viewPitchTracker : PitchSpaceData -> AudioSettings -> Maybe Frequency -> Html Ms
 viewPitchTracker pitchSpaceData audioSettings detectedPitch =
     div
         (if PitchSpaceData.isVertical pitchSpaceData.display then
-            [ Styles.flexCol, class "w-6 ms-4" ]
+            [ Styles.flexCol, class "w-6" ]
 
          else
             [ Styles.flexRow, class "h-6 w-full" ]

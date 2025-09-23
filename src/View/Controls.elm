@@ -1,4 +1,4 @@
-module View.Controls exposing (view)
+module View.Controls exposing (view, viewOverlay)
 
 import Byzantine.ByzHtml.Interval as ByzHtmlInterval
 import Byzantine.Degree as Degree
@@ -24,9 +24,28 @@ import Svg.Attributes as Svg
 import Update exposing (Msg(..))
 
 
+{-| Tap catcher overlay
+-}
+viewOverlay : OpenControlMenus -> Html Msg
+viewOverlay openControlMenus =
+    Html.Extra.viewIf (ControlsMenu.anyOpen openControlMenus)
+        (div
+            [ class "fixed left-0 top-0 w-full h-full z-10 lg:hidden"
+            , onClick CloseControlMenus
+            ]
+            []
+        )
+
+
 view : AudioSettings -> ModeSettings -> PitchState -> OpenControlMenus -> Html Msg
 view audioSettings modeSettings pitchState openControlMenus =
-    Html.menu [ class "w-full sm:w-72" ]
+    Html.menu
+        [ class "w-full lg:w-72"
+        , class "grid grid-cols-5"
+        , class "lg:flex lg:flex-col"
+        , class "fixed bottom-0 lg:relative"
+        , class "z-20"
+        ]
         (List.map
             (lazy5 item audioSettings modeSettings pitchState openControlMenus)
             ControlsMenu.menuOptions
@@ -59,9 +78,10 @@ type IconType msg
 optionHeader : AudioSettings -> Bool -> MenuOption -> Html Msg
 optionHeader audioSettings isOpen menuOption =
     Html.button
-        [ class "w-full h-12"
-        , Styles.buttonClass
-        , Styles.border
+        [ class "w-full min-h-12 lg:max-h-12 py-2"
+        , class "py-1 px-3"
+        , class "bg-white lg:bg-gray-200 hover:bg-gray-300"
+        , class "border-t lg:border border-gray-300"
         , Styles.transitionQuick
         , classList [ ( "rounded-b-none", isOpen ) ]
         , onClick (Update.ToggleControlMenu menuOption)
@@ -69,7 +89,7 @@ optionHeader audioSettings isOpen menuOption =
         [ case menuOption of
             AudioModeMenu ->
                 optionHeaderWrapper isOpen
-                    "Audio"
+                    [ text "Audio" ]
                     (case audioSettings.audioMode of
                         AudioSettings.Listen ->
                             SvgIcon Icons.microphone
@@ -79,19 +99,25 @@ optionHeader audioSettings isOpen menuOption =
                     )
 
             AudioSettingsMenu ->
-                optionHeaderWrapper isOpen "Audio Settings" (SvgIcon Icons.sliders)
+                optionHeaderWrapper isOpen
+                    [ span [ class "hidden sm:inline" ] [ text "Audio " ]
+                    , text "Settings"
+                    ]
+                    (SvgIcon Icons.sliders)
 
             IsonMenu ->
                 optionHeaderWrapper isOpen
-                    "Ison"
+                    [ text "Ison" ]
                     (ByzHtmlIcon (ByzHtmlInterval.view Character.Ison))
 
             ScaleMenu ->
-                optionHeaderWrapper isOpen "Scale" (SvgIcon Icons.music)
+                optionHeaderWrapper isOpen
+                    [ text "Scale" ]
+                    (SvgIcon Icons.music)
 
             VolumeMenu ->
                 optionHeaderWrapper isOpen
-                    "Volume"
+                    [ text "Volume" ]
                     (if audioSettings.gain == 0 then
                         SvgIcon Icons.volumeOff
 
@@ -104,20 +130,25 @@ optionHeader audioSettings isOpen menuOption =
         ]
 
 
-optionHeaderWrapper : Bool -> String -> IconType Msg -> Html Msg
-optionHeaderWrapper isOpen optionHeaderText icon =
-    div [ Styles.flexRow, class "justify-between" ]
-        [ div [ Styles.flexRow ]
+optionHeaderWrapper : Bool -> List (Html Msg) -> IconType Msg -> Html Msg
+optionHeaderWrapper isOpen optionHeaderTextNodes icon =
+    div [ Styles.flexRow, class "justify-around md:justify-between" ]
+        [ div
+            [ class "flex flex-col md:flex-row" ]
             [ case icon of
                 SvgIcon svg ->
-                    svg [ Svg.fill "grey", Svg.width "24" ]
+                    div [ class "mx-auto" ]
+                        [ svg [ Svg.fill "grey", Svg.width "24" ] ]
 
                 ByzHtmlIcon html ->
-                    span [ class "text-neutral-500" ] [ html ]
-            , span [ class "ml-2" ] [ text optionHeaderText ]
+                    div [ class "text-neutral-500" ] [ html ]
+            , div [ class "md:ml-2 text-xs md:text-base" ]
+                optionHeaderTextNodes
             ]
         , div
-            [ class "w-6 transition-transform duration-300 ease-in-out"
+            [ class "hidden md:block"
+            , class "w-6 "
+            , Styles.transitionQuick
             , classList [ ( "rotate-180", isOpen ) ]
             ]
             [ Icons.chevronDown [ Svg.fill "grey" ] ]
@@ -128,7 +159,7 @@ optionContent : AudioSettings -> ModeSettings -> PitchState -> Bool -> MenuOptio
 optionContent audioSettings modeSettings pitchState isOpen menuOption =
     let
         wrapper =
-            div [ class "m-2" ]
+            div [ class "lg:m-2" ]
     in
     div
         [ if isOpen then
@@ -136,8 +167,13 @@ optionContent audioSettings modeSettings pitchState isOpen menuOption =
 
           else
             Styles.borderTransparent
-        , classList [ ( "mb-2 rounded-b-md", isOpen ) ]
+        , classList
+            [ ( "lg:mb-2 lg:rounded-b-md", isOpen )
+            , ( "hidden lg:flex", not isOpen )
+            ]
         , class "overflow-hidden"
+        , class "fixed lg:static w-full left-0 bottom-0 z-30 bg-white"
+        , class "px-4 py-2 lg:p-0"
         ]
         [ case menuOption of
             AudioModeMenu ->
