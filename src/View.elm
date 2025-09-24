@@ -96,7 +96,7 @@ backdrop menuOpen modal =
         , Styles.transition
         , classList
             [ ( "-z-10", not show )
-            , ( "bg-slate-400 opacity-40 z-10", show )
+            , ( "bg-slate-400 opacity-40 z-30", show )
             ]
         , Attr.attributeIf menuOpen (onClick ToggleMenu)
         , Attr.attributeIf (Model.modalOpen modal) (onClick (SelectModal NoModal))
@@ -185,7 +185,8 @@ viewModal audioSettings layoutData modeSettings modal =
 
         _ ->
             Html.node "dialog"
-                [ class "fixed inset-1/4 top-24 w-3/4 md:w-1/2 z-10"
+                -- TODO: really need to clean this up, make this responsive.
+                [ class "fixed inset-1/4 top-24 w-3/4 md:w-1/2 z-40"
                 , Styles.flexCol
                 , class "p-6 bg-white"
                 , Styles.borderRounded

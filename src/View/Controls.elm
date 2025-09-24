@@ -132,7 +132,7 @@ optionHeader audioSettings isOpen menuOption =
 
 optionHeaderWrapper : Bool -> List (Html Msg) -> IconType Msg -> Html Msg
 optionHeaderWrapper isOpen optionHeaderTextNodes icon =
-    div [ Styles.flexRow, class "justify-around md:justify-between" ]
+    div [ Styles.flexRow, class "justify-around lg:justify-between" ]
         [ div
             [ class "flex flex-col md:flex-row" ]
             [ case icon of
@@ -146,8 +146,7 @@ optionHeaderWrapper isOpen optionHeaderTextNodes icon =
                 optionHeaderTextNodes
             ]
         , div
-            [ class "hidden md:block"
-            , class "w-6 "
+            [ class "hidden lg:block w-6"
             , Styles.transitionQuick
             , classList [ ( "rotate-180", isOpen ) ]
             ]
@@ -159,7 +158,7 @@ optionContent : AudioSettings -> ModeSettings -> PitchState -> Bool -> MenuOptio
 optionContent audioSettings modeSettings pitchState isOpen menuOption =
     let
         wrapper =
-            div [ class "lg:m-2" ]
+            div [ Styles.flexCol, class "max-w-sm mx-auto lg:m-2" ]
     in
     div
         [ if isOpen then
