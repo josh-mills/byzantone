@@ -169,11 +169,20 @@ optionContent audioSettings modeSettings pitchState isOpen menuOption =
             Styles.borderTransparent
         , classList
             [ ( "lg:mb-2 lg:rounded-b-md", isOpen )
-            , ( "hidden lg:flex", not isOpen )
+            , ( "translate-y-full lg:translate-y-0", not isOpen )
+            , ( "translate-y-0", isOpen )
             ]
         , class "overflow-hidden"
+        , Styles.transitionQuick
         , class "fixed lg:static w-full left-0 bottom-0 z-30 bg-white"
         , class "px-4 py-2 lg:p-0"
+        , Attr.attribute "aria-hidden"
+            (if isOpen then
+                "false"
+
+             else
+                "true"
+            )
         ]
         [ case menuOption of
             AudioModeMenu ->
