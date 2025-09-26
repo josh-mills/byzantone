@@ -11,18 +11,20 @@ import Byzantine.Scale exposing (Scale)
 import Maybe.Extra as Maybe
 import Model exposing (Modal, Model)
 import Model.AudioSettings as AudioSettings exposing (AudioSettings)
+import Model.ControlsMenu as ControlsMenu
 import Model.DegreeDataDict as DegreeDataDict exposing (DegreeDataDict)
 import Model.LayoutData exposing (LayoutData, LayoutSelection)
 import Model.ModeSettings exposing (ModeSettings)
 import Model.PitchSpaceData as PitchSpaceData exposing (PitchSpaceData)
-import Model.PitchState as PitchState exposing (IsonStatus(..), PitchState, ProposedAccidental(..), unwrapProposedAccidental)
+import Model.PitchState as PitchState exposing (IsonStatus(..), PitchState, ProposedAccidental(..))
 import Movement exposing (Movement)
 import Platform.Cmd as Cmd
 import Task
 
 
 type Msg
-    = DomResult (Result Dom.Error ())
+    = CloseControlMenus
+    | DomResult (Result Dom.Error ())
     | GotPitchSpaceElement (Result Dom.Error Dom.Element)
     | GotViewport Dom.Viewport
     | ViewportResize Int Int
@@ -33,7 +35,7 @@ type Msg
     | SelectPitch (Maybe Pitch) (Maybe Movement)
     | SelectProposedAccidental ProposedAccidental
     | SelectProposedMovement Movement
-    | SetAudioMode AudioSettings.Mode
+    | SetAudioMode AudioSettings.AudioMode
     | SetDetectedPitch (Maybe Frequency)
     | SetGain Float
     | SetIson IsonStatus
@@ -45,6 +47,7 @@ type Msg
     | SetListenRegister Register
     | SetResponsiveness AudioSettings.Responsiveness
     | SetScale Scale
+    | ToggleControlMenu ControlsMenu.MenuOption
     | ToggleMenu
 
 
@@ -53,6 +56,11 @@ update msg model =
     case msg of
         NoOp ->
             ( model, Task.perform GotViewport Dom.getViewport )
+
+        CloseControlMenus ->
+            ( { model | openControlMenus = ControlsMenu.init }
+            , Cmd.none
+            )
 
         DomResult _ ->
             -- just for dev purposes
@@ -170,7 +178,7 @@ update msg model =
 
         SetAudioMode mode ->
             ( { model | pitchState = PitchState.initialPitchState }
-                |> updateAudioSettings (\audioSettings -> { audioSettings | mode = mode })
+                |> updateAudioSettings (\audioSettings -> { audioSettings | audioMode = mode })
                 |> resetPitchSpaceData
             , Cmd.none
             )
@@ -267,6 +275,14 @@ update msg model =
 
         SetDetectedPitch pitchFrequency ->
             ( { model | detectedPitch = pitchFrequency }
+            , Cmd.none
+            )
+
+        ToggleControlMenu menuOption ->
+            ( { model
+                | openControlMenus =
+                    ControlsMenu.toggle menuOption model.openControlMenus
+              }
             , Cmd.none
             )
 
@@ -507,7 +523,7 @@ If in Listen mode, this is used only for setting the accidental.
 -}
 processPitchButtonClick : Model -> Degree -> Model
 processPitchButtonClick model degree =
-    case model.audioSettings.mode of
+    case model.audioSettings.audioMode of
         AudioSettings.Listen ->
             updatePitchState
                 (\pitchState ->

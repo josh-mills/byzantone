@@ -62,7 +62,7 @@ import Array exposing (Array)
 import Byzantine.Accidental as Accidental exposing (Accidental)
 import Byzantine.Degree as Degree exposing (Degree)
 import Byzantine.Frequency as Frequency exposing (Frequency, PitchStandard)
-import Byzantine.Register as Register exposing (Register)
+import Byzantine.Register exposing (Register)
 import Byzantine.Scale as Scale exposing (Scale(..))
 import Maybe.Extra
 import Result exposing (Result)

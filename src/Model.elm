@@ -1,5 +1,5 @@
 module Model exposing
-    ( Model, initialModel
+    ( Model, init
     , Modal(..), modalOpen, modalToString
     )
 
@@ -8,7 +8,7 @@ module Model exposing
 
 # Model
 
-@docs Model, initialModel
+@docs Model, init
 
 
 ## Modal
@@ -21,6 +21,8 @@ import Byzantine.Degree exposing (Degree(..))
 import Byzantine.Frequency exposing (Frequency)
 import Byzantine.Scale exposing (Scale(..))
 import Model.AudioSettings as AudioSettings exposing (AudioSettings)
+import Model.ControlsMenu as ControlsMenu exposing (OpenControlMenus)
+import Model.DeviceInfo exposing (DeviceInfo)
 import Model.LayoutData as LayoutData exposing (LayoutData)
 import Model.ModeSettings as ModeSettings exposing (ModeSettings)
 import Model.PitchSpaceData as PitchSpaceData exposing (PitchSpaceData)
@@ -31,26 +33,34 @@ import Movement exposing (Movement(..))
 type alias Model =
     { audioSettings : AudioSettings
     , detectedPitch : Maybe Frequency
+    , deviceInfo : DeviceInfo
     , layoutData : LayoutData
     , menuOpen : Bool
     , modal : Modal
     , modeSettings : ModeSettings
+    , openControlMenus : OpenControlMenus
     , pitchSpaceData : PitchSpaceData
     , pitchState : PitchState
     }
 
 
-initialModel : Model
-initialModel =
+init : DeviceInfo -> { width : Float, height : Float } -> Model
+init deviceInfo viewportDimensions =
+    let
+        layoutData =
+            LayoutData.init viewportDimensions
+    in
     { audioSettings = AudioSettings.defaultAudioSettings
     , detectedPitch = Nothing
-    , layoutData = LayoutData.initialLayoutData
+    , deviceInfo = deviceInfo
+    , layoutData = layoutData
     , menuOpen = False
     , modal = NoModal
     , modeSettings = ModeSettings.initialModeSettings
+    , openControlMenus = ControlsMenu.init
     , pitchSpaceData =
         PitchSpaceData.init
-            LayoutData.initialLayoutData
+            layoutData
             ModeSettings.initialModeSettings
             PitchState.initialPitchState
     , pitchState = PitchState.initialPitchState
