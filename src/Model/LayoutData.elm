@@ -76,7 +76,7 @@ type Layout
 
 
 {-| For Auto layout, Vertical is the default. Only when the screen is relatively
-short _and_ significantly wider than it is tall should the layout switch to
+short _or_ significantly wider than it is tall should the layout switch to
 Horizontal.
 -}
 layoutFor : LayoutData -> Layout
@@ -87,7 +87,7 @@ layoutFor { layoutSelection, viewport } =
                 ratio =
                     viewport.viewport.height / viewport.viewport.width
             in
-            if viewport.viewport.height < 800 && ratio < 2.2 then
+            if viewport.viewport.height < 600 || ratio < 1.3 then
                 Horizontal
 
             else
