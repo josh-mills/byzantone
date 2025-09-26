@@ -175,8 +175,6 @@ menu =
         ]
 
 
-{-| TODO: positioning still needs work.
--}
 viewModal : AudioSettings -> LayoutData -> ModeSettings -> Modal -> Html Msg
 viewModal audioSettings layoutData modeSettings modal =
     case modal of
@@ -185,15 +183,23 @@ viewModal audioSettings layoutData modeSettings modal =
 
         _ ->
             Html.node "dialog"
-                -- TODO: really need to clean this up, make this responsive.
-                [ class "fixed inset-1/4 top-24 w-3/4 md:w-1/2 z-40"
+                [ class "absolute"
+                , class "top-8 lg:inset-1/5"
+                , class "max-h-5/6 lg:max-h-3/5"
+                , class "max-w-7/8 mx-auto"
+                , class "overflow-auto"
                 , Styles.flexCol
-                , class "p-6 bg-white"
+                , class "z-40"
+                , class "px-4 sm:px-6 pb-6 bg-white"
                 , Styles.borderRounded
                 , class "shadow-md font-serif"
                 , id "modal"
                 ]
-                [ h2 [ Styles.flexRow, class "justify-between mb-1" ]
+                [ h2
+                    [ Styles.flexRow
+                    , class "justify-between mb-1"
+                    , class "sticky top-0 bg-white py-4"
+                    ]
                     [ span [ class "font-heading text-2xl" ]
                         [ text (Model.modalToString modal) ]
                     , button
@@ -267,7 +273,7 @@ rangeFieldset { rangeStart, rangeEnd } =
             Degree.indexOf degree |> String.fromInt
 
         row label id_ min max value msg =
-            div [ Styles.flexRow, class "align-center" ]
+            div [ Styles.flexRow, class "align-center max-w-full flex-wrap" ]
                 [ Html.label
                     [ Attr.for id_
                     , class "w-14 mt-1"
@@ -277,7 +283,7 @@ rangeFieldset { rangeStart, rangeEnd } =
                     [ Html.input
                         [ type_ "range"
                         , id id_
-                        , class "w-80"
+                        , class "w-72 md:w-80"
                         , onInput msg
                         , Attr.list (id_ ++ "-datalist")
                         , Attr.min (intString min)
@@ -288,7 +294,7 @@ rangeFieldset { rangeStart, rangeEnd } =
                     , datalist
                         [ id (id_ ++ "-datalist")
                         , Styles.flexRow
-                        , class "justify-between w-80"
+                        , class "justify-between w-72 md:w-80"
                         ]
                         (Degree.range min max |> List.map (makeOption msg))
                     ]
