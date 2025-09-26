@@ -78,18 +78,20 @@ type IconType msg
 optionHeader : AudioSettings -> Bool -> MenuOption -> Html Msg
 optionHeader audioSettings isOpen menuOption =
     Html.button
-        [ class "w-full min-h-12 lg:max-h-12 py-2"
-        , class "py-1 px-3"
+        [ class "w-full min-h-12 lg:max-h-12"
+        , class "py-2 px-3"
         , class "bg-white lg:bg-gray-200 hover:bg-gray-300"
-        , class "border-t lg:border border-gray-300"
+        , class "border-t lg:border border-gray-300 lg:rounded-md"
         , Styles.transitionQuick
-        , classList [ ( "rounded-b-none", isOpen ) ]
+        , classList [ ( "lg:rounded-b-none", isOpen ) ]
         , onClick (Update.ToggleControlMenu menuOption)
         ]
         [ case menuOption of
             AudioModeMenu ->
                 optionHeaderWrapper isOpen
-                    [ text "Audio" ]
+                    [ text "Audio"
+                    , span [ class "hidden sm:inline" ] [ text " Mode" ]
+                    ]
                     (case audioSettings.audioMode of
                         AudioSettings.Listen ->
                             SvgIcon Icons.microphone

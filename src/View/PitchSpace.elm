@@ -4,7 +4,7 @@ module View.PitchSpace exposing (view)
 -}
 
 import Array
-import Byzantine.Accidental as Accidental exposing (Accidental)
+import Byzantine.Accidental as Accidental
 import Byzantine.ByzHtml.Accidental as Accidental
 import Byzantine.ByzHtml.Interval as ByzHtmlInterval
 import Byzantine.ByzHtml.Martyria as ByzHtmlMartyria
@@ -45,9 +45,6 @@ import Update exposing (Msg(..))
 -- WRAPPER AND VIEW HELPERS
 
 
-{-| TODO: for mvp pitch tracking, we'll presumably want to disable interaction
-when in listen mode.
--}
 view : PitchSpaceData -> AudioSettings -> ModeSettings -> PitchState -> Maybe Frequency -> Html Msg
 view pitchSpaceData audioSettings modeSettings pitchState detectedPitch =
     div
@@ -56,7 +53,6 @@ view pitchSpaceData audioSettings modeSettings pitchState detectedPitch =
          , Attr.attributeIf LayoutData.showSpacing Styles.border
          ]
             ++ (if PitchSpaceData.isVertical pitchSpaceData.display then
-                    -- TODO: centering, or padding, for responsiveness?
                     [ Styles.flexRow
                     , class "justify-around"
                     , class "my-8 md:me-12 pb-12"
@@ -277,6 +273,7 @@ viewPitchIndicator pitchSpaceData { pitchStandard, listenRegister, responsivenes
                     Styles.left (pitchSpaceData.scalingFactor * (detectedPitchInMoria - toFloat pitchSpaceData.visibleRangeStart))
 
         { degree, offset } =
+            -- TODO: there's functionality here to build out
             closestDegree pitchSpaceData.pitchPositions detectedPitchInMoria
 
         absOffset =

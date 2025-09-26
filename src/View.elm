@@ -338,7 +338,7 @@ viewPitchStandard pitchStandard =
 
 
 pitchTracker : AudioSettings -> PitchState -> Maybe Frequency -> Html Msg
-pitchTracker audioSettings pitchState detectedPitch =
+pitchTracker audioSettings _ _ =
     case audioSettings.audioMode of
         AudioSettings.Listen ->
             div [ class "m-4" ]
@@ -361,19 +361,6 @@ pitchTracker audioSettings pitchState detectedPitch =
 
 
 
--- MOBILE CONTROLS
--- viewMobileControls : AudioSettings -> ModeSettings -> PitchState -> Html Msg
--- viewMobileControls audioSettings modeSettings pitchState =
---     div
---         [ Styles.flexRow
---         , Styles.border
---         , class "md:hidden"
---         , class "h-12"
---         -- , class "bg-gray-100 "
---         , class "sticky bottom-0"
---         ]
---         [ mobileControlsMenu audioSettings modeSettings pitchState
---         ]
 -- HELPERS
 
 
