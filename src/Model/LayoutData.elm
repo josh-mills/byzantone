@@ -87,7 +87,10 @@ layoutFor { layoutSelection, viewport } =
                 ratio =
                     viewport.viewport.height / viewport.viewport.width
             in
-            if viewport.viewport.height < 600 || ratio < 1.3 then
+            if
+                (viewport.viewport.height < 600)
+                    || (ratio < 1.3 && viewport.viewport.height < 1200)
+            then
                 Horizontal
 
             else
