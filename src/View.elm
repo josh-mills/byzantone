@@ -5,6 +5,7 @@ import Byzantine.Degree as Degree exposing (Degree(..))
 import Byzantine.Frequency as Frequency exposing (Frequency, PitchStandard(..))
 import Byzantine.IntervalCharacter exposing (..)
 import Byzantine.Martyria as Martyria
+import Byzantine.Mode as Mode exposing (Mode)
 import Byzantine.Pitch as Pitch exposing (Pitch)
 import Byzantine.Register exposing (Register(..))
 import Byzantine.Scale exposing (Scale(..))
@@ -30,6 +31,7 @@ import Styles
 import Svg.Attributes
 import Update exposing (Msg(..))
 import View.Controls
+import View.ModeData
 import View.PitchSpace as PitchSpace
 
 
@@ -171,6 +173,7 @@ menu =
         , Html.Events.on "keydown" keyDecoder
         ]
         [ menuItem AboutModal
+        , menuItem (ModeModal Nothing)
         , menuItem SettingsModal
         ]
 
@@ -220,6 +223,9 @@ modalContent audioSettings layoutData modeSettings modal =
 
         AboutModal ->
             Copy.about
+
+        ModeModal maybeMode ->
+            lazy viewModeModal maybeMode
 
         SettingsModal ->
             lazy3 settings audioSettings layoutData modeSettings
@@ -335,6 +341,26 @@ viewPitchStandard pitchStandard =
         [ span [ class "text-xl relative bottom-1.5" ] [ martyria ]
         , text frequency
         ]
+
+
+viewModeModal : Maybe Mode -> Html Msg
+viewModeModal maybeMode =
+    case maybeMode of
+        Nothing ->
+            RadioFieldset.view modeDataRadioConfig maybeMode
+
+        Just mode ->
+            View.ModeData.view mode
+
+
+modeDataRadioConfig : RadioFieldset.Config (Maybe Mode) Msg
+modeDataRadioConfig =
+    { itemToString = Maybe.unwrap "" Mode.toString
+    , legendText = "Mode"
+    , onSelect = SelectModal << ModeModal
+    , options = List.map Just Mode.all
+    , viewItem = Nothing
+    }
 
 
 pitchTracker : AudioSettings -> PitchState -> Maybe Frequency -> Html Msg

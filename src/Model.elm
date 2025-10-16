@@ -19,6 +19,7 @@ module Model exposing
 
 import Byzantine.Degree exposing (Degree(..))
 import Byzantine.Frequency exposing (Frequency)
+import Byzantine.Mode exposing (Mode)
 import Byzantine.Scale exposing (Scale(..))
 import Model.AudioSettings as AudioSettings exposing (AudioSettings)
 import Model.ControlsMenu as ControlsMenu exposing (OpenControlMenus)
@@ -74,6 +75,7 @@ init deviceInfo viewportDimensions =
 type Modal
     = NoModal
     | AboutModal
+    | ModeModal (Maybe Mode)
     | SettingsModal
 
 
@@ -85,6 +87,9 @@ modalToString modal =
 
         AboutModal ->
             "About"
+
+        ModeModal _ ->
+            "Mode Info"
 
         SettingsModal ->
             "Settings"

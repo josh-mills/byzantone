@@ -1,5 +1,5 @@
 module Byzantine.Mode exposing
-    ( Mode(..)
+    ( Mode(..), toString, all
     , ModeData, data
     )
 
@@ -8,7 +8,7 @@ module Byzantine.Mode exposing
 
 # Mode
 
-@docs Mode
+@docs Mode, toString, all
 
 
 # Mode Data
@@ -25,6 +25,18 @@ import Byzantine.Scale exposing (Scale(..))
 -}
 type Mode
     = AuthenticOnePapadic
+
+
+toString : Mode -> String
+toString mode =
+    case mode of
+        AuthenticOnePapadic ->
+            "Authentic Mode One, Papadic"
+
+
+all : List Mode
+all =
+    [ AuthenticOnePapadic ]
 
 
 
