@@ -200,7 +200,7 @@ viewModal audioSettings layoutData modeSettings modal =
                 ]
                 [ h2
                     [ Styles.flexRow
-                    , class "justify-between mb-1"
+                    , class "justify-between items-center mb-1"
                     , class "sticky top-0 bg-white py-4"
                     ]
                     [ span [ class "font-heading text-2xl" ]
