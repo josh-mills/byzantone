@@ -1,6 +1,7 @@
 module Byzantine.Mode exposing
     ( Mode(..), toString, all
     , ModeData, data
+    , Inflection
     )
 
 {-| Data structure to capture modal characteristics.
@@ -15,8 +16,14 @@ module Byzantine.Mode exposing
 
 @docs ModeData, data
 
+
+## Melodic Attractions
+
+@docs Inflection
+
 -}
 
+import Byzantine.Accidental exposing (Accidental(..))
 import Byzantine.Degree exposing (Degree(..))
 import Byzantine.Scale exposing (Scale(..))
 
@@ -27,6 +34,8 @@ type Mode
     = AuthenticOnePapadic
 
 
+{-| Display string.
+-}
 toString : Mode -> String
 toString mode =
     case mode of
@@ -61,9 +70,12 @@ type alias ModeData =
     { scale : Scale
     , dominantTones : DominantTones
     , isonOptions : List Degree
-    , rangeStart : Degree
-    , rangeEnd : Degree
+    , range :
+        { start : Degree
+        , end : Degree
+        }
     , recitingTone : Degree
+    , possibleInflections : List Inflection
     }
 
 
@@ -79,6 +91,15 @@ type alias CadencePoints =
     , complete : List Degree
     , medial : List Degree
     , incomplete : List Degree
+    }
+
+
+{-| This will need to be expanded to capture additional musical details, namely,
+context, and whether or not the inflection is discretionary or forced.
+-}
+type alias Inflection =
+    { degree : Degree
+    , accidentals : List Accidental
     }
 
 
@@ -100,7 +121,15 @@ authenticOnePapadic =
         , nonCadentialFoci = []
         }
     , isonOptions = [ Ke ]
-    , rangeStart = Pa
-    , rangeEnd = Pa_
+    , range =
+        { start = Pa
+        , end = Pa_
+        }
     , recitingTone = Ke
+    , possibleInflections =
+        [ { degree = Zo_, accidentals = [ Sharp2 ] }
+        , { degree = Pa_, accidentals = [ Flat2, Flat4 ] }
+        , { degree = Ni_, accidentals = [ Sharp2, Sharp4 ] }
+        , { degree = Ga, accidentals = [ Sharp4, Sharp6 ] }
+        ]
     }

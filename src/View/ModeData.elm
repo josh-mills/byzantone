@@ -1,5 +1,6 @@
 module View.ModeData exposing (view)
 
+import Byzantine.Accidental as Accidental
 import Byzantine.Degree as Degree exposing (Degree)
 import Byzantine.Mode as Mode exposing (Mode)
 import Byzantine.Scale as Scale
@@ -28,14 +29,22 @@ view mode =
                 (Degree.text modeData.dominantTones.base)
             , listItem "Ison"
                 (degreeList modeData.isonOptions)
-            , listItem "Final Cadence"
-                (Degree.text modeData.dominantTones.cadencePoints.final)
-            , listItem "Complete Cadences"
-                (degreeList modeData.dominantTones.cadencePoints.complete)
-            , listItem "Medial Cadences"
-                (degreeList modeData.dominantTones.cadencePoints.medial)
-            , listItem "Incomplete Cadences"
-                (degreeList modeData.dominantTones.cadencePoints.incomplete)
+            , listItem "Cadence Points"
+                (ul [ class "list-disc ps-6" ]
+                    [ listItemLevel2 "Final"
+                        (Degree.text modeData.dominantTones.cadencePoints.final)
+                    , listItemLevel2 "Complete"
+                        (degreeList modeData.dominantTones.cadencePoints.complete)
+                    , listItemLevel2 "Medial"
+                        (degreeList modeData.dominantTones.cadencePoints.medial)
+                    , listItemLevel2 "Incomplete"
+                        (degreeList modeData.dominantTones.cadencePoints.incomplete)
+                    ]
+                )
+            , listItem "Available Melodic Attractions"
+                (ul [ class "list-disc ps-6" ]
+                    (List.map attraction modeData.possibleInflections)
+                )
             ]
         , button
             [ Styles.buttonClass
@@ -53,6 +62,28 @@ listItem label content =
     li []
         [ span [ class "font-heading text-lg" ] [ text label, text ": " ]
         , content
+        ]
+
+
+{-| we'll probably need to think about styling here
+-}
+listItemLevel2 : String -> Html msg -> Html msg
+listItemLevel2 label content =
+    li []
+        [ span [ class "font-heading" ] [ text label, text ": " ]
+        , content
+        ]
+
+
+attraction : Mode.Inflection -> Html msg
+attraction inflection =
+    li []
+        [ Degree.textOctave inflection.degree
+        , text ": "
+        , inflection.accidentals
+            |> List.map (Accidental.toString >> text)
+            |> List.intersperse (text ", ")
+            |> span []
         ]
 
 
