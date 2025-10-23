@@ -32,6 +32,9 @@ import Byzantine.Scale exposing (Scale(..))
 -}
 type Mode
     = AuthenticOnePapadic
+    | AuthenticOneEirmologic
+    | PlagalOneSticheraric
+    | PlagalOnePapadic
 
 
 {-| Display string.
@@ -42,10 +45,38 @@ toString mode =
         AuthenticOnePapadic ->
             "Authentic Mode One, Papadic"
 
+        AuthenticOneEirmologic ->
+            "Lower Mode One, Eirmologic"
+
+        PlagalOneSticheraric ->
+            "Plagal Mode One, Sticheraric"
+
+        PlagalOnePapadic ->
+            "Plagal Mode One, Papadic"
+
 
 all : List Mode
 all =
-    [ AuthenticOnePapadic ]
+    let
+        next : List Mode -> List Mode
+        next modes =
+            case List.head modes of
+                Nothing ->
+                    AuthenticOnePapadic :: modes |> next
+
+                Just AuthenticOnePapadic ->
+                    AuthenticOneEirmologic :: modes |> next
+
+                Just AuthenticOneEirmologic ->
+                    PlagalOneSticheraric :: modes |> next
+
+                Just PlagalOneSticheraric ->
+                    PlagalOnePapadic :: modes |> next
+
+                Just PlagalOnePapadic ->
+                    modes
+    in
+    next [] |> List.reverse
 
 
 
@@ -57,6 +88,15 @@ data mode =
     case mode of
         AuthenticOnePapadic ->
             authenticOnePapadic
+
+        AuthenticOneEirmologic ->
+            authenticOneEirmologic
+
+        PlagalOneSticheraric ->
+            plagalOneSticheraric
+
+        PlagalOnePapadic ->
+            plagalOnePapadic
 
 
 {-| other points to capture:
@@ -131,5 +171,102 @@ authenticOnePapadic =
         , { degree = Pa_, accidentals = [ Flat2, Flat4 ] }
         , { degree = Ni_, accidentals = [ Sharp2, Sharp4 ] }
         , { degree = Ga, accidentals = [ Sharp4, Sharp6 ] }
+        ]
+    }
+
+
+authenticOneEirmologic : ModeData
+authenticOneEirmologic =
+    { scale = Diatonic
+    , dominantTones =
+        { base = Pa
+        , cadencePoints =
+            { final = Pa
+            , complete = [ Pa ]
+            , medial = []
+            , incomplete = [ Ga, Di ]
+            }
+        , nonCadentialFoci = [ Ke ]
+        }
+    , isonOptions = [ Pa, Di ]
+    , range =
+        { start = KE
+        , end = Pa_
+        }
+    , recitingTone = Di
+    , possibleInflections =
+        [ { degree = Ga, accidentals = [ Sharp2, Sharp4 ] }
+        , { degree = Bou, accidentals = [ Sharp2 ] }
+        , {degree = Di, accidentals = [Flat4]}
+        , {degree = Zo_, accidentals = [Flat4}
+        ]
+    }
+
+
+{-| papadic will be basically the same but for some cadence points
+
+There are two variants: fast sticheraric will have final of Ke.
+
+  - TODO: verify this is the right accidental for Zo
+
+-}
+plagalOneSticheraric : ModeData
+plagalOneSticheraric =
+    { scale = Diatonic
+    , dominantTones =
+        { base = Pa
+        , cadencePoints =
+            { final = Di
+            , complete = [ Di ]
+            , medial = []
+            , incomplete = [ Ke ]
+            }
+        , nonCadentialFoci = []
+        }
+    , isonOptions = [ Pa, Ke, Di, KE ]
+    , range =
+        { start = KE
+        , end = Pa_
+        }
+    , recitingTone = Di
+    , possibleInflections =
+        [ { degree = Ga, accidentals = [ Sharp2, Sharp4, Sharp6 ] }
+        , { degree = Zo_, accidentals = [ Flat4 ] }
+        ]
+    }
+
+
+{-| papadic will be basically the same but for some cadence points
+
+There are two variants: fast sticheraric will have final of Ke.
+
+  - TODO: verify this is the right accidental for Zo
+  - TODO: additional details for papadic
+
+-}
+plagalOnePapadic : ModeData
+plagalOnePapadic =
+    { scale = Diatonic
+    , dominantTones =
+        { base = Pa
+        , cadencePoints =
+            { final = Pa
+            , complete = [ Di ]
+            , medial = []
+            , incomplete = [ Ga, Ke ]
+            }
+        , nonCadentialFoci = []
+        }
+    , isonOptions = [ Pa, Ke, Di, KE ]
+    , range =
+        { start = KE
+        , end = Pa_
+        }
+    , recitingTone = Di
+    , possibleInflections =
+        [ { degree = Bou, accidentals = [ Sharp2 ] }
+        , { degree = Ga, accidentals = [ Sharp2, Sharp4, Sharp6 ] }
+        , { degree = Di, accidentals = [ Flat4 ] }
+        , { degree = Zo_, accidentals = [ Flat4 ] }
         ]
     }

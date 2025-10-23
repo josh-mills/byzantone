@@ -7,6 +7,7 @@ import Byzantine.Scale as Scale
 import Html exposing (Html, button, div, h3, li, span, text, ul)
 import Html.Attributes exposing (class)
 import Html.Events exposing (onClick)
+import Html.Extra
 import List
 import Model exposing (Modal(..))
 import Styles
@@ -33,12 +34,12 @@ view mode =
                 (ul [ class "list-disc ps-6" ]
                     [ listItemLevel2 "Final"
                         (Degree.text modeData.dominantTones.cadencePoints.final)
-                    , listItemLevel2 "Complete"
-                        (degreeList modeData.dominantTones.cadencePoints.complete)
-                    , listItemLevel2 "Medial"
-                        (degreeList modeData.dominantTones.cadencePoints.medial)
-                    , listItemLevel2 "Incomplete"
-                        (degreeList modeData.dominantTones.cadencePoints.incomplete)
+                    , nonEmptyLevel2Degrees "Complete"
+                        modeData.dominantTones.cadencePoints.complete
+                    , nonEmptyLevel2Degrees "Medial"
+                        modeData.dominantTones.cadencePoints.medial
+                    , nonEmptyLevel2Degrees "Incomplete"
+                        modeData.dominantTones.cadencePoints.incomplete
                     ]
                 )
             , listItem "Available Melodic Attractions"
@@ -75,6 +76,12 @@ listItemLevel2 label content =
         ]
 
 
+nonEmptyLevel2Degrees : String -> List Degree -> Html msg
+nonEmptyLevel2Degrees label degrees =
+    Html.Extra.viewIf (not (List.isEmpty degrees))
+        (listItemLevel2 label (degreeList degrees))
+
+
 attraction : Mode.Inflection -> Html msg
 attraction inflection =
     li []
@@ -90,6 +97,6 @@ attraction inflection =
 degreeList : List Degree -> Html msg
 degreeList degrees =
     span []
-        (List.map Degree.text degrees
+        (List.map Degree.textOctave degrees
             |> List.intersperse (text ", ")
         )
