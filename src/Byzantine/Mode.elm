@@ -33,6 +33,7 @@ import Byzantine.Scale exposing (Scale(..))
 type Mode
     = AuthenticOnePapadic
     | AuthenticOneEirmologic
+    | AuthenticOneSticheraric
     | PlagalOneSticheraric
     | PlagalOnePapadic
 
@@ -47,6 +48,9 @@ toString mode =
 
         AuthenticOneEirmologic ->
             "Lower Mode One, Eirmologic"
+
+        AuthenticOneSticheraric ->
+            "Lower Mode One, Sticheraric"
 
         PlagalOneSticheraric ->
             "Plagal Mode One, Sticheraric"
@@ -68,6 +72,9 @@ all =
                     AuthenticOneEirmologic :: modes |> next
 
                 Just AuthenticOneEirmologic ->
+                    AuthenticOneSticheraric :: modes |> next
+
+                Just AuthenticOneSticheraric ->
                     PlagalOneSticheraric :: modes |> next
 
                 Just PlagalOneSticheraric ->
@@ -91,6 +98,9 @@ data mode =
 
         AuthenticOneEirmologic ->
             authenticOneEirmologic
+
+        AuthenticOneSticheraric ->
+            authenticOneSticheraric
 
         PlagalOneSticheraric ->
             plagalOneSticheraric
@@ -197,8 +207,39 @@ authenticOneEirmologic =
     , possibleInflections =
         [ { degree = Ga, accidentals = [ Sharp2, Sharp4 ] }
         , { degree = Bou, accidentals = [ Sharp2 ] }
-        , {degree = Di, accidentals = [Flat4]}
-        , {degree = Zo_, accidentals = [Flat4}
+        , { degree = Di, accidentals = [ Flat4 ] }
+        , { degree = Zo_, accidentals = [ Flat4 ] }
+        ]
+    }
+
+
+{-| Lower first, includes a papadic genre that has a few differences
+with dominant tones.
+
+Ke as non-cadential melodic focus
+
+-}
+authenticOneSticheraric : ModeData
+authenticOneSticheraric =
+    { scale = Diatonic
+    , dominantTones =
+        { base = Pa
+        , cadencePoints =
+            { final = Pa
+            , complete = [ Pa ]
+            , medial = []
+            , incomplete = [ Pa, Ga, Di ]
+            }
+        , nonCadentialFoci = []
+        }
+    , isonOptions = [ Pa, DI ]
+    , range = { start = DI, end = Pa_ }
+    , recitingTone = Pa
+    , possibleInflections =
+        [ { degree = Bou, accidentals = [ Sharp2, Sharp4 ] }
+        , { degree = Di, accidentals = [ Flat2, Flat4, Flat6 ] }
+        , { degree = Ga, accidentals = [ Sharp2, Sharp4 ] }
+        , { degree = Zo_, accidentals = [ Flat4 ] }
         ]
     }
 
