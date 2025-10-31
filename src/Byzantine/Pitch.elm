@@ -393,9 +393,9 @@ type alias Interval =
 encodeInterval : Scale -> Interval -> String
 encodeInterval scale interval =
     encode scale interval.from
-        ++ "_"
+        ++ "~"
         ++ String.fromInt interval.moria
-        ++ "_"
+        ++ "~"
         ++ encode scale interval.to
 
 
@@ -408,7 +408,7 @@ Both pitches must use the same scale, otherwise an error is returned.
 -}
 decodeInterval : String -> Result String Interval
 decodeInterval intervalString =
-    case String.split "_" intervalString of
+    case String.split "~" intervalString of
         [ fromPitchStr, moriaStr, toPitchStr ] ->
             Result.map3
                 (\( fromScale, fromPitch ) moria ( toScale, toPitch ) ->

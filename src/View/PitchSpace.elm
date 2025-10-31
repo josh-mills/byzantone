@@ -105,21 +105,46 @@ viewIntervals pitchSpaceData modeSettings pitchState =
             :: listAttributes pitchSpaceData.display
         )
         (List.map
-            (Html.Lazy.lazy5 viewInterval
-                pitchSpaceData.display
-                pitchSpaceData.scalingFactor
-                modeSettings.scale
-                pitchState
+            (\( interval, position ) ->
+                Html.Lazy.lazy7 viewInterval
+                    pitchSpaceData.display
+                    pitchSpaceData.scalingFactor
+                    modeSettings.scale
+                    (PitchState.currentPitch modeSettings.scale pitchState
+                        |> Maybe.map (Pitch.encode modeSettings.scale)
+                        |> Maybe.withDefault ""
+                    )
+                    (Pitch.encodeInterval modeSettings.scale interval)
+                    position
+                    (shouldHighlightInterval
+                        (PitchState.currentPitch modeSettings.scale pitchState)
+                        pitchState.proposedMovement
+                        interval
+                    )
             )
             (PitchSpaceData.intervalsWithVisibility pitchSpaceData)
         )
 
 
-viewInterval : Display -> Float -> Scale -> PitchState -> ( Interval, PositionWithinVisibleRange ) -> Html Msg
-viewInterval display scalingFactor scale pitchState ( interval, position ) =
+viewInterval : Display -> Float -> Scale -> String -> String -> PositionWithinVisibleRange -> Bool -> Html Msg
+viewInterval display scalingFactor scale currentPitchString intervalString position shouldHighlight =
     let
-        -- _ =
-        --     Debug.log "in viewInterval" interval
+        interval =
+            Pitch.decodeInterval intervalString
+
+        intervalMoria =
+            Result.Extra.unwrap -1 .moria interval
+
+        intervalFromDegree =
+            Result.Extra.unwrap "err"
+                (\{ from } -> Pitch.unwrapDegree from |> Degree.toString)
+                interval
+
+        intervalToDegree =
+            Result.Extra.unwrap "err"
+                (\{ to } -> Pitch.unwrapDegree to |> Degree.toString)
+                interval
+
         size =
             case position of
                 Above ->
@@ -129,35 +154,38 @@ viewInterval display scalingFactor scale pitchState ( interval, position ) =
                     0
 
                 _ ->
-                    toFloat interval.moria * scalingFactor
+                    toFloat intervalMoria * scalingFactor
 
         currentPitch =
-            PitchState.currentPitch scale pitchState
+            Pitch.decode currentPitchString
+                |> Result.Extra.unwrap Nothing
+                    (Just << Tuple.second)
+
+        currentDegree =
+            Maybe.map Pitch.unwrapDegree currentPitch
 
         movement =
-            Movement.ofInterval currentPitch interval
+            Result.Extra.unwrap Movement.None (Movement.ofInterval currentPitch) interval
 
         buttonAttrs =
             [ class "w-full content-center cursor-pointer"
             , classList
-                [ ( "bg-slate-200"
-                  , shouldHighlightInterval currentPitch pitchState interval
-                  )
-                , ( "hover:bg-slate-200", Maybe.isJust pitchState.currentDegree )
+                [ ( "bg-slate-200", shouldHighlight )
+                , ( "hover:bg-slate-200", Maybe.isJust currentPitch )
                 ]
             , onFocus (SelectProposedMovement movement)
             , onMouseEnter (SelectProposedMovement movement)
             ]
 
-        moria =
-            Html.Lazy.lazy2 viewMoria size interval.moria
+        moriaDomNode =
+            Html.Lazy.lazy2 viewMoria size intervalMoria
     in
     li
         [ Attr.id
             ("interval-"
-                ++ Degree.toString (Pitch.unwrapDegree interval.from)
+                ++ intervalFromDegree
                 ++ "-"
-                ++ Degree.toString (Pitch.unwrapDegree interval.to)
+                ++ intervalToDegree
             )
         , Styles.flexRowCentered
         , if PitchSpaceData.isVertical display then
@@ -182,9 +210,9 @@ viewInterval display scalingFactor scale pitchState ( interval, position ) =
                                 :: buttonAttrs
                             )
                             [ Html.Lazy.lazy2 viewIntervalCharacter
-                                pitchState.currentDegree
+                                currentDegree
                                 (Pitch.encode scale pitch)
-                            , moria
+                            , moriaDomNode
                             ]
 
                     DescendTo pitch ->
@@ -193,14 +221,14 @@ viewInterval display scalingFactor scale pitchState ( interval, position ) =
                                 :: buttonAttrs
                             )
                             [ Html.Lazy.lazy2 viewIntervalCharacter
-                                pitchState.currentDegree
+                                currentDegree
                                 (Pitch.encode scale pitch)
-                            , moria
+                            , moriaDomNode
                             ]
 
                     None ->
                         div [ class "content-center" ]
-                            [ moria ]
+                            [ moriaDomNode ]
             )
         ]
 
@@ -241,8 +269,8 @@ viewMoria size moria =
         ]
 
 
-shouldHighlightInterval : Maybe Pitch -> PitchState -> Interval -> Bool
-shouldHighlightInterval currentPitch { proposedMovement } interval =
+shouldHighlightInterval : Maybe Pitch -> Movement -> Interval -> Bool
+shouldHighlightInterval currentPitch proposedMovement interval =
     Maybe.unwrap False
         (\current ->
             let
