@@ -6,7 +6,7 @@ module Byzantine.Pitch exposing
     , isInflected, isValidInflection, toString
     , pitchPosition, pitchPositions
     , getPitchFrequency
-    , Interval
+    , Interval, encodeInterval, decodeInterval
     )
 
 {-| Pitch positions and derived intervals. Di is fixed at 84.
@@ -54,7 +54,7 @@ attractions and inflections.
 
 # Intervals
 
-@docs Interval
+@docs Interval, encodeInterval, decodeInterval
 
 -}
 
@@ -388,3 +388,51 @@ type alias Interval =
     , to : Pitch
     , moria : Int
     }
+
+
+encodeInterval : Scale -> Interval -> String
+encodeInterval scale interval =
+    encode scale interval.from
+        ++ "_"
+        ++ String.fromInt interval.moria
+        ++ "_"
+        ++ encode scale interval.to
+
+
+{-| Decode a string representation of an interval back into an Interval record.
+The string must be in the format produced by encodeInterval:
+"<encoded\_from\_pitch>_<moria>_<encoded\_to\_pitch>"
+
+Both pitches must use the same scale, otherwise an error is returned.
+
+-}
+decodeInterval : String -> Result String Interval
+decodeInterval intervalString =
+    case String.split "_" intervalString of
+        [ fromPitchStr, moriaStr, toPitchStr ] ->
+            Result.map3
+                (\( fromScale, fromPitch ) moria ( toScale, toPitch ) ->
+                    if fromScale == toScale then
+                        Ok
+                            { from = fromPitch
+                            , to = toPitch
+                            , moria = moria
+                            }
+
+                    else
+                        Err
+                            ("Scale mismatch: from pitch uses "
+                                ++ Scale.encode fromScale
+                                ++ " but to pitch uses "
+                                ++ Scale.encode toScale
+                            )
+                )
+                (decode fromPitchStr)
+                (String.toInt moriaStr
+                    |> Result.fromMaybe ("Invalid moria value: " ++ moriaStr)
+                )
+                (decode toPitchStr)
+                |> Result.andThen identity
+
+        _ ->
+            Err ("Invalid interval format: " ++ intervalString)
