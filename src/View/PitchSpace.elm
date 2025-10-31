@@ -137,13 +137,6 @@ viewInterval display scalingFactor scale pitchState ( interval, position ) =
         movement =
             Movement.ofInterval currentPitch interval
 
-        moria =
-            span [ class "text-gray-600" ]
-                [ text (String.fromInt interval.moria)
-                , viewIfLazy LayoutData.showSpacing
-                    (\_ -> text <| " (" ++ Round.round 2 size ++ "px)")
-                ]
-
         buttonAttrs =
             [ class "w-full content-center cursor-pointer"
             , classList
@@ -155,6 +148,9 @@ viewInterval display scalingFactor scale pitchState ( interval, position ) =
             , onFocus (SelectProposedMovement movement)
             , onMouseEnter (SelectProposedMovement movement)
             ]
+
+        moria =
+            Html.Lazy.lazy2 viewMoria size interval.moria
     in
     li
         [ Attr.id
@@ -234,6 +230,15 @@ viewIntervalCharacter currentDegree toPitchString =
             (\intervalCharacter ->
                 span [ class "me-2" ] [ ByzHtmlInterval.view intervalCharacter ]
             )
+
+
+viewMoria : Float -> Int -> Html msg
+viewMoria size moria =
+    span [ class "text-gray-600" ]
+        [ text (String.fromInt moria)
+        , viewIfLazy LayoutData.showSpacing
+            (\_ -> text <| " (" ++ Round.round 2 size ++ "px)")
+        ]
 
 
 shouldHighlightInterval : Maybe Pitch -> PitchState -> Interval -> Bool
