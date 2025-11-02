@@ -401,7 +401,7 @@ encodeInterval scale interval =
 
 {-| Decode a string representation of an interval back into an Interval record.
 The string must be in the format produced by encodeInterval:
-"<encoded\_from\_pitch>_<moria>_<encoded\_to\_pitch>"
+`<encoded_from_pitch>~<moria>~<encoded_to_pitch>`
 
 Both pitches must use the same scale, otherwise an error is returned.
 

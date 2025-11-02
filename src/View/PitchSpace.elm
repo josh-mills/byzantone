@@ -126,7 +126,7 @@ viewIntervals pitchSpaceData modeSettings pitchState =
         )
 
 
-viewInterval : Display -> Float -> Scale -> String -> String -> PositionWithinVisibleRange -> Bool -> Html Msg
+viewInterval : Display -> Float -> Scale -> PitchString -> String -> PositionWithinVisibleRange -> Bool -> Html Msg
 viewInterval display scalingFactor scale currentPitchString intervalString position shouldHighlight =
     let
         interval =
@@ -161,9 +161,6 @@ viewInterval display scalingFactor scale currentPitchString intervalString posit
                 |> Result.Extra.unwrap Nothing
                     (Just << Tuple.second)
 
-        currentDegree =
-            Maybe.map Pitch.unwrapDegree currentPitch
-
         movement =
             Result.Extra.unwrap Movement.None (Movement.ofInterval currentPitch) interval
 
@@ -181,12 +178,7 @@ viewInterval display scalingFactor scale currentPitchString intervalString posit
             Html.Lazy.lazy2 viewMoria size intervalMoria
     in
     li
-        [ Attr.id
-            ("interval-"
-                ++ intervalFromDegree
-                ++ "-"
-                ++ intervalToDegree
-            )
+        [ Attr.id ("interval-" ++ intervalFromDegree ++ "-" ++ intervalToDegree)
         , Styles.flexRowCentered
         , if PitchSpaceData.isVertical display then
             Styles.height size
@@ -210,7 +202,7 @@ viewInterval display scalingFactor scale currentPitchString intervalString posit
                                 :: buttonAttrs
                             )
                             [ Html.Lazy.lazy2 viewIntervalCharacter
-                                currentDegree
+                                currentPitchString
                                 (Pitch.encode scale pitch)
                             , moriaDomNode
                             ]
@@ -221,7 +213,7 @@ viewInterval display scalingFactor scale currentPitchString intervalString posit
                                 :: buttonAttrs
                             )
                             [ Html.Lazy.lazy2 viewIntervalCharacter
-                                currentDegree
+                                currentPitchString
                                 (Pitch.encode scale pitch)
                             , moriaDomNode
                             ]
@@ -239,9 +231,14 @@ wrap in a maybe.
 Prepared for lazy rendering.
 
 -}
-viewIntervalCharacter : Maybe Degree -> PitchString -> Html Msg
-viewIntervalCharacter currentDegree toPitchString =
+viewIntervalCharacter : PitchString -> PitchString -> Html Msg
+viewIntervalCharacter maybeCurrentDegreeString toPitchString =
     let
+        currentDegree =
+            Pitch.decode maybeCurrentDegreeString
+                |> Result.Extra.unwrap Nothing
+                    (Just << Pitch.unwrapDegree << Tuple.second)
+
         ( maybeToPitchDegree, maybeToPitchAccidental ) =
             Result.Extra.unwrap ( Nothing, Nothing )
                 (\( _, toPitch ) ->
