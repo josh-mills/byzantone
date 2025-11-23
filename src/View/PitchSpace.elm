@@ -54,8 +54,7 @@ view pitchSpaceData audioSettings modeSettings pitchState detectedPitch =
          ]
             ++ (if PitchSpaceData.isVertical pitchSpaceData.display then
                     [ Styles.flexRow
-                    , class "justify-around"
-                    , class "my-8 md:me-12 pb-12"
+                    , class "justify-around my-8 md:me-12 pb-12"
                     ]
 
                 else
@@ -66,7 +65,7 @@ view pitchSpaceData audioSettings modeSettings pitchState detectedPitch =
         , viewIf (audioSettings.audioMode == AudioSettings.Listen)
             (viewPitchTracker pitchSpaceData audioSettings detectedPitch)
         , Html.Lazy.lazy3 viewPitches pitchSpaceData modeSettings pitchState
-        , viewAccidentalButtons pitchSpaceData.display pitchState.proposedAccidental
+        , Html.Lazy.lazy2 viewAccidentalButtons pitchSpaceData.display pitchState.proposedAccidental
         ]
 
 
@@ -107,13 +106,12 @@ viewIntervals pitchSpaceData modeSettings pitchState =
         (List.map
             (\( interval, position ) ->
                 Html.Lazy.lazy7 viewInterval
-                    pitchSpaceData.display
-                    pitchSpaceData.scalingFactor
                     modeSettings.scale
                     (PitchState.currentPitch modeSettings.scale pitchState
-                        |> Maybe.map (Pitch.encode modeSettings.scale)
-                        |> Maybe.withDefault ""
+                        |> Maybe.unwrap "" (Pitch.encode modeSettings.scale)
                     )
+                    pitchSpaceData.display
+                    pitchSpaceData.scalingFactor
                     (Pitch.encodeInterval modeSettings.scale interval)
                     position
                     (shouldHighlightInterval
@@ -126,8 +124,20 @@ viewIntervals pitchSpaceData modeSettings pitchState =
         )
 
 
-viewInterval : Display -> Float -> Scale -> PitchString -> String -> PositionWithinVisibleRange -> Bool -> Html Msg
-viewInterval display scalingFactor scale currentPitchString intervalString position shouldHighlight =
+{-| TODO: onclick with applied accidental doesn't appear to be applying. This
+does not appear to be a regression with this work; it's a bug present in
+production.
+-}
+viewInterval :
+    Scale
+    -> PitchString
+    -> Display
+    -> Float
+    -> String
+    -> PositionWithinVisibleRange
+    -> Bool
+    -> Html Msg
+viewInterval scale currentPitchString display scalingFactor intervalString position shouldHighlight =
     let
         interval =
             Pitch.decodeInterval intervalString
@@ -162,6 +172,7 @@ viewInterval display scalingFactor scale currentPitchString intervalString posit
                     (Just << Tuple.second)
 
         movement =
+            -- this doesn't seem to be capturing the accidental. Will need to check on this.
             Result.Extra.unwrap Movement.None (Movement.ofInterval currentPitch) interval
 
         buttonAttrs =
@@ -178,21 +189,22 @@ viewInterval display scalingFactor scale currentPitchString intervalString posit
             Html.Lazy.lazy2 viewMoria size intervalMoria
     in
     li
-        [ Attr.id ("interval-" ++ intervalFromDegree ++ "-" ++ intervalToDegree)
-        , Styles.flexRowCentered
-        , if PitchSpaceData.isVertical display then
-            Styles.height size
+        ((if PitchSpaceData.isVertical display then
+            [ Styles.height size
+            , class "border-r-0"
+            ]
 
           else
-            Styles.width size
-        , Styles.transition
-        , Attr.attributeIf (PitchSpaceData.positionIsVisible position) Styles.border
-        , if PitchSpaceData.isVertical display then
-            class "border-r-0"
-
-          else
-            class "border-b-0"
-        ]
+            [ Styles.width size
+            , class "border-b-0"
+            ]
+         )
+            ++ [ Attr.id ("interval-" ++ intervalFromDegree ++ "-" ++ intervalToDegree)
+               , Styles.flexRowCentered
+               , Styles.transition
+               , Attr.attributeIf (PitchSpaceData.positionIsVisible position) Styles.border
+               ]
+        )
         [ viewIfLazy (PitchSpaceData.positionIsVisible position)
             (\_ ->
                 case movement of
