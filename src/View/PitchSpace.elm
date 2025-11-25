@@ -54,8 +54,7 @@ view pitchSpaceData audioSettings modeSettings pitchState detectedPitch =
          ]
             ++ (if PitchSpaceData.isVertical pitchSpaceData.display then
                     [ Styles.flexRow
-                    , class "justify-around"
-                    , class "my-8 md:me-12 pb-12"
+                    , class "justify-around my-8 md:me-12 pb-12"
                     ]
 
                 else
@@ -66,7 +65,7 @@ view pitchSpaceData audioSettings modeSettings pitchState detectedPitch =
         , viewIf (audioSettings.audioMode == AudioSettings.Listen)
             (viewPitchTracker pitchSpaceData audioSettings detectedPitch)
         , Html.Lazy.lazy3 viewPitches pitchSpaceData modeSettings pitchState
-        , viewAccidentalButtons pitchSpaceData.display pitchState.proposedAccidental
+        , Html.Lazy.lazy2 viewAccidentalButtons pitchSpaceData.display pitchState.proposedAccidental
         ]
 
 
@@ -105,16 +104,57 @@ viewIntervals pitchSpaceData modeSettings pitchState =
             :: listAttributes pitchSpaceData.display
         )
         (List.map
-            (viewInterval pitchSpaceData.display pitchSpaceData.scalingFactor modeSettings.scale pitchState)
+            (\( interval, position ) ->
+                Html.Lazy.lazy7 viewInterval
+                    modeSettings.scale
+                    (PitchState.currentPitch modeSettings.scale pitchState
+                        |> Maybe.unwrap "" (Pitch.encode modeSettings.scale)
+                    )
+                    pitchSpaceData.display
+                    pitchSpaceData.scalingFactor
+                    (Pitch.encodeInterval modeSettings.scale interval)
+                    position
+                    (shouldHighlightInterval
+                        (PitchState.currentPitch modeSettings.scale pitchState)
+                        pitchState.proposedMovement
+                        interval
+                    )
+            )
             (PitchSpaceData.intervalsWithVisibility pitchSpaceData)
         )
 
 
-viewInterval : Display -> Float -> Scale -> PitchState -> ( Interval, PositionWithinVisibleRange ) -> Html Msg
-viewInterval display scalingFactor scale pitchState ( interval, position ) =
+{-| TODO: onclick with applied accidental doesn't appear to be applying. This
+does not appear to be a regression with this work; it's a bug present in
+production.
+-}
+viewInterval :
+    Scale
+    -> PitchString
+    -> Display
+    -> Float
+    -> String
+    -> PositionWithinVisibleRange
+    -> Bool
+    -> Html Msg
+viewInterval scale currentPitchString display scalingFactor intervalString position shouldHighlight =
     let
-        -- _ =
-        --     Debug.log "in viewInterval" interval
+        interval =
+            Pitch.decodeInterval intervalString
+
+        intervalMoria =
+            Result.Extra.unwrap -1 .moria interval
+
+        intervalFromDegree =
+            Result.Extra.unwrap "err"
+                (\{ from } -> Pitch.unwrapDegree from |> Degree.toString)
+                interval
+
+        intervalToDegree =
+            Result.Extra.unwrap "err"
+                (\{ to } -> Pitch.unwrapDegree to |> Degree.toString)
+                interval
+
         size =
             case position of
                 Above ->
@@ -124,96 +164,122 @@ viewInterval display scalingFactor scale pitchState ( interval, position ) =
                     0
 
                 _ ->
-                    toFloat interval.moria * scalingFactor
+                    toFloat intervalMoria * scalingFactor
 
         currentPitch =
-            PitchState.currentPitch scale pitchState
+            Pitch.decode currentPitchString
+                |> Result.Extra.unwrap Nothing
+                    (Just << Tuple.second)
 
         movement =
-            Movement.ofInterval currentPitch interval
-
-        moria =
-            span [ class "text-gray-600" ]
-                [ text (String.fromInt interval.moria)
-                , viewIf LayoutData.showSpacing
-                    (text <| " (" ++ Round.round 2 size ++ "px)")
-                ]
+            -- this doesn't seem to be capturing the accidental. Will need to check on this.
+            Result.Extra.unwrap Movement.None (Movement.ofInterval currentPitch) interval
 
         buttonAttrs =
             [ class "w-full content-center cursor-pointer"
             , classList
-                [ ( "bg-slate-200"
-                  , shouldHighlightInterval currentPitch pitchState interval
-                  )
-                , ( "hover:bg-slate-200", Maybe.isJust pitchState.currentDegree )
+                [ ( "bg-slate-200", shouldHighlight )
+                , ( "hover:bg-slate-200", Maybe.isJust currentPitch )
                 ]
             , onFocus (SelectProposedMovement movement)
             , onMouseEnter (SelectProposedMovement movement)
             ]
+
+        moriaDomNode =
+            Html.Lazy.lazy2 viewMoria size intervalMoria
     in
     li
-        [ Attr.id
-            ("interval-"
-                ++ Degree.toString (Pitch.unwrapDegree interval.from)
-                ++ "-"
-                ++ Degree.toString (Pitch.unwrapDegree interval.to)
+        ((if PitchSpaceData.isVertical display then
+            [ Styles.height size
+            , class "border-r-0"
+            ]
+
+          else
+            [ Styles.width size
+            , class "border-b-0"
+            ]
+         )
+            ++ [ Attr.id ("interval-" ++ intervalFromDegree ++ "-" ++ intervalToDegree)
+               , Styles.flexRowCentered
+               , Styles.transition
+               , Attr.attributeIf (PitchSpaceData.positionIsVisible position) Styles.border
+               ]
+        )
+        [ viewIfLazy (PitchSpaceData.positionIsVisible position)
+            (\_ ->
+                case movement of
+                    AscendTo pitch ->
+                        button
+                            (onClick (SelectPitch (Just pitch) Nothing {- (Maybe.map DescendTo (Degree.step pitch -1)) -})
+                                :: buttonAttrs
+                            )
+                            [ Html.Lazy.lazy2 viewIntervalCharacter
+                                currentPitchString
+                                (Pitch.encode scale pitch)
+                            , moriaDomNode
+                            ]
+
+                    DescendTo pitch ->
+                        button
+                            (onClick (SelectPitch (Just pitch) Nothing {- (Maybe.map AscendTo (Degree.step pitch 1)) -})
+                                :: buttonAttrs
+                            )
+                            [ Html.Lazy.lazy2 viewIntervalCharacter
+                                currentPitchString
+                                (Pitch.encode scale pitch)
+                            , moriaDomNode
+                            ]
+
+                    None ->
+                        div [ class "content-center" ]
+                            [ moriaDomNode ]
             )
-        , Styles.flexRowCentered
-        , if PitchSpaceData.isVertical display then
-            Styles.height size
-
-          else
-            Styles.width size
-        , Styles.transition
-        , Attr.attributeIf (PitchSpaceData.positionIsVisible position) Styles.border
-        , if PitchSpaceData.isVertical display then
-            class "border-r-0"
-
-          else
-            class "border-b-0"
-        ]
-        [ (case movement of
-            AscendTo pitch ->
-                button
-                    (onClick (SelectPitch (Just pitch) Nothing {- (Maybe.map DescendTo (Degree.step pitch -1)) -})
-                        :: buttonAttrs
-                    )
-                    [ viewIntervalCharacter pitchState.currentDegree pitch
-                    , moria
-                    ]
-
-            DescendTo pitch ->
-                button
-                    (onClick (SelectPitch (Just pitch) Nothing {- (Maybe.map AscendTo (Degree.step pitch 1)) -})
-                        :: buttonAttrs
-                    )
-                    [ viewIntervalCharacter pitchState.currentDegree pitch
-                    , moria
-                    ]
-
-            None ->
-                div [ class "content-center" ]
-                    [ moria ]
-          )
-            |> viewIf (PitchSpaceData.positionIsVisible position)
         ]
 
 
 {-| TODO: We should have this take pitches, not just degrees. And probably don't
 wrap in a maybe.
+
+Prepared for lazy rendering.
+
 -}
-viewIntervalCharacter : Maybe Degree -> Pitch -> Html Msg
-viewIntervalCharacter currentPitch toPitch =
-    currentPitch
-        |> Maybe.map (\current -> Degree.getInterval current (Pitch.unwrapDegree toPitch))
+viewIntervalCharacter : PitchString -> PitchString -> Html Msg
+viewIntervalCharacter maybeCurrentDegreeString toPitchString =
+    let
+        currentDegree =
+            Pitch.decode maybeCurrentDegreeString
+                |> Result.Extra.unwrap Nothing
+                    (Just << Pitch.unwrapDegree << Tuple.second)
+
+        ( maybeToPitchDegree, maybeToPitchAccidental ) =
+            Result.Extra.unwrap ( Nothing, Nothing )
+                (\( _, toPitch ) ->
+                    ( Just (Pitch.unwrapDegree toPitch)
+                    , Just (Pitch.unwrapAccidental toPitch)
+                    )
+                )
+                (Pitch.decode toPitchString)
+    in
+    Maybe.map2 Degree.getInterval currentDegree maybeToPitchDegree
         |> Maybe.andThen IntervalCharacter.basicInterval
-        |> Maybe.map (IntervalCharacter.applyAccidental (Pitch.unwrapAccidental toPitch))
+        |> Maybe.map2 IntervalCharacter.applyAccidental maybeToPitchAccidental
         |> Html.Extra.viewMaybe
-            (ByzHtmlInterval.view >> List.singleton >> span [ class "me-2" ])
+            (\intervalCharacter ->
+                span [ class "me-2" ] [ ByzHtmlInterval.view intervalCharacter ]
+            )
 
 
-shouldHighlightInterval : Maybe Pitch -> PitchState -> Interval -> Bool
-shouldHighlightInterval currentPitch { proposedMovement } interval =
+viewMoria : Float -> Int -> Html msg
+viewMoria size moria =
+    span [ class "text-gray-600" ]
+        [ text (String.fromInt moria)
+        , viewIfLazy LayoutData.showSpacing
+            (\_ -> text <| " (" ++ Round.round 2 size ++ "px)")
+        ]
+
+
+shouldHighlightInterval : Maybe Pitch -> Movement -> Interval -> Bool
+shouldHighlightInterval currentPitch proposedMovement interval =
     Maybe.unwrap False
         (\current ->
             let
