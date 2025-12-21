@@ -13,7 +13,6 @@ import Byzantine.Frequency as Frequency exposing (Frequency)
 import Byzantine.IntervalCharacter as IntervalCharacter
 import Byzantine.Martyria as Martyria
 import Byzantine.Pitch as Pitch exposing (Interval, Pitch, PitchString)
-import Byzantine.Scale exposing (Scale)
 import Html exposing (Html, button, div, li, span, text)
 import Html.Attributes as Attr exposing (class, classList)
 import Html.Attributes.Extra as Attr exposing (attributeMaybe)
@@ -103,23 +102,7 @@ viewIntervals pitchSpaceData modeSettings pitchState =
                )
             :: listAttributes pitchSpaceData.display
         )
-        (List.map
-            (\( interval, position ) ->
-                Html.Lazy.lazy7 viewInterval
-                    modeSettings.scale
-                    (PitchState.currentPitch modeSettings.scale pitchState
-                        |> Maybe.unwrap "" (Pitch.encode modeSettings.scale)
-                    )
-                    pitchSpaceData.display
-                    pitchSpaceData.scalingFactor
-                    (Pitch.encodeInterval modeSettings.scale interval)
-                    position
-                    (shouldHighlightInterval
-                        (PitchState.currentPitch modeSettings.scale pitchState)
-                        pitchState.proposedMovement
-                        interval
-                    )
-            )
+        (List.map (viewInterval pitchSpaceData modeSettings pitchState)
             (PitchSpaceData.intervalsWithVisibility pitchSpaceData)
         )
 
@@ -128,16 +111,36 @@ viewIntervals pitchSpaceData modeSettings pitchState =
 does not appear to be a regression with this work; it's a bug present in
 production.
 -}
-viewInterval :
-    Scale
-    -> PitchString
+viewInterval : PitchSpaceData -> ModeSettings -> PitchState -> ( Interval, PositionWithinVisibleRange ) -> Html Msg
+viewInterval pitchSpaceData modeSettings pitchState ( interval, position ) =
+    let
+        currentPitch =
+            PitchState.currentPitch modeSettings.scale pitchState
+
+        currentPitchString =
+            Maybe.unwrap "" (Pitch.encode modeSettings.scale) currentPitch
+
+        shouldHighlight =
+            shouldHighlightInterval currentPitch pitchState.proposedMovement interval
+    in
+    Html.Lazy.lazy6 viewIntervalLazy
+        currentPitchString
+        pitchSpaceData.display
+        pitchSpaceData.scalingFactor
+        (Pitch.encodeInterval modeSettings.scale interval)
+        position
+        shouldHighlight
+
+
+viewIntervalLazy :
+    PitchString
     -> Display
     -> Float
     -> String
     -> PositionWithinVisibleRange
     -> Bool
     -> Html Msg
-viewInterval scale currentPitchString display scalingFactor intervalString position shouldHighlight =
+viewIntervalLazy currentPitchString display scalingFactor intervalString position shouldHighlight =
     let
         interval =
             Pitch.decodeInterval intervalString
@@ -213,9 +216,7 @@ viewInterval scale currentPitchString display scalingFactor intervalString posit
                             (onClick (SelectPitch (Just pitch) Nothing {- (Maybe.map DescendTo (Degree.step pitch -1)) -})
                                 :: buttonAttrs
                             )
-                            [ Html.Lazy.lazy2 viewIntervalCharacter
-                                currentPitchString
-                                (Pitch.encode scale pitch)
+                            [ viewIntervalCharacter currentPitch pitch
                             , moriaDomNode
                             ]
 
@@ -224,9 +225,7 @@ viewInterval scale currentPitchString display scalingFactor intervalString posit
                             (onClick (SelectPitch (Just pitch) Nothing {- (Maybe.map AscendTo (Degree.step pitch 1)) -})
                                 :: buttonAttrs
                             )
-                            [ Html.Lazy.lazy2 viewIntervalCharacter
-                                currentPitchString
-                                (Pitch.encode scale pitch)
+                            [ viewIntervalCharacter currentPitch pitch
                             , moriaDomNode
                             ]
 
@@ -239,30 +238,27 @@ viewInterval scale currentPitchString display scalingFactor intervalString posit
 
 {-| TODO: We should have this take pitches, not just degrees. And probably don't
 wrap in a maybe.
-
-Prepared for lazy rendering.
-
 -}
-viewIntervalCharacter : PitchString -> PitchString -> Html Msg
-viewIntervalCharacter maybeCurrentDegreeString toPitchString =
+viewIntervalCharacter : Maybe Pitch -> Pitch -> Html Msg
+viewIntervalCharacter currentPitch toPitch =
     let
-        currentDegree =
-            Pitch.decode maybeCurrentDegreeString
-                |> Result.Extra.unwrap Nothing
-                    (Just << Pitch.unwrapDegree << Tuple.second)
-
-        ( maybeToPitchDegree, maybeToPitchAccidental ) =
-            Result.Extra.unwrap ( Nothing, Nothing )
-                (\( _, toPitch ) ->
-                    ( Just (Pitch.unwrapDegree toPitch)
-                    , Just (Pitch.unwrapAccidental toPitch)
-                    )
-                )
-                (Pitch.decode toPitchString)
+        toAccidental =
+            Pitch.unwrapAccidental toPitch
+                |> Maybe.unwrap "" Accidental.toString
     in
-    Maybe.map2 Degree.getInterval currentDegree maybeToPitchDegree
-        |> Maybe.andThen IntervalCharacter.basicInterval
-        |> Maybe.map2 IntervalCharacter.applyAccidental maybeToPitchAccidental
+    currentPitch
+        |> Maybe.map (Pitch.unwrapDegree >> Degree.getInterval (Pitch.unwrapDegree toPitch))
+        |> Html.Extra.viewMaybe (Html.Lazy.lazy2 viewIntervalCharacterLazy toAccidental)
+
+
+viewIntervalCharacterLazy : String -> Int -> Html Msg
+viewIntervalCharacterLazy toAccidentalStr interval =
+    let
+        toAccidental =
+            Accidental.fromString toAccidentalStr |> Result.toMaybe
+    in
+    IntervalCharacter.basicInterval interval
+        |> Maybe.map (IntervalCharacter.applyAccidental toAccidental)
         |> Html.Extra.viewMaybe
             (\intervalCharacter ->
                 span [ class "me-2" ] [ ByzHtmlInterval.view intervalCharacter ]
@@ -338,9 +334,9 @@ viewPitchIndicator pitchSpaceData { pitchStandard, listenRegister, responsivenes
                 Horizontal ->
                     Styles.left (pitchSpaceData.scalingFactor * (detectedPitchInMoria - toFloat pitchSpaceData.visibleRangeStart))
 
-        { degree, offset } =
+        offset =
             -- TODO: there's functionality here to build out
-            closestDegree pitchSpaceData.pitchPositions detectedPitchInMoria
+            (closestDegree pitchSpaceData.pitchPositions detectedPitchInMoria).offset
 
         absOffset =
             abs offset
@@ -442,49 +438,61 @@ viewPitches pitchSpaceData modeSettings pitchState =
     let
         currentPitch =
             PitchState.currentPitch modeSettings.scale pitchState
-
-        shouldHighlight degree =
-            canBeSelectedAsIson degree || wouldBeValidInflection degree
-
-        canBeSelectedAsIson degree =
-            PitchSpaceData.canBeSelectedAsIson
-                (DegreeDataDict.get degree pitchSpaceData.isonIndicators)
-
-        wouldBeValidInflection degree =
-            case pitchState.proposedAccidental of
-                Apply accidental ->
-                    Pitch.isValidInflection modeSettings.scale accidental degree
-
-                CancelAccidental ->
-                    DegreeDataDict.get degree pitchState.appliedAccidentals
-                        |> Maybe.isJust
-
-                NoProposedAccidental ->
-                    False
     in
     Html.ol (listAttributes pitchSpaceData.display)
         (List.map
-            (\degree ->
-                Html.Lazy.lazy8 viewPitch
-                    (DegreeDataDict.get degree pitchSpaceData.pitches
-                        |> Pitch.encode modeSettings.scale
-                    )
-                    (Just degree == Maybe.map Pitch.unwrapDegree currentPitch)
-                    pitchSpaceData.display
-                    (DegreeDataDict.get degree pitchSpaceData.isonIndicators)
-                    (PitchSpaceData.encodePitchPositionContext pitchSpaceData degree)
-                    (shouldHighlight degree)
-                    (DegreeDataDict.get degree pitchSpaceData.pitchVisibility)
-                    pitchSpaceData.scalingFactor
-            )
+            (viewPitch pitchSpaceData modeSettings pitchState currentPitch)
             Degree.gamutList
         )
 
 
-{-| Renders a single pitch element in the pitch space. Prepared for lazy
-rendering.
+{-| Renders a single pitch element in the pitch space.
 -}
-viewPitch :
+viewPitch : PitchSpaceData -> ModeSettings -> PitchState -> Maybe Pitch -> Degree -> Html Msg
+viewPitch pitchSpaceData modeSettings pitchState currentPitch degree =
+    let
+        pitchString =
+            DegreeDataDict.get degree pitchSpaceData.pitches
+                |> Pitch.encode modeSettings.scale
+
+        isCurrentDegree =
+            Just degree == Maybe.map Pitch.unwrapDegree currentPitch
+
+        isonStatusIndicator =
+            DegreeDataDict.get degree pitchSpaceData.isonIndicators
+
+        pitchPositions =
+            PitchSpaceData.encodePitchPositionContext pitchSpaceData degree
+
+        shouldHighlight =
+            PitchSpaceData.canBeSelectedAsIson isonStatusIndicator
+                || (case pitchState.proposedAccidental of
+                        Apply accidental ->
+                            Pitch.isValidInflection modeSettings.scale accidental degree
+
+                        CancelAccidental ->
+                            DegreeDataDict.get degree pitchState.appliedAccidentals
+                                |> Maybe.isJust
+
+                        NoProposedAccidental ->
+                            False
+                   )
+
+        positionWithinRange =
+            DegreeDataDict.get degree pitchSpaceData.pitchVisibility
+    in
+    Html.Lazy.lazy8 viewPitchLazy
+        pitchString
+        isCurrentDegree
+        pitchSpaceData.display
+        isonStatusIndicator
+        pitchPositions
+        shouldHighlight
+        positionWithinRange
+        pitchSpaceData.scalingFactor
+
+
+viewPitchLazy :
     PitchString
     -> Bool
     -> Display
@@ -494,7 +502,7 @@ viewPitch :
     -> PositionWithinVisibleRange
     -> Float
     -> Html Msg
-viewPitch pitchString isCurrentDegree display isonStatusIndicator pitchPositions shouldHighlight positionWithinRange scalingFactor =
+viewPitchLazy pitchString isCurrentDegree display isonStatusIndicator pitchPositions shouldHighlight positionWithinRange scalingFactor =
     let
         degree =
             Pitch.decode pitchString
