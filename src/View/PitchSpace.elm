@@ -103,7 +103,7 @@ viewIntervals pitchSpaceData modeSettings pitchState =
             :: listAttributes pitchSpaceData.display
         )
         (List.map (viewInterval pitchSpaceData modeSettings pitchState)
-            (PitchSpaceData.intervalsWithVisibility pitchSpaceData)
+            (PitchSpaceData.intervalsWithVisibility pitchSpaceData pitchState.proposedMovement)
         )
 
 
@@ -122,6 +122,9 @@ viewInterval pitchSpaceData modeSettings pitchState ( interval, position ) =
 
         shouldHighlight =
             shouldHighlightInterval currentPitch pitchState.proposedMovement interval
+
+        -- _ =
+        --     Debug.log "in view interval" ( currentPitch, interval )
     in
     Html.Lazy.lazy6 viewIntervalLazy
         currentPitchString
@@ -143,7 +146,11 @@ viewIntervalLazy :
 viewIntervalLazy currentPitchString display scalingFactor intervalString position shouldHighlight =
     let
         interval =
+            -- this is catching the right moria, but not the inflection (accidental)
             Pitch.decodeInterval intervalString
+
+        _ =
+            Debug.log "in view interval with" (intervalString ++ " and current pitch of: " ++ currentPitchString)
 
         intervalMoria =
             Result.Extra.unwrap -1 .moria interval
@@ -175,7 +182,8 @@ viewIntervalLazy currentPitchString display scalingFactor intervalString positio
                     (Just << Tuple.second)
 
         movement =
-            -- this doesn't seem to be capturing the accidental. Will need to check on this.
+            -- this doesn't seem to be capturing the proposed accidental. Will need to check on this.
+            -- Debug.log "movement in view interval lazy" <|
             Result.Extra.unwrap Movement.None (Movement.ofInterval currentPitch) interval
 
         buttonAttrs =
@@ -192,18 +200,18 @@ viewIntervalLazy currentPitchString display scalingFactor intervalString positio
             Html.Lazy.lazy2 viewMoria size intervalMoria
     in
     li
-        ((if PitchSpaceData.isVertical display then
-            [ Styles.height size
-            , class "border-r-0"
-            ]
+        (Attr.id ("interval-" ++ intervalFromDegree ++ "-" ++ intervalToDegree)
+            :: (if PitchSpaceData.isVertical display then
+                    [ Styles.height size
+                    , class "border-r-0"
+                    ]
 
-          else
-            [ Styles.width size
-            , class "border-b-0"
-            ]
-         )
-            ++ [ Attr.id ("interval-" ++ intervalFromDegree ++ "-" ++ intervalToDegree)
-               , Styles.flexRowCentered
+                else
+                    [ Styles.width size
+                    , class "border-b-0"
+                    ]
+               )
+            ++ [ Styles.flexRowCentered
                , Styles.transition
                , Attr.attributeIf (PitchSpaceData.positionIsVisible position) Styles.border
                ]
@@ -211,21 +219,21 @@ viewIntervalLazy currentPitchString display scalingFactor intervalString positio
         [ viewIfLazy (PitchSpaceData.positionIsVisible position)
             (\_ ->
                 case movement of
-                    AscendTo pitch ->
+                    AscendTo toPitch ->
                         button
-                            (onClick (SelectPitch (Just pitch) Nothing {- (Maybe.map DescendTo (Degree.step pitch -1)) -})
+                            (onClick (SelectPitch (Just toPitch) Nothing {- (Maybe.map DescendTo (Degree.step pitch -1)) -})
                                 :: buttonAttrs
                             )
-                            [ viewIntervalCharacter currentPitch pitch
+                            [ viewIntervalCharacter currentPitch toPitch
                             , moriaDomNode
                             ]
 
-                    DescendTo pitch ->
+                    DescendTo toPitch ->
                         button
-                            (onClick (SelectPitch (Just pitch) Nothing {- (Maybe.map AscendTo (Degree.step pitch 1)) -})
+                            (onClick (SelectPitch (Just toPitch) Nothing {- (Maybe.map AscendTo (Degree.step pitch 1)) -})
                                 :: buttonAttrs
                             )
-                            [ viewIntervalCharacter currentPitch pitch
+                            [ viewIntervalCharacter currentPitch toPitch
                             , moriaDomNode
                             ]
 
@@ -240,15 +248,15 @@ viewIntervalLazy currentPitchString display scalingFactor intervalString positio
 wrap in a maybe.
 -}
 viewIntervalCharacter : Maybe Pitch -> Pitch -> Html Msg
-viewIntervalCharacter currentPitch toPitch =
+viewIntervalCharacter fromPitch toPitch =
     let
-        toAccidental =
+        toAccidentalStr =
             Pitch.unwrapAccidental toPitch
                 |> Maybe.unwrap "" Accidental.toString
     in
-    currentPitch
+    fromPitch
         |> Maybe.map (Pitch.unwrapDegree >> Degree.getInterval (Pitch.unwrapDegree toPitch))
-        |> Html.Extra.viewMaybe (Html.Lazy.lazy2 viewIntervalCharacterLazy toAccidental)
+        |> viewMaybe (Html.Lazy.lazy2 viewIntervalCharacterLazy toAccidentalStr)
 
 
 viewIntervalCharacterLazy : String -> Int -> Html Msg

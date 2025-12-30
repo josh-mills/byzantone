@@ -51,7 +51,7 @@ import Model.DegreeDataDict as DegreeDataDict exposing (DegreeDataDict)
 import Model.LayoutData as LayoutData exposing (Layout(..), LayoutData)
 import Model.ModeSettings exposing (ModeSettings)
 import Model.PitchState as PitchState exposing (PitchState)
-import Movement
+import Movement exposing (Movement)
 
 
 {-| Derived data for rendering pitch space. Everything in this is derived from
@@ -564,12 +564,32 @@ canBeSelectedAsIson indicator =
 -- INTERVALS
 
 
-intervalsWithVisibility : PitchSpaceData -> List ( Interval, PositionWithinVisibleRange )
-intervalsWithVisibility pitchSpaceData =
+intervalsWithVisibility : PitchSpaceData -> Movement -> List ( Interval, PositionWithinVisibleRange )
+intervalsWithVisibility pitchSpaceData movement =
+    let
+        ( movementTargetPitch, movementTargetDegree ) =
+            Movement.unwrapTargetPitch movement
+                |> Maybe.map (\targetPitch -> ( targetPitch, Pitch.unwrapDegree targetPitch ))
+                |> Maybe.Extra.unwrap ( Nothing, Nothing ) (\( a, b ) -> ( Just a, Just b ))
+
+        maybeOverideMovementTarget =
+            case ( movementTargetPitch, movementTargetDegree ) of
+                ( Just targetPitch, Just targetDegree ) ->
+                    \pitch ->
+                        if Pitch.unwrapDegree pitch == targetDegree then
+                            targetPitch
+
+                        else
+                            pitch
+
+                _ ->
+                    identity
+    in
     Degree.gamutList
         |> List.map
             (\degree ->
                 ( DegreeDataDict.get degree pitchSpaceData.pitches
+                    |> maybeOverideMovementTarget
                 , DegreeDataDict.get degree pitchSpaceData.pitchPositions
                 )
             )
