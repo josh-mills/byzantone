@@ -567,29 +567,27 @@ canBeSelectedAsIson indicator =
 intervalsWithVisibility : PitchSpaceData -> Movement -> List ( Interval, PositionWithinVisibleRange )
 intervalsWithVisibility pitchSpaceData movement =
     let
-        ( movementTargetPitch, movementTargetDegree ) =
+        maybeOverrideMovementTarget =
             Movement.unwrapTargetPitch movement
-                |> Maybe.map (\targetPitch -> ( targetPitch, Pitch.unwrapDegree targetPitch ))
-                |> Maybe.Extra.unwrap ( Nothing, Nothing ) (\( a, b ) -> ( Just a, Just b ))
+                |> Maybe.Extra.unwrap identity
+                    (\targetPitch ->
+                        let
+                            targetDegree =
+                                Pitch.unwrapDegree targetPitch
+                        in
+                        \pitch ->
+                            if Pitch.unwrapDegree pitch == targetDegree then
+                                targetPitch
 
-        maybeOverideMovementTarget =
-            case ( movementTargetPitch, movementTargetDegree ) of
-                ( Just targetPitch, Just targetDegree ) ->
-                    \pitch ->
-                        if Pitch.unwrapDegree pitch == targetDegree then
-                            targetPitch
-
-                        else
-                            pitch
-
-                _ ->
-                    identity
+                            else
+                                pitch
+                    )
     in
     Degree.gamutList
         |> List.map
             (\degree ->
                 ( DegreeDataDict.get degree pitchSpaceData.pitches
-                    |> maybeOverideMovementTarget
+                    |> maybeOverrideMovementTarget
                 , DegreeDataDict.get degree pitchSpaceData.pitchPositions
                 )
             )

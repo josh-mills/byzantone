@@ -107,10 +107,6 @@ viewIntervals pitchSpaceData modeSettings pitchState =
         )
 
 
-{-| TODO: onclick with applied accidental doesn't appear to be applying. This
-does not appear to be a regression with this work; it's a bug present in
-production.
--}
 viewInterval : PitchSpaceData -> ModeSettings -> PitchState -> ( Interval, PositionWithinVisibleRange ) -> Html Msg
 viewInterval pitchSpaceData modeSettings pitchState ( interval, position ) =
     let
@@ -143,11 +139,7 @@ viewIntervalLazy :
 viewIntervalLazy currentPitchString display scalingFactor intervalString position shouldHighlight =
     let
         interval =
-            -- this is catching the right moria, but not the inflection (accidental)
             Pitch.decodeInterval intervalString
-
-        _ =
-            Debug.log "in view interval with" (intervalString ++ " and current pitch of: " ++ currentPitchString)
 
         intervalMoria =
             Result.Extra.unwrap -1 .moria interval
@@ -179,7 +171,6 @@ viewIntervalLazy currentPitchString display scalingFactor intervalString positio
                     (Just << Tuple.second)
 
         movement =
-            -- this doesn't seem to be capturing the proposed accidental. Will need to check on this.
             Result.Extra.unwrap Movement.None (Movement.ofInterval currentPitch) interval
 
         buttonAttrs =
@@ -217,7 +208,8 @@ viewIntervalLazy currentPitchString display scalingFactor intervalString positio
                 case movement of
                     AscendTo toPitch ->
                         button
-                            (onClick (SelectPitch (Just toPitch) Nothing {- (Maybe.map DescendTo (Degree.step pitch -1)) -})
+                            {- (Maybe.map DescendTo (Degree.step pitch -1)) ??? -}
+                            (onClick (SelectPitch (Just toPitch) Nothing)
                                 :: buttonAttrs
                             )
                             [ viewIntervalCharacter currentPitch toPitch
@@ -226,7 +218,8 @@ viewIntervalLazy currentPitchString display scalingFactor intervalString positio
 
                     DescendTo toPitch ->
                         button
-                            (onClick (SelectPitch (Just toPitch) Nothing {- (Maybe.map AscendTo (Degree.step pitch 1)) -})
+                            {- (Maybe.map AscendTo (Degree.step pitch 1)) ??? -}
+                            (onClick (SelectPitch (Just toPitch) Nothing)
                                 :: buttonAttrs
                             )
                             [ viewIntervalCharacter currentPitch toPitch
