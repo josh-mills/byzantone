@@ -122,9 +122,6 @@ viewInterval pitchSpaceData modeSettings pitchState ( interval, position ) =
 
         shouldHighlight =
             shouldHighlightInterval currentPitch pitchState.proposedMovement interval
-
-        -- _ =
-        --     Debug.log "in view interval" ( currentPitch, interval )
     in
     Html.Lazy.lazy6 viewIntervalLazy
         currentPitchString
@@ -183,7 +180,6 @@ viewIntervalLazy currentPitchString display scalingFactor intervalString positio
 
         movement =
             -- this doesn't seem to be capturing the proposed accidental. Will need to check on this.
-            -- Debug.log "movement in view interval lazy" <|
             Result.Extra.unwrap Movement.None (Movement.ofInterval currentPitch) interval
 
         buttonAttrs =
@@ -248,14 +244,19 @@ viewIntervalLazy currentPitchString display scalingFactor intervalString positio
 wrap in a maybe.
 -}
 viewIntervalCharacter : Maybe Pitch -> Pitch -> Html Msg
-viewIntervalCharacter fromPitch toPitch =
+viewIntervalCharacter maybeFromPitch toPitch =
     let
         toAccidentalStr =
             Pitch.unwrapAccidental toPitch
                 |> Maybe.unwrap "" Accidental.toString
     in
-    fromPitch
-        |> Maybe.map (Pitch.unwrapDegree >> Degree.getInterval (Pitch.unwrapDegree toPitch))
+    maybeFromPitch
+        |> Maybe.map
+            (\fromPitch ->
+                Degree.getInterval
+                    (Pitch.unwrapDegree fromPitch)
+                    (Pitch.unwrapDegree toPitch)
+            )
         |> viewMaybe (Html.Lazy.lazy2 viewIntervalCharacterLazy toAccidentalStr)
 
 
