@@ -115,13 +115,20 @@ update msg model =
                     { pitchState
                         | currentDegree = Maybe.map Pitch.unwrapDegree maybePitch
                         , appliedAccidentals =
-                            Maybe.unwrap pitchState.appliedAccidentals
-                                (\newPitch ->
+                            case ( maybePitch, pitchState.currentDegree ) of
+                                ( Just newPitch, Just currentDegree ) ->
+                                    pitchState.appliedAccidentals
+                                        |> DegreeDataDict.set (Pitch.unwrapDegree newPitch)
+                                            (Pitch.unwrapAccidental newPitch)
+                                        |> DegreeDataDict.set currentDegree Nothing
+
+                                ( Just newPitch, Nothing ) ->
                                     DegreeDataDict.set (Pitch.unwrapDegree newPitch)
                                         (Pitch.unwrapAccidental newPitch)
                                         pitchState.appliedAccidentals
-                                )
-                                maybePitch
+
+                                ( Nothing, _ ) ->
+                                    pitchState.appliedAccidentals
                         , proposedAccidental = NoProposedAccidental
                         , proposedMovement =
                             if Maybe.isJust maybePitch then
