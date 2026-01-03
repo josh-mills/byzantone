@@ -96,14 +96,6 @@ Other elements we'll want:
   - data for each degree, including:
       - full pitch, including accidental as appropriate (encoded as a string)
 
-To consider:
-
-  - visible range boundaries could be encoded as Degrees rather than Ints if
-    that would help anything.
-
-  - visible range doesn't appear to be used outside of this module. There could
-    be some implications for that.
-
 -}
 type alias PitchSpaceData =
     { display : Display
@@ -112,8 +104,12 @@ type alias PitchSpaceData =
     , pitchPositions : DegreeDataDict Int
     , pitchVisibility : DegreeDataDict PositionWithinVisibleRange
     , scalingFactor : Float
-    , visibleRangeStart : Int
-    , visibleRangeEnd : Int
+    , visibleRangeIndexes :
+        { startDegreeIndex : Int
+        , endDegreeIndex : Int
+        }
+    , visibleRangeStartPosition : Int
+    , visibleRangeEndPosition : Int
     }
 
 
@@ -178,8 +174,9 @@ init layoutData modeSettings pitchState =
             )
     , pitchVisibility = DegreeDataDict.init (visibility visibleRangeIndexes)
     , scalingFactor = 10
-    , visibleRangeStart = Pitch.pitchPosition modeSettings.scale visibleRange.start
-    , visibleRangeEnd = Pitch.pitchPosition modeSettings.scale visibleRange.end
+    , visibleRangeStartPosition = Pitch.pitchPosition modeSettings.scale visibleRange.start
+    , visibleRangeIndexes = visibleRangeIndexes
+    , visibleRangeEndPosition = Pitch.pitchPosition modeSettings.scale visibleRange.end
     }
         |> setScalingFactor layoutData
 
@@ -305,7 +302,7 @@ setScalingFactor : LayoutData -> PitchSpaceData -> PitchSpaceData
 setScalingFactor layoutData pitchSpaceData =
     let
         visibleRangeInMoria =
-            pitchSpaceData.visibleRangeEnd - pitchSpaceData.visibleRangeStart
+            pitchSpaceData.visibleRangeEndPosition - pitchSpaceData.visibleRangeStartPosition
     in
     { pitchSpaceData
         | scalingFactor =
@@ -613,21 +610,34 @@ getIntervalWithVisibility :
     -> ( Pitch, Int )
     -> ( Pitch, Int )
     -> ( Interval, PositionWithinVisibleRange )
-getIntervalWithVisibility { visibleRangeStart, visibleRangeEnd } ( fromPitch, fromPitchPosition ) ( toPitch, toPitchPosition ) =
+getIntervalWithVisibility { visibleRangeIndexes } ( fromPitch, fromPitchPosition ) ( toPitch, toPitchPosition ) =
+    let
+        fromPitchDegreeIndex =
+            Pitch.unwrapDegree fromPitch |> Degree.indexOf
+
+        toPitchDegreeIndex =
+            Pitch.unwrapDegree toPitch |> Degree.indexOf
+
+        visibleRangeStartIndex =
+            visibleRangeIndexes.startDegreeIndex
+
+        visibleRangeEndDegreeIndex =
+            visibleRangeIndexes.endDegreeIndex
+    in
     ( { from = fromPitch
       , to = toPitch
       , moria = toPitchPosition - fromPitchPosition
       }
-    , if toPitchPosition <= visibleRangeStart then
+    , if toPitchDegreeIndex <= visibleRangeStartIndex then
         Below
 
-      else if fromPitchPosition >= visibleRangeEnd then
+      else if fromPitchDegreeIndex >= visibleRangeEndDegreeIndex then
         Above
 
-      else if visibleRangeStart == fromPitchPosition then
+      else if visibleRangeStartIndex == fromPitchDegreeIndex then
         LowerBoundary
 
-      else if visibleRangeEnd == toPitchPosition then
+      else if visibleRangeEndDegreeIndex == toPitchDegreeIndex then
         UpperBoundary
 
       else
