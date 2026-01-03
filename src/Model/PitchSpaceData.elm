@@ -1,7 +1,7 @@
 module Model.PitchSpaceData exposing
     ( PitchSpaceData, init
     , Display, displayToLayout, isVertical, pitchButtonSize
-    , PositionWithinVisibleRange(..), calculateVisibleRange, positionIsVisible
+    , VisibleRange, PositionWithinVisibleRange(..), positionIsVisible
     , PitchPositionContextString, encodePitchPositionContext, decodePitchPositionContext
     , intervalsWithVisibility
     , IsonSelectionIndicator, isCurrentIson, canBeSelectedAsIson
@@ -24,7 +24,7 @@ as a result of model updates.
 
 # Visibility
 
-@docs PositionWithinVisibleRange, calculateVisibleRange, positionIsVisible
+@docs VisibleRange, PositionWithinVisibleRange, positionIsVisible
 
 
 # Pitch Positions
@@ -46,6 +46,7 @@ as a result of model updates.
 import Basics.Extra exposing (flip)
 import Byzantine.Degree as Degree exposing (Degree)
 import Byzantine.Pitch as Pitch exposing (Interval, Pitch)
+import Byzantine.Scale exposing (Scale)
 import Maybe.Extra
 import Model.DegreeDataDict as DegreeDataDict exposing (DegreeDataDict)
 import Model.LayoutData as LayoutData exposing (Layout(..), LayoutData)
@@ -82,11 +83,9 @@ Elements include:
   - **`scalingFactor`** – a `Float`, representing the scaling factor for
     translating pitch positions and interval sizes from moria into pixels.
 
-  - **`visibleRangeStart`** – `Int` representing the pitch position (in moria)
-    of the bottom of the visible range, which may expand the default or user-set
-    position to include the current pitch.
-
-  - **`visibleRangeEnd`** – same idea, but for the top end of the range.
+  - **`visibleRange`** – a `VisibleRange` record containing both index and
+    position information for the visible range, which may expand the default
+    or user-set position to include the current pitch.
 
 Other elements we'll want:
 
@@ -104,12 +103,7 @@ type alias PitchSpaceData =
     , pitchPositions : DegreeDataDict Int
     , pitchVisibility : DegreeDataDict PositionWithinVisibleRange
     , scalingFactor : Float
-    , visibleRangeIndexes :
-        { startDegreeIndex : Int
-        , endDegreeIndex : Int
-        }
-    , visibleRangeStartPosition : Int
-    , visibleRangeEndPosition : Int
+    , visibleRange : VisibleRange
     }
 
 
@@ -121,13 +115,8 @@ updates wouldn't be a bad idea for performance, anyway.
 init : LayoutData -> ModeSettings -> PitchState -> PitchSpaceData
 init layoutData modeSettings pitchState =
     let
-        visibleRange =
+        visibleRangeData =
             calculateVisibleRange modeSettings pitchState
-
-        visibleRangeIndexes =
-            { startDegreeIndex = Degree.indexOf (Pitch.unwrapDegree visibleRange.start)
-            , endDegreeIndex = Degree.indexOf (Pitch.unwrapDegree visibleRange.end)
-            }
 
         proposedMovementTo =
             Movement.unwrapTargetPitch pitchState.proposedMovement
@@ -172,11 +161,9 @@ init layoutData modeSettings pitchState =
             (pitchWithAccidental
                 >> Pitch.pitchPosition modeSettings.scale
             )
-    , pitchVisibility = DegreeDataDict.init (visibility visibleRangeIndexes)
+    , pitchVisibility = DegreeDataDict.init (visibility visibleRangeData)
     , scalingFactor = 10
-    , visibleRangeStartPosition = Pitch.pitchPosition modeSettings.scale visibleRange.start
-    , visibleRangeIndexes = visibleRangeIndexes
-    , visibleRangeEndPosition = Pitch.pitchPosition modeSettings.scale visibleRange.end
+    , visibleRange = visibleRangeData
     }
         |> setScalingFactor layoutData
 
@@ -185,32 +172,43 @@ init layoutData modeSettings pitchState =
 user-set) start and stop positions to include the current pitch. (We may want to
 consider additional limits as well.)
 -}
-calculateVisibleRange : ModeSettings -> PitchState -> { start : Pitch, end : Pitch }
+calculateVisibleRange : ModeSettings -> PitchState -> VisibleRange
 calculateVisibleRange modeSettings pitchState =
     case PitchState.currentPitch modeSettings.scale pitchState of
         Just currentPitch ->
             let
                 currentDegree =
                     Pitch.unwrapDegree currentPitch
+
+                startPitch =
+                    if Degree.indexOf currentDegree < Degree.indexOf modeSettings.rangeStart then
+                        currentPitch
+
+                    else
+                        Pitch.natural modeSettings.rangeStart
+
+                endPitch =
+                    if Degree.indexOf currentDegree > Degree.indexOf modeSettings.rangeEnd then
+                        currentPitch
+
+                    else
+                        Pitch.natural modeSettings.rangeEnd
             in
-            { start =
-                if Degree.indexOf currentDegree < Degree.indexOf modeSettings.rangeStart then
-                    currentPitch
-
-                else
-                    Pitch.natural modeSettings.rangeStart
-            , end =
-                if Degree.indexOf currentDegree > Degree.indexOf modeSettings.rangeEnd then
-                    currentPitch
-
-                else
-                    Pitch.natural modeSettings.rangeEnd
-            }
+            constructVisibleRange modeSettings.scale startPitch endPitch
 
         Nothing ->
-            { start = Pitch.natural modeSettings.rangeStart
-            , end = Pitch.natural modeSettings.rangeEnd
-            }
+            constructVisibleRange modeSettings.scale
+                (Pitch.natural modeSettings.rangeStart)
+                (Pitch.natural modeSettings.rangeEnd)
+
+
+constructVisibleRange : Scale -> Pitch -> Pitch -> VisibleRange
+constructVisibleRange scale startPitch endPitch =
+    { startDegreeIndex = Degree.indexOf (Pitch.unwrapDegree startPitch)
+    , endDegreeIndex = Degree.indexOf (Pitch.unwrapDegree endPitch)
+    , startPosition = Pitch.pitchPosition scale startPitch
+    , endPosition = Pitch.pitchPosition scale endPitch
+    }
 
 
 
@@ -302,7 +300,7 @@ setScalingFactor : LayoutData -> PitchSpaceData -> PitchSpaceData
 setScalingFactor layoutData pitchSpaceData =
     let
         visibleRangeInMoria =
-            pitchSpaceData.visibleRangeEndPosition - pitchSpaceData.visibleRangeStartPosition
+            pitchSpaceData.visibleRange.endPosition - pitchSpaceData.visibleRange.startPosition
     in
     { pitchSpaceData
         | scalingFactor =
@@ -323,6 +321,23 @@ setScalingFactor layoutData pitchSpaceData =
 
 
 -- VISIBILITY
+
+
+{-| A record containing both index and position information for the visible
+range.
+
+  - `startDegreeIndex` and `endDegreeIndex` – degree indices at the start and
+    end
+  - `startPosition` and `endPosition` – pitch positions (in moria) at the start
+    and end
+
+-}
+type alias VisibleRange =
+    { startDegreeIndex : Int
+    , endDegreeIndex : Int
+    , startPosition : Int
+    , endPosition : Int
+    }
 
 
 type PositionWithinVisibleRange
@@ -352,7 +367,7 @@ positionIsVisible position =
             False
 
 
-visibility : { startDegreeIndex : Int, endDegreeIndex : Int } -> Degree -> PositionWithinVisibleRange
+visibility : VisibleRange -> Degree -> PositionWithinVisibleRange
 visibility { startDegreeIndex, endDegreeIndex } degree =
     let
         degreeIndex =
@@ -610,7 +625,7 @@ getIntervalWithVisibility :
     -> ( Pitch, Int )
     -> ( Pitch, Int )
     -> ( Interval, PositionWithinVisibleRange )
-getIntervalWithVisibility { visibleRangeIndexes } ( fromPitch, fromPitchPosition ) ( toPitch, toPitchPosition ) =
+getIntervalWithVisibility { visibleRange } ( fromPitch, fromPitchPosition ) ( toPitch, toPitchPosition ) =
     let
         fromPitchDegreeIndex =
             Pitch.unwrapDegree fromPitch |> Degree.indexOf
@@ -619,10 +634,10 @@ getIntervalWithVisibility { visibleRangeIndexes } ( fromPitch, fromPitchPosition
             Pitch.unwrapDegree toPitch |> Degree.indexOf
 
         visibleRangeStartIndex =
-            visibleRangeIndexes.startDegreeIndex
+            visibleRange.startDegreeIndex
 
         visibleRangeEndDegreeIndex =
-            visibleRangeIndexes.endDegreeIndex
+            visibleRange.endDegreeIndex
     in
     ( { from = fromPitch
       , to = toPitch
