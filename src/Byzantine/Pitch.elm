@@ -5,7 +5,6 @@ module Byzantine.Pitch exposing
     , unwrapDegree, unwrapAccidental
     , isInflected, isValidInflection, toString
     , PitchPosition, pitchPosition, pitchPositions, unwrapPitchPosition
-    , getPitchFrequency
     , Interval, encodeInterval, decodeInterval
     )
 
@@ -47,11 +46,6 @@ attractions and inflections.
 @docs PitchPosition, pitchPosition, pitchPositions, unwrapPitchPosition
 
 
-# Frequency
-
-@docs getPitchFrequency
-
-
 # Intervals
 
 @docs Interval, encodeInterval, decodeInterval
@@ -61,8 +55,6 @@ attractions and inflections.
 import Array exposing (Array)
 import Byzantine.Accidental as Accidental exposing (Accidental)
 import Byzantine.Degree as Degree exposing (Degree)
-import Byzantine.Frequency as Frequency exposing (Frequency, PitchStandard)
-import Byzantine.Register exposing (Register)
 import Byzantine.Scale as Scale exposing (Scale(..))
 import Maybe.Extra
 import Result exposing (Result)
@@ -392,15 +384,6 @@ hardChromaticPitchPositions : Array PitchPosition
 hardChromaticPitchPositions =
     Array.fromList [ 0, 12, 18, 38, 42, 54, 60, 80, 84, 96, 102, 122, 126, 136, 144 ]
         |> Array.map PitchPosition
-
-
-{-| Calculate frequency for a pitch using the given pitch standard and register.
--}
-getPitchFrequency : PitchStandard -> Register -> Scale -> Pitch -> Frequency
-getPitchFrequency pitchStandard register scale pitch =
-    pitchPosition scale pitch
-        |> unwrapPitchPosition
-        |> Frequency.frequency pitchStandard register
 
 
 
