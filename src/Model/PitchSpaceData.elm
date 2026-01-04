@@ -45,7 +45,7 @@ as a result of model updates.
 
 import Basics.Extra exposing (flip)
 import Byzantine.Degree as Degree exposing (Degree)
-import Byzantine.Pitch as Pitch exposing (Interval, Pitch)
+import Byzantine.Pitch as Pitch exposing (Interval, Pitch, PitchPosition)
 import Byzantine.Scale exposing (Scale)
 import Maybe.Extra
 import Model.DegreeDataDict as DegreeDataDict exposing (DegreeDataDict)
@@ -72,7 +72,7 @@ Elements include:
   - **`pitches`** – a `DegreedataDict Pitch`, indicating the specific pitch to
     display in the pitch column.
 
-  - **`pitchPositions`** – a `DegreeDataDict Int`, representing the pitch
+  - **`pitchPositions`** – a `DegreeDataDict PitchPosition`, representing the pitch
     position (in moria) of each degree with respect to the given scale, current
     pitch, and proposed movement with proposed accidental applied as
     appropriate.
@@ -100,7 +100,7 @@ type alias PitchSpaceData =
     { display : Display
     , isonIndicators : DegreeDataDict IsonSelectionIndicator
     , pitches : DegreeDataDict Pitch
-    , pitchPositions : DegreeDataDict Int
+    , pitchPositions : DegreeDataDict PitchPosition
     , pitchVisibility : DegreeDataDict PositionWithinVisibleRange
     , scalingFactor : Float
     , visibleRange : VisibleRange
@@ -300,7 +300,7 @@ setScalingFactor : LayoutData -> PitchSpaceData -> PitchSpaceData
 setScalingFactor layoutData pitchSpaceData =
     let
         visibleRangeInMoria =
-            pitchSpaceData.visibleRange.endPosition - pitchSpaceData.visibleRange.startPosition
+            Pitch.unwrapPitchPosition pitchSpaceData.visibleRange.endPosition - Pitch.unwrapPitchPosition pitchSpaceData.visibleRange.startPosition
     in
     { pitchSpaceData
         | scalingFactor =
@@ -335,8 +335,8 @@ range.
 type alias VisibleRange =
     { startDegreeIndex : Int
     , endDegreeIndex : Int
-    , startPosition : Int
-    , endPosition : Int
+    , startPosition : PitchPosition
+    , endPosition : PitchPosition
     }
 
 
@@ -425,7 +425,7 @@ encodePitchPositionContext { pitchPositions } degree =
     let
         getAndEncode =
             Maybe.Extra.unwrap "_"
-                (flip DegreeDataDict.get pitchPositions >> String.fromInt)
+                (flip DegreeDataDict.get pitchPositions >> Pitch.unwrapPitchPosition >> String.fromInt)
     in
     [ getAndEncode (Degree.step degree -1)
     , getAndEncode (Just degree)
@@ -608,7 +608,7 @@ intervalsWithVisibility pitchSpaceData movement =
 
 intervalsHelper :
     PitchSpaceData
-    -> List ( Pitch, Int )
+    -> List ( Pitch, PitchPosition )
     -> List ( Interval, PositionWithinVisibleRange )
 intervalsHelper pitchSpaceData pitchesWithPositions =
     case pitchesWithPositions of
@@ -622,8 +622,8 @@ intervalsHelper pitchSpaceData pitchesWithPositions =
 
 getIntervalWithVisibility :
     PitchSpaceData
-    -> ( Pitch, Int )
-    -> ( Pitch, Int )
+    -> ( Pitch, PitchPosition )
+    -> ( Pitch, PitchPosition )
     -> ( Interval, PositionWithinVisibleRange )
 getIntervalWithVisibility { visibleRange } ( fromPitch, fromPitchPosition ) ( toPitch, toPitchPosition ) =
     let
@@ -641,7 +641,7 @@ getIntervalWithVisibility { visibleRange } ( fromPitch, fromPitchPosition ) ( to
     in
     ( { from = fromPitch
       , to = toPitch
-      , moria = toPitchPosition - fromPitchPosition
+      , moria = Pitch.unwrapPitchPosition toPitchPosition - Pitch.unwrapPitchPosition fromPitchPosition
       }
     , if toPitchDegreeIndex <= visibleRangeStartIndex then
         Below

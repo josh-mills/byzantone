@@ -12,7 +12,7 @@ import Byzantine.Degree as Degree exposing (Degree)
 import Byzantine.Frequency as Frequency exposing (Frequency)
 import Byzantine.IntervalCharacter as IntervalCharacter
 import Byzantine.Martyria as Martyria
-import Byzantine.Pitch as Pitch exposing (Interval, Pitch, PitchString)
+import Byzantine.Pitch as Pitch exposing (Interval, Pitch, PitchPosition, PitchString)
 import Html exposing (Html, button, div, li, span, text)
 import Html.Attributes as Attr exposing (class, classList)
 import Html.Attributes.Extra as Attr exposing (attributeMaybe)
@@ -331,10 +331,10 @@ viewPitchIndicator pitchSpaceData { pitchStandard, listenRegister, responsivenes
         position =
             case PitchSpaceData.displayToLayout pitchSpaceData.display of
                 Vertical ->
-                    Styles.top (pitchSpaceData.scalingFactor * (toFloat pitchSpaceData.visibleRange.endPosition - detectedPitchInMoria))
+                    Styles.top (pitchSpaceData.scalingFactor * (toFloat (Pitch.unwrapPitchPosition pitchSpaceData.visibleRange.endPosition) - detectedPitchInMoria))
 
                 Horizontal ->
-                    Styles.left (pitchSpaceData.scalingFactor * (detectedPitchInMoria - toFloat pitchSpaceData.visibleRange.startPosition))
+                    Styles.left (pitchSpaceData.scalingFactor * (detectedPitchInMoria - toFloat (Pitch.unwrapPitchPosition pitchSpaceData.visibleRange.startPosition)))
 
         offset =
             -- TODO: there's functionality here to build out
@@ -368,7 +368,7 @@ viewPitchIndicator pitchSpaceData { pitchStandard, listenRegister, responsivenes
         []
 
 
-closestDegree : DegreeDataDict Int -> Float -> { degree : Degree, offset : Float }
+closestDegree : DegreeDataDict PitchPosition -> Float -> { degree : Degree, offset : Float }
 closestDegree pitchPositions detectedPitchInMoria =
     let
         initialGuessDegreeIndex =
@@ -388,11 +388,11 @@ closestDegree pitchPositions detectedPitchInMoria =
     closestDegreeHelper pitchPositions detectedPitchInMoria initialGuessDegree
 
 
-closestDegreeHelper : DegreeDataDict Int -> Float -> Degree -> { degree : Degree, offset : Float }
+closestDegreeHelper : DegreeDataDict PitchPosition -> Float -> Degree -> { degree : Degree, offset : Float }
 closestDegreeHelper pitchPositions detectedPitch lowerNeighborCandidate =
     let
         lowerNeighborCandidatePosition =
-            toFloat (DegreeDataDict.get lowerNeighborCandidate pitchPositions)
+            toFloat (Pitch.unwrapPitchPosition (DegreeDataDict.get lowerNeighborCandidate pitchPositions))
     in
     case ( compare lowerNeighborCandidatePosition detectedPitch, Degree.step lowerNeighborCandidate 1 ) of
         ( GT, _ ) ->
@@ -413,7 +413,7 @@ closestDegreeHelper pitchPositions detectedPitch lowerNeighborCandidate =
         ( LT, Just upperNeighborCandidate ) ->
             let
                 upperNeighborCandidatePosition =
-                    toFloat (DegreeDataDict.get upperNeighborCandidate pitchPositions)
+                    toFloat (Pitch.unwrapPitchPosition (DegreeDataDict.get upperNeighborCandidate pitchPositions))
             in
             if detectedPitch < upperNeighborCandidatePosition then
                 if abs (lowerNeighborCandidatePosition - detectedPitch) < abs (upperNeighborCandidatePosition - detectedPitch) then

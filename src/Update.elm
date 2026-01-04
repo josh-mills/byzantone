@@ -640,20 +640,20 @@ applyAccidentalWithValidation scale { pitchPositions } pitchState degree =
                     Accidental.moriaAdjustment accidental
 
                 positonWithInflection =
-                    DegreeDataDict.get degree pitchPositions + inflection
+                    Pitch.unwrapPitchPosition (DegreeDataDict.get degree pitchPositions) + inflection
 
                 wouldNotBeInversion =
                     if inflection > 0 then
                         Maybe.unwrap False
                             (\degreeHigher ->
-                                DegreeDataDict.get degreeHigher pitchPositions > positonWithInflection
+                                Pitch.unwrapPitchPosition (DegreeDataDict.get degreeHigher pitchPositions) > positonWithInflection
                             )
                             (Degree.step degree 1)
 
                     else
                         Maybe.unwrap False
                             (\degreeLower ->
-                                DegreeDataDict.get degreeLower pitchPositions < positonWithInflection
+                                Pitch.unwrapPitchPosition (DegreeDataDict.get degreeLower pitchPositions) < positonWithInflection
                             )
                             (Degree.step degree -1)
             in

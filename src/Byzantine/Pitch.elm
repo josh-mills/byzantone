@@ -4,7 +4,7 @@ module Byzantine.Pitch exposing
     , PitchString, encode, decode
     , unwrapDegree, unwrapAccidental
     , isInflected, isValidInflection, toString
-    , pitchPosition, pitchPositions
+    , PitchPosition, pitchPosition, pitchPositions, unwrapPitchPosition
     , getPitchFrequency
     , Interval, encodeInterval, decodeInterval
     )
@@ -44,7 +44,7 @@ attractions and inflections.
 
 ## Pitch Positions
 
-@docs pitchPosition, pitchPositions
+@docs PitchPosition, pitchPosition, pitchPositions, unwrapPitchPosition
 
 
 # Frequency
@@ -217,10 +217,12 @@ isValidInflection scale accidental degree =
         proposedPitchPosition =
             Inflected accidental degree
                 |> pitchPosition scale
+                |> unwrapPitchPosition
 
         naturalPosition degree_ =
             Natural degree_
                 |> pitchPosition scale
+                |> unwrapPitchPosition
     in
     case accidentalInflectionDirection accidental of
         Up ->
@@ -304,13 +306,26 @@ toString pitch =
 -- PITCH POSITIONS
 
 
+{-| Pitch Position in moria. Di is constant at 84.
+-}
+type PitchPosition
+    = PitchPosition Int
+
+
+{-| Unwrap a PitchPosition to get the Int value.
+-}
+unwrapPitchPosition : PitchPosition -> Int
+unwrapPitchPosition (PitchPosition value) =
+    value
+
+
 {-| Calculate the pitch position in moria for the degree. Di is constant at 84.
 
 (We might want an advanced setting to use Ke for mode II instead as equivalent
 to Di for other modes; see discussion in Melling.)
 
 -}
-pitchPosition : Scale -> Pitch -> Int
+pitchPosition : Scale -> Pitch -> PitchPosition
 pitchPosition scale pitch =
     let
         ( degree, moriaAdjustment ) =
@@ -319,16 +334,22 @@ pitchPosition scale pitch =
                     ( degree_, identity )
 
                 Inflected accidental degree_ ->
-                    ( degree_, (+) (Accidental.moriaAdjustment accidental) )
+                    ( degree_
+                    , \pitchPos ->
+                        pitchPos
+                            |> unwrapPitchPosition
+                            |> (+) (Accidental.moriaAdjustment accidental)
+                            |> PitchPosition
+                    )
     in
     pitchPositions scale
         |> Array.get (Degree.indexOf degree)
         |> Maybe.map moriaAdjustment
         -- tests ensure that the -1 sentinel value never occurs.
-        |> Maybe.withDefault -1
+        |> Maybe.withDefault (PitchPosition -1)
 
 
-pitchPositions : Scale -> Array Int
+pitchPositions : Scale -> Array PitchPosition
 pitchPositions scale =
     case scale of
         Diatonic ->
@@ -344,14 +365,16 @@ pitchPositions scale =
             hardChromaticPitchPositions
 
 
-diatonicPitchPositions : Array Int
+diatonicPitchPositions : Array PitchPosition
 diatonicPitchPositions =
     Array.fromList [ 0, 12, 24, 34, 42, 54, 64, 72, 84, 96, 106, 114, 126, 136, 144 ]
+        |> Array.map PitchPosition
 
 
-enharmonicPitchPositions : Array Int
+enharmonicPitchPositions : Array PitchPosition
 enharmonicPitchPositions =
     Array.fromList [ 0, 12, 24, 30, 42, 54, 66, 72, 84, 96, 102, 114, 126, 138, 144 ]
+        |> Array.map PitchPosition
 
 
 {-| Michael Tsiappoutas gives slightly different positions for this: he shows 7
@@ -359,14 +382,16 @@ for the smaller steps rather than 8, and 9 rather than 10 for others. It may be
 worth exploring this and providing this as an option, if this is a standard
 tradition to reflect in the app.
 -}
-softChromaticPitchPositions : Array Int
+softChromaticPitchPositions : Array PitchPosition
 softChromaticPitchPositions =
     Array.fromList [ 0, 8, 22, 30, 42, 50, 64, 72, 84, 92, 106, 114, 126, 134, 148 ]
+        |> Array.map PitchPosition
 
 
-hardChromaticPitchPositions : Array Int
+hardChromaticPitchPositions : Array PitchPosition
 hardChromaticPitchPositions =
     Array.fromList [ 0, 12, 18, 38, 42, 54, 60, 80, 84, 96, 102, 122, 126, 136, 144 ]
+        |> Array.map PitchPosition
 
 
 {-| Calculate frequency for a pitch using the given pitch standard and register.
@@ -374,6 +399,7 @@ hardChromaticPitchPositions =
 getPitchFrequency : PitchStandard -> Register -> Scale -> Pitch -> Frequency
 getPitchFrequency pitchStandard register scale pitch =
     pitchPosition scale pitch
+        |> unwrapPitchPosition
         |> Frequency.frequency pitchStandard register
 
 

@@ -97,10 +97,10 @@ isValid scale currentPitch movement =
     in
     case movement of
         AscendTo targetPitch ->
-            positionOf targetPitch > positionOf currentPitch
+            Pitch.unwrapPitchPosition (positionOf targetPitch) > Pitch.unwrapPitchPosition (positionOf currentPitch)
 
         DescendTo targetPitch ->
-            positionOf targetPitch < positionOf currentPitch
+            Pitch.unwrapPitchPosition (positionOf targetPitch) < Pitch.unwrapPitchPosition (positionOf currentPitch)
 
         None ->
             True
