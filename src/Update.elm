@@ -646,14 +646,18 @@ applyAccidentalWithValidation scale { pitchPositions } pitchState degree =
                     if inflection > 0 then
                         Maybe.unwrap False
                             (\degreeHigher ->
-                                Pitch.unwrapPitchPosition (DegreeDataDict.get degreeHigher pitchPositions) > positonWithInflection
+                                Pitch.unwrapPitchPosition
+                                    (DegreeDataDict.get degreeHigher pitchPositions)
+                                    > positonWithInflection
                             )
                             (Degree.step degree 1)
 
                     else
                         Maybe.unwrap False
                             (\degreeLower ->
-                                Pitch.unwrapPitchPosition (DegreeDataDict.get degreeLower pitchPositions) < positonWithInflection
+                                Pitch.unwrapPitchPosition
+                                    (DegreeDataDict.get degreeLower pitchPositions)
+                                    < positonWithInflection
                             )
                             (Degree.step degree -1)
             in

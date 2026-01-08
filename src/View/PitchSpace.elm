@@ -329,13 +329,19 @@ viewPitchIndicator pitchSpaceData { pitchStandard, listenRegister, responsivenes
         detectedPitchInMoria =
             Frequency.toPitchPosition pitchStandard listenRegister detectedPitch
 
+        startPosition =
+            toFloat (Pitch.unwrapPitchPosition pitchSpaceData.visibleRange.startPosition)
+
+        endPosition =
+            toFloat (Pitch.unwrapPitchPosition pitchSpaceData.visibleRange.endPosition)
+
         position =
             case PitchSpaceData.displayToLayout pitchSpaceData.display of
                 Vertical ->
-                    Styles.top (pitchSpaceData.scalingFactor * (toFloat (Pitch.unwrapPitchPosition pitchSpaceData.visibleRange.endPosition) - detectedPitchInMoria))
+                    Styles.top (pitchSpaceData.scalingFactor * (endPosition - detectedPitchInMoria))
 
                 Horizontal ->
-                    Styles.left (pitchSpaceData.scalingFactor * (detectedPitchInMoria - toFloat (Pitch.unwrapPitchPosition pitchSpaceData.visibleRange.startPosition)))
+                    Styles.left (pitchSpaceData.scalingFactor * (detectedPitchInMoria - startPosition))
 
         offset =
             -- TODO: there's functionality here to build out
