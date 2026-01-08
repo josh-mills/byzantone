@@ -10,9 +10,10 @@ import Byzantine.ByzHtml.Interval as ByzHtmlInterval
 import Byzantine.ByzHtml.Martyria as ByzHtmlMartyria
 import Byzantine.Degree as Degree exposing (Degree)
 import Byzantine.Frequency as Frequency exposing (Frequency)
+import Byzantine.Interval as Interval exposing (Interval)
 import Byzantine.IntervalCharacter as IntervalCharacter
 import Byzantine.Martyria as Martyria
-import Byzantine.Pitch as Pitch exposing (Interval, Pitch, PitchPosition, PitchString)
+import Byzantine.Pitch as Pitch exposing (Pitch, PitchPosition, PitchString)
 import Html exposing (Html, button, div, li, span, text)
 import Html.Attributes as Attr exposing (class, classList)
 import Html.Attributes.Extra as Attr exposing (attributeMaybe)
@@ -123,7 +124,7 @@ viewInterval pitchSpaceData modeSettings pitchState ( interval, position ) =
         currentPitchString
         pitchSpaceData.display
         pitchSpaceData.scalingFactor
-        (Pitch.encodeInterval modeSettings.scale interval)
+        (Interval.encode modeSettings.scale interval)
         position
         shouldHighlight
 
@@ -139,10 +140,10 @@ viewIntervalLazy :
 viewIntervalLazy currentPitchString display scalingFactor intervalString position shouldHighlight =
     let
         interval =
-            Pitch.decodeInterval intervalString
+            Interval.decode intervalString
 
         intervalMoria =
-            Result.Extra.unwrap -1 (.moria >> Pitch.unwrapIntervalSize) interval
+            Result.Extra.unwrap -1 (.moria >> Interval.unwrapIntervalSize) interval
 
         intervalFromDegree =
             Result.Extra.unwrap "err"

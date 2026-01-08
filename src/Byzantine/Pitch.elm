@@ -5,7 +5,6 @@ module Byzantine.Pitch exposing
     , unwrapDegree, unwrapAccidental
     , isInflected, isValidInflection, toString
     , PitchPosition, pitchPosition, pitchPositions, unwrapPitchPosition
-    , Interval, IntervalSize, intervalSize, unwrapIntervalSize, encodeInterval, decodeInterval
     )
 
 {-| Pitch positions and derived intervals. Di is fixed at 84.
@@ -45,11 +44,6 @@ attractions and inflections.
 
 @docs PitchPosition, pitchPosition, pitchPositions, unwrapPitchPosition
 
-
-# Intervals
-
-@docs Interval, IntervalSize, intervalSize, unwrapIntervalSize, encodeInterval, decodeInterval
-
 -}
 
 import Array exposing (Array)
@@ -57,7 +51,6 @@ import Byzantine.Accidental as Accidental exposing (Accidental)
 import Byzantine.Degree as Degree exposing (Degree)
 import Byzantine.Scale as Scale exposing (Scale(..))
 import Maybe.Extra
-import Result exposing (Result)
 import Tuple.Trio as Trio
 
 
@@ -384,84 +377,3 @@ hardChromaticPitchPositions : Array PitchPosition
 hardChromaticPitchPositions =
     Array.fromList [ 0, 12, 18, 38, 42, 54, 60, 80, 84, 96, 102, 122, 126, 136, 144 ]
         |> Array.map PitchPosition
-
-
-
--- INTERVALS
-
-
-{-| Interval Size in moria. Represents the difference between two PitchPositions.
--}
-type IntervalSize
-    = IntervalSize Int
-
-
-{-| Create an IntervalSize from the difference between two PitchPositions.
--}
-intervalSize : PitchPosition -> PitchPosition -> IntervalSize
-intervalSize (PitchPosition toPos) (PitchPosition fromPos) =
-    IntervalSize (toPos - fromPos)
-
-
-{-| Unwrap an IntervalSize to get the Int value.
--}
-unwrapIntervalSize : IntervalSize -> Int
-unwrapIntervalSize (IntervalSize value) =
-    value
-
-
-{-| TODO: this should be reconsidered.
--}
-type alias Interval =
-    { from : Pitch
-    , to : Pitch
-    , moria : IntervalSize
-    }
-
-
-encodeInterval : Scale -> Interval -> String
-encodeInterval scale interval =
-    encode scale interval.from
-        ++ "~"
-        ++ String.fromInt (unwrapIntervalSize interval.moria)
-        ++ "~"
-        ++ encode scale interval.to
-
-
-{-| Decode a string representation of an interval back into an Interval record.
-The string must be in the format produced by encodeInterval:
-`<encoded_from_pitch>~<moria>~<encoded_to_pitch>`
-
-Both pitches must use the same scale, otherwise an error is returned.
-
--}
-decodeInterval : String -> Result String Interval
-decodeInterval intervalString =
-    case String.split "~" intervalString of
-        [ fromPitchStr, moriaStr, toPitchStr ] ->
-            Result.map3
-                (\( fromScale, fromPitch ) moria ( toScale, toPitch ) ->
-                    if fromScale == toScale then
-                        Ok
-                            { from = fromPitch
-                            , to = toPitch
-                            , moria = IntervalSize moria
-                            }
-
-                    else
-                        Err
-                            ("Scale mismatch: from pitch uses "
-                                ++ Scale.encode fromScale
-                                ++ " but to pitch uses "
-                                ++ Scale.encode toScale
-                            )
-                )
-                (decode fromPitchStr)
-                (String.toInt moriaStr
-                    |> Result.fromMaybe ("Invalid moria value: " ++ moriaStr)
-                )
-                (decode toPitchStr)
-                |> Result.andThen identity
-
-        _ ->
-            Err ("Invalid interval format: " ++ intervalString)

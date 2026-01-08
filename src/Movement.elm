@@ -7,7 +7,8 @@ for example, there is no purpose in modeling the ison.
 
 import Byzantine.Accidental exposing (Accidental)
 import Byzantine.Degree as Degree
-import Byzantine.Pitch as Pitch exposing (Interval, Pitch)
+import Byzantine.Interval exposing (Interval)
+import Byzantine.Pitch as Pitch exposing (Pitch)
 import Byzantine.Scale exposing (Scale)
 
 

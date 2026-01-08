@@ -45,7 +45,8 @@ as a result of model updates.
 
 import Basics.Extra exposing (flip)
 import Byzantine.Degree as Degree exposing (Degree)
-import Byzantine.Pitch as Pitch exposing (Interval, Pitch, PitchPosition)
+import Byzantine.Interval as Interval exposing (Interval)
+import Byzantine.Pitch as Pitch exposing (Pitch, PitchPosition)
 import Byzantine.Scale exposing (Scale)
 import Maybe.Extra
 import Model.DegreeDataDict as DegreeDataDict exposing (DegreeDataDict)
@@ -641,7 +642,7 @@ getIntervalWithVisibility { visibleRange } ( fromPitch, fromPitchPosition ) ( to
     in
     ( { from = fromPitch
       , to = toPitch
-      , moria = Pitch.intervalSize toPitchPosition fromPitchPosition
+      , moria = Interval.intervalSize toPitchPosition fromPitchPosition
       }
     , if toPitchDegreeIndex <= visibleRangeStartIndex then
         Below
