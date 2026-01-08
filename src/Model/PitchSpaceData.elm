@@ -577,8 +577,8 @@ canBeSelectedAsIson indicator =
 -- INTERVALS
 
 
-intervalsWithVisibility : PitchSpaceData -> Movement -> List ( Interval, PositionWithinVisibleRange )
-intervalsWithVisibility pitchSpaceData movement =
+intervalsWithVisibility : Scale -> PitchSpaceData -> Movement -> List ( Interval, PositionWithinVisibleRange )
+intervalsWithVisibility scale pitchSpaceData movement =
     let
         maybeOverrideMovementTarget =
             Movement.unwrapTargetPitch movement
@@ -604,29 +604,31 @@ intervalsWithVisibility pitchSpaceData movement =
                 , DegreeDataDict.get degree pitchSpaceData.pitchPositions
                 )
             )
-        |> intervalsHelper pitchSpaceData
+        |> intervalsHelper scale pitchSpaceData
 
 
 intervalsHelper :
-    PitchSpaceData
+    Scale
+    -> PitchSpaceData
     -> List ( Pitch, PitchPosition )
     -> List ( Interval, PositionWithinVisibleRange )
-intervalsHelper pitchSpaceData pitchesWithPositions =
+intervalsHelper scale pitchSpaceData pitchesWithPositions =
     case pitchesWithPositions of
         a :: b :: rest ->
-            getIntervalWithVisibility pitchSpaceData a b
-                :: intervalsHelper pitchSpaceData (b :: rest)
+            getIntervalWithVisibility scale pitchSpaceData a b
+                :: intervalsHelper scale pitchSpaceData (b :: rest)
 
         _ ->
             []
 
 
 getIntervalWithVisibility :
-    PitchSpaceData
+    Scale
+    -> PitchSpaceData
     -> ( Pitch, PitchPosition )
     -> ( Pitch, PitchPosition )
     -> ( Interval, PositionWithinVisibleRange )
-getIntervalWithVisibility { visibleRange } ( fromPitch, fromPitchPosition ) ( toPitch, toPitchPosition ) =
+getIntervalWithVisibility scale { visibleRange } ( fromPitch, fromPitchPosition ) ( toPitch, toPitchPosition ) =
     let
         fromPitchDegreeIndex =
             Pitch.unwrapDegree fromPitch |> Degree.indexOf
@@ -640,10 +642,7 @@ getIntervalWithVisibility { visibleRange } ( fromPitch, fromPitchPosition ) ( to
         visibleRangeEndDegreeIndex =
             visibleRange.endDegreeIndex
     in
-    ( { from = fromPitch
-      , to = toPitch
-      , moria = Interval.intervalSize toPitchPosition fromPitchPosition
-      }
+    ( Interval.create scale fromPitch toPitch
     , if toPitchDegreeIndex <= visibleRangeStartIndex then
         Below
 

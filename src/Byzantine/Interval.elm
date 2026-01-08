@@ -1,6 +1,6 @@
 module Byzantine.Interval exposing
-    ( Interval, IntervalSize
-    , intervalSize, unwrapIntervalSize
+    ( Interval
+    , create, size
     , encode, decode
     )
 
@@ -9,12 +9,12 @@ module Byzantine.Interval exposing
 
 # Types
 
-@docs Interval, IntervalSize
+@docs Interval
 
 
-# IntervalSize
+# Functions
 
-@docs intervalSize, unwrapIntervalSize
+@docs create, size
 
 
 # Encode/Decode
@@ -28,41 +28,43 @@ import Byzantine.Scale as Scale exposing (Scale)
 import Result exposing (Result)
 
 
-
--- INTERVAL SIZE
-
-
-{-| Interval Size in moria. Represents the difference between two PitchPositions.
--}
-type IntervalSize
-    = IntervalSize Int
-
-
-{-| Create an IntervalSize from the difference between two PitchPositions.
--}
-intervalSize : PitchPosition -> PitchPosition -> IntervalSize
-intervalSize toPos fromPos =
-    IntervalSize (Pitch.unwrapPitchPosition toPos - Pitch.unwrapPitchPosition fromPos)
-
-
-{-| Unwrap an IntervalSize to get the Int value.
--}
-unwrapIntervalSize : IntervalSize -> Int
-unwrapIntervalSize (IntervalSize value) =
-    value
-
-
-
--- INTERVALS
-
-
-{-| TODO: this should be reconsidered.
--}
 type alias Interval =
     { from : Pitch
     , to : Pitch
-    , moria : IntervalSize
+    , moria : Size
     }
+
+
+{-| Interval Size in moria. Represents the difference between two
+PitchPositions.
+-}
+type Size
+    = Size Int
+
+
+{-| Create an Interval from two pitches, calculating positions from the given
+scale.
+-}
+create : Scale -> Pitch -> Pitch -> Interval
+create scale fromPitch toPitch =
+    { from = fromPitch
+    , to = toPitch
+    , moria = calculateSize (Pitch.pitchPosition scale fromPitch) (Pitch.pitchPosition scale toPitch)
+    }
+
+
+calculateSize : PitchPosition -> PitchPosition -> Size
+calculateSize fromPitch toPitch =
+    Size (Pitch.unwrapPitchPosition toPitch - Pitch.unwrapPitchPosition fromPitch)
+
+
+{-| Get the size in moria from an Interval.
+-}
+size : Interval -> Int
+size interval =
+    case interval.moria of
+        Size value ->
+            value
 
 
 {-| Encode an interval into a string representation.
@@ -71,7 +73,7 @@ encode : Scale -> Interval -> String
 encode scale interval =
     Pitch.encode scale interval.from
         ++ "~"
-        ++ String.fromInt (unwrapIntervalSize interval.moria)
+        ++ String.fromInt (size interval)
         ++ "~"
         ++ Pitch.encode scale interval.to
 
@@ -93,7 +95,7 @@ decode intervalString =
                         Ok
                             { from = fromPitch
                             , to = toPitch
-                            , moria = IntervalSize moria
+                            , moria = Size moria
                             }
 
                     else

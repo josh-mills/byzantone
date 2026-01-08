@@ -104,7 +104,7 @@ viewIntervals pitchSpaceData modeSettings pitchState =
             :: listAttributes pitchSpaceData.display
         )
         (List.map (viewInterval pitchSpaceData modeSettings pitchState)
-            (PitchSpaceData.intervalsWithVisibility pitchSpaceData pitchState.proposedMovement)
+            (PitchSpaceData.intervalsWithVisibility modeSettings.scale pitchSpaceData pitchState.proposedMovement)
         )
 
 
@@ -143,7 +143,7 @@ viewIntervalLazy currentPitchString display scalingFactor intervalString positio
             Interval.decode intervalString
 
         intervalMoria =
-            Result.Extra.unwrap -1 (.moria >> Interval.unwrapIntervalSize) interval
+            Result.Extra.unwrap -1 Interval.size interval
 
         intervalFromDegree =
             Result.Extra.unwrap "err"
