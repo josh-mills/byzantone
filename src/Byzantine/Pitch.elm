@@ -5,7 +5,7 @@ module Byzantine.Pitch exposing
     , unwrapDegree, unwrapAccidental
     , isInflected, isValidInflection, toString
     , PitchPosition, pitchPosition, pitchPositions, unwrapPitchPosition
-    , Interval, encodeInterval, decodeInterval
+    , Interval, IntervalSize, intervalSize, unwrapIntervalSize, encodeInterval, decodeInterval
     )
 
 {-| Pitch positions and derived intervals. Di is fixed at 84.
@@ -48,7 +48,7 @@ attractions and inflections.
 
 # Intervals
 
-@docs Interval, encodeInterval, decodeInterval
+@docs Interval, IntervalSize, intervalSize, unwrapIntervalSize, encodeInterval, decodeInterval
 
 -}
 
@@ -390,12 +390,32 @@ hardChromaticPitchPositions =
 -- INTERVALS
 
 
+{-| Interval Size in moria. Represents the difference between two PitchPositions.
+-}
+type IntervalSize
+    = IntervalSize Int
+
+
+{-| Create an IntervalSize from the difference between two PitchPositions.
+-}
+intervalSize : PitchPosition -> PitchPosition -> IntervalSize
+intervalSize (PitchPosition toPos) (PitchPosition fromPos) =
+    IntervalSize (toPos - fromPos)
+
+
+{-| Unwrap an IntervalSize to get the Int value.
+-}
+unwrapIntervalSize : IntervalSize -> Int
+unwrapIntervalSize (IntervalSize value) =
+    value
+
+
 {-| TODO: this should be reconsidered.
 -}
 type alias Interval =
     { from : Pitch
     , to : Pitch
-    , moria : Int
+    , moria : IntervalSize
     }
 
 
@@ -403,7 +423,7 @@ encodeInterval : Scale -> Interval -> String
 encodeInterval scale interval =
     encode scale interval.from
         ++ "~"
-        ++ String.fromInt interval.moria
+        ++ String.fromInt (unwrapIntervalSize interval.moria)
         ++ "~"
         ++ encode scale interval.to
 
@@ -425,7 +445,7 @@ decodeInterval intervalString =
                         Ok
                             { from = fromPitch
                             , to = toPitch
-                            , moria = moria
+                            , moria = IntervalSize moria
                             }
 
                     else

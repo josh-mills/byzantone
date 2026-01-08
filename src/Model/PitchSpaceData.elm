@@ -641,7 +641,7 @@ getIntervalWithVisibility { visibleRange } ( fromPitch, fromPitchPosition ) ( to
     in
     ( { from = fromPitch
       , to = toPitch
-      , moria = Pitch.unwrapPitchPosition toPitchPosition - Pitch.unwrapPitchPosition fromPitchPosition
+      , moria = Pitch.intervalSize toPitchPosition fromPitchPosition
       }
     , if toPitchDegreeIndex <= visibleRangeStartIndex then
         Below
