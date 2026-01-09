@@ -576,7 +576,7 @@ processPitchButtonClick model degree =
                                 model.pitchState.appliedAccidentals
                             )
 
-                        ( ison, Apply accidental, True ) ->
+                        ( ison, Apply _, True ) ->
                             ( ison
                             , model.pitchState.currentDegree
                             , applyAccidentalWithValidation model.modeSettings.scale
@@ -593,7 +593,7 @@ processPitchButtonClick model degree =
                                 model.pitchState.appliedAccidentals
                             )
 
-                        ( ison, Apply accidental, False ) ->
+                        ( ison, Apply _, False ) ->
                             ( ison
                             , Just degree
                             , applyAccidentalWithValidation model.modeSettings.scale
