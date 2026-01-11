@@ -3,7 +3,7 @@ module Byzantine.Pitch exposing
     , natural, inflected, from, applyAccidental
     , PitchString, encode, decode
     , unwrapDegree, unwrapAccidental
-    , isInflected, isValidInflection, toString
+    , isInflected, toString
     , pitchPosition
     )
 
@@ -37,7 +37,7 @@ attractions and inflections.
 
 ## Misc
 
-@docs isInflected, isValidInflection, toString
+@docs isInflected, toString
 
 
 ## Pitch Positions
@@ -50,7 +50,7 @@ import Byzantine.Accidental as Accidental exposing (Accidental)
 import Byzantine.Degree as Degree exposing (Degree)
 import Byzantine.PitchPosition as PitchPosition
 import Byzantine.Scale as Scale exposing (Scale(..))
-import Maybe.Extra
+import Byzantine.Utils as Utils
 import Tuple.Trio as Trio
 
 
@@ -131,7 +131,7 @@ from : Scale -> Maybe Accidental -> Degree -> Pitch
 from scale maybeAccidental degree =
     case maybeAccidental of
         Just accidental ->
-            if isValidInflection scale accidental degree then
+            if Utils.isValidInflection scale accidental degree then
                 Inflected accidental degree
 
             else
@@ -152,7 +152,7 @@ natural degree =
 -}
 inflected : Scale -> Accidental -> Degree -> Result String Pitch
 inflected scale accidental degree =
-    if isValidInflection scale accidental degree then
+    if Utils.isValidInflection scale accidental degree then
         Ok (Inflected accidental degree)
 
     else
@@ -181,60 +181,11 @@ applyAccidental scale pitch maybeAccidental =
             Natural degree
 
         Just accidental ->
-            if isValidInflection scale accidental degree then
+            if Utils.isValidInflection scale accidental degree then
                 Inflected accidental degree
 
             else
                 Natural degree
-
-
-
--- VALIDATION
-
-
-{-| Given the scale, does it make sense for the proposed accidental be applied
-to the given degree? An inflected pitch cannot be at or beyond the pitch
-position of the next degree in the direction of inflection.
--}
-isValidInflection : Scale -> Accidental -> Degree -> Bool
-isValidInflection scale accidental degree =
-    let
-        proposedPitchPosition =
-            pitchPosition scale (Inflected accidental degree)
-                |> PitchPosition.unwrap
-
-        naturalPosition degree_ =
-            pitchPosition scale (Natural degree_)
-                |> PitchPosition.unwrap
-    in
-    case accidentalInflectionDirection accidental of
-        Up ->
-            Degree.step degree 1
-                |> Maybe.Extra.unwrap False
-                    (\nextDegree ->
-                        naturalPosition nextDegree > proposedPitchPosition
-                    )
-
-        Down ->
-            Degree.step degree -1
-                |> Maybe.Extra.unwrap False
-                    (\nextDegree ->
-                        naturalPosition nextDegree < proposedPitchPosition
-                    )
-
-
-type AccidentalInflectionDirection
-    = Up
-    | Down
-
-
-accidentalInflectionDirection : Accidental -> AccidentalInflectionDirection
-accidentalInflectionDirection accidental =
-    if Accidental.moriaAdjustment accidental > 0 then
-        Up
-
-    else
-        Down
 
 
 
