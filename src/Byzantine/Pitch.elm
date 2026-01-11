@@ -4,10 +4,10 @@ module Byzantine.Pitch exposing
     , PitchString, encode, decode
     , unwrapDegree, unwrapAccidental
     , isInflected, isValidInflection, toString
-    , PitchPosition, pitchPosition, pitchPositions, unwrapPitchPosition
+    , pitchPosition
     )
 
-{-| Pitch positions and derived intervals. Di is fixed at 84.
+{-| Pitch representation and operations.
 
 In actual practice, this will need to be based on the tetrachord for a given
 mode, not a fixed position based merely on the scale. So there will be
@@ -42,13 +42,13 @@ attractions and inflections.
 
 ## Pitch Positions
 
-@docs PitchPosition, pitchPosition, pitchPositions, unwrapPitchPosition
+@docs pitchPosition
 
 -}
 
-import Array exposing (Array)
 import Byzantine.Accidental as Accidental exposing (Accidental)
 import Byzantine.Degree as Degree exposing (Degree)
+import Byzantine.PitchPosition as PitchPosition
 import Byzantine.Scale as Scale exposing (Scale(..))
 import Maybe.Extra
 import Tuple.Trio as Trio
@@ -200,14 +200,12 @@ isValidInflection : Scale -> Accidental -> Degree -> Bool
 isValidInflection scale accidental degree =
     let
         proposedPitchPosition =
-            Inflected accidental degree
-                |> pitchPosition scale
-                |> unwrapPitchPosition
+            pitchPosition scale (Inflected accidental degree)
+                |> PitchPosition.unwrap
 
         naturalPosition degree_ =
-            Natural degree_
-                |> pitchPosition scale
-                |> unwrapPitchPosition
+            pitchPosition scale (Natural degree_)
+                |> PitchPosition.unwrap
     in
     case accidentalInflectionDirection accidental of
         Up ->
@@ -287,93 +285,10 @@ toString pitch =
             Degree.toString degree ++ " " ++ Accidental.toString accidental
 
 
-
--- PITCH POSITIONS
-
-
-{-| Pitch Position in moria. Di is constant at 84.
+{-| Calculate the pitch position in moria for sthe given pitch. This is a
+convenience function that unwraps the pitch and delegates to
+PitchPosition.pitchPosition.
 -}
-type PitchPosition
-    = PitchPosition Int
-
-
-{-| Unwrap a PitchPosition to get the Int value.
--}
-unwrapPitchPosition : PitchPosition -> Int
-unwrapPitchPosition (PitchPosition value) =
-    value
-
-
-{-| Calculate the pitch position in moria for the degree. Di is constant at 84.
-
-(We might want an advanced setting to use Ke for mode II instead as equivalent
-to Di for other modes; see discussion in Melling.)
-
--}
-pitchPosition : Scale -> Pitch -> PitchPosition
+pitchPosition : Scale -> Pitch -> PitchPosition.PitchPosition
 pitchPosition scale pitch =
-    let
-        ( degree, moriaAdjustment ) =
-            case pitch of
-                Natural degree_ ->
-                    ( degree_, identity )
-
-                Inflected accidental degree_ ->
-                    ( degree_
-                    , \pitchPos ->
-                        pitchPos
-                            |> unwrapPitchPosition
-                            |> (+) (Accidental.moriaAdjustment accidental)
-                            |> PitchPosition
-                    )
-    in
-    pitchPositions scale
-        |> Array.get (Degree.indexOf degree)
-        |> Maybe.map moriaAdjustment
-        -- tests ensure that the -1 sentinel value never occurs.
-        |> Maybe.withDefault (PitchPosition -1)
-
-
-pitchPositions : Scale -> Array PitchPosition
-pitchPositions scale =
-    case scale of
-        Diatonic ->
-            diatonicPitchPositions
-
-        Enharmonic ->
-            enharmonicPitchPositions
-
-        SoftChromatic ->
-            softChromaticPitchPositions
-
-        HardChromatic ->
-            hardChromaticPitchPositions
-
-
-diatonicPitchPositions : Array PitchPosition
-diatonicPitchPositions =
-    Array.fromList [ 0, 12, 24, 34, 42, 54, 64, 72, 84, 96, 106, 114, 126, 136, 144 ]
-        |> Array.map PitchPosition
-
-
-enharmonicPitchPositions : Array PitchPosition
-enharmonicPitchPositions =
-    Array.fromList [ 0, 12, 24, 30, 42, 54, 66, 72, 84, 96, 102, 114, 126, 138, 144 ]
-        |> Array.map PitchPosition
-
-
-{-| Michael Tsiappoutas gives slightly different positions for this: he shows 7
-for the smaller steps rather than 8, and 9 rather than 10 for others. It may be
-worth exploring this and providing this as an option, if this is a standard
-tradition to reflect in the app.
--}
-softChromaticPitchPositions : Array PitchPosition
-softChromaticPitchPositions =
-    Array.fromList [ 0, 8, 22, 30, 42, 50, 64, 72, 84, 92, 106, 114, 126, 134, 148 ]
-        |> Array.map PitchPosition
-
-
-hardChromaticPitchPositions : Array PitchPosition
-hardChromaticPitchPositions =
-    Array.fromList [ 0, 12, 18, 38, 42, 54, 60, 80, 84, 96, 102, 122, 126, 136, 144 ]
-        |> Array.map PitchPosition
+    PitchPosition.pitchPosition scale (unwrapDegree pitch) (unwrapAccidental pitch)

@@ -4,6 +4,7 @@ import Array
 import Byzantine.Accidental as Accidental exposing (Accidental(..))
 import Byzantine.Degree as Degree exposing (Degree(..))
 import Byzantine.Pitch as Pitch exposing (Pitch(..))
+import Byzantine.PitchPosition as PitchPosition
 import Byzantine.Scale as Scale exposing (Scale(..))
 import Expect
 import List.Extra
@@ -47,7 +48,7 @@ degreeTests =
                                 \_ ->
                                     Pitch.natural degree
                                         |> Pitch.pitchPosition scale
-                                        |> Pitch.unwrapPitchPosition
+                                        |> PitchPosition.unwrap
                                         |> Expect.greaterThan -1
                         )
                         gamutBuilder

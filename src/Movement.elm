@@ -9,6 +9,7 @@ import Byzantine.Accidental exposing (Accidental)
 import Byzantine.Degree as Degree
 import Byzantine.Interval exposing (Interval)
 import Byzantine.Pitch as Pitch exposing (Pitch)
+import Byzantine.PitchPosition as PitchPosition
 import Byzantine.Scale exposing (Scale)
 
 
@@ -93,15 +94,15 @@ modal framework, but it's a bit inelegant in the abstract.
 isValid : Scale -> Pitch -> Movement -> Bool
 isValid scale currentPitch movement =
     let
-        positionOf =
-            Pitch.pitchPosition scale
+        positionOf pitch =
+            Pitch.pitchPosition scale pitch
     in
     case movement of
         AscendTo targetPitch ->
-            Pitch.unwrapPitchPosition (positionOf targetPitch) > Pitch.unwrapPitchPosition (positionOf currentPitch)
+            PitchPosition.unwrap (positionOf targetPitch) > PitchPosition.unwrap (positionOf currentPitch)
 
         DescendTo targetPitch ->
-            Pitch.unwrapPitchPosition (positionOf targetPitch) < Pitch.unwrapPitchPosition (positionOf currentPitch)
+            PitchPosition.unwrap (positionOf targetPitch) < PitchPosition.unwrap (positionOf currentPitch)
 
         None ->
             True

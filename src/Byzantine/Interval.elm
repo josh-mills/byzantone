@@ -23,7 +23,8 @@ module Byzantine.Interval exposing
 
 -}
 
-import Byzantine.Pitch as Pitch exposing (Pitch, PitchPosition)
+import Byzantine.Pitch as Pitch exposing (Pitch)
+import Byzantine.PitchPosition as PitchPosition exposing (PitchPosition)
 import Byzantine.Scale as Scale exposing (Scale)
 import Result exposing (Result)
 
@@ -55,7 +56,7 @@ create scale fromPitch toPitch =
 
 calculateSize : PitchPosition -> PitchPosition -> Size
 calculateSize fromPitch toPitch =
-    Size (Pitch.unwrapPitchPosition toPitch - Pitch.unwrapPitchPosition fromPitch)
+    Size (PitchPosition.unwrap toPitch - PitchPosition.unwrap fromPitch)
 
 
 {-| Get the size in moria from an Interval.

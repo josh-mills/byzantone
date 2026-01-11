@@ -23,7 +23,7 @@ module Byzantine.Frequency exposing
 
 -}
 
-import Byzantine.Pitch as Pitch exposing (PitchPosition)
+import Byzantine.PitchPosition as PitchPosition exposing (PitchPosition)
 import Byzantine.Register as Register exposing (Register)
 import Round
 
@@ -97,7 +97,7 @@ frequency : PitchStandard -> Register -> PitchPosition -> Frequency
 frequency pitchStandard register pitchPos =
     let
         position =
-            toFloat (Pitch.unwrapPitchPosition pitchPos - 84)
+            PitchPosition.toFloat pitchPos - 84
     in
     2 ^ (position / 72) * diFrequency pitchStandard * Register.factor register |> Frequency
 

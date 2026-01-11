@@ -6,6 +6,7 @@ import Byzantine.Accidental as Accidental exposing (Accidental)
 import Byzantine.Degree as Degree exposing (Degree(..))
 import Byzantine.Frequency exposing (Frequency(..), PitchStandard)
 import Byzantine.Pitch as Pitch exposing (Pitch)
+import Byzantine.PitchPosition as PitchPosition
 import Byzantine.Register exposing (Register)
 import Byzantine.Scale exposing (Scale)
 import Maybe.Extra as Maybe
@@ -640,13 +641,13 @@ applyAccidentalWithValidation scale { pitchPositions } pitchState degree =
                     Accidental.moriaAdjustment accidental
 
                 positonWithInflection =
-                    Pitch.unwrapPitchPosition (DegreeDataDict.get degree pitchPositions) + inflection
+                    PitchPosition.unwrap (DegreeDataDict.get degree pitchPositions) + inflection
 
                 wouldNotBeInversion =
                     if inflection > 0 then
                         Maybe.unwrap False
                             (\degreeHigher ->
-                                Pitch.unwrapPitchPosition
+                                PitchPosition.unwrap
                                     (DegreeDataDict.get degreeHigher pitchPositions)
                                     > positonWithInflection
                             )
@@ -655,7 +656,7 @@ applyAccidentalWithValidation scale { pitchPositions } pitchState degree =
                     else
                         Maybe.unwrap False
                             (\degreeLower ->
-                                Pitch.unwrapPitchPosition
+                                PitchPosition.unwrap
                                     (DegreeDataDict.get degreeLower pitchPositions)
                                     < positonWithInflection
                             )

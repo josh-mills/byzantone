@@ -46,7 +46,8 @@ as a result of model updates.
 import Basics.Extra exposing (flip)
 import Byzantine.Degree as Degree exposing (Degree)
 import Byzantine.Interval as Interval exposing (Interval)
-import Byzantine.Pitch as Pitch exposing (Pitch, PitchPosition)
+import Byzantine.Pitch as Pitch exposing (Pitch)
+import Byzantine.PitchPosition as PitchPosition exposing (PitchPosition)
 import Byzantine.Scale exposing (Scale)
 import Maybe.Extra
 import Model.DegreeDataDict as DegreeDataDict exposing (DegreeDataDict)
@@ -301,7 +302,7 @@ setScalingFactor : LayoutData -> PitchSpaceData -> PitchSpaceData
 setScalingFactor layoutData pitchSpaceData =
     let
         visibleRangeInMoria =
-            Pitch.unwrapPitchPosition pitchSpaceData.visibleRange.endPosition - Pitch.unwrapPitchPosition pitchSpaceData.visibleRange.startPosition
+            PitchPosition.toFloat pitchSpaceData.visibleRange.endPosition - PitchPosition.toFloat pitchSpaceData.visibleRange.startPosition
     in
     { pitchSpaceData
         | scalingFactor =
@@ -310,13 +311,13 @@ setScalingFactor layoutData pitchSpaceData =
                     - max layoutData.pitchSpace.element.y 128
                     - pitchButtonSize pitchSpaceData.display
                 )
-                    / toFloat visibleRangeInMoria
+                    / visibleRangeInMoria
 
             else
                 (layoutData.pitchSpace.element.width
                     - pitchButtonSize pitchSpaceData.display
                 )
-                    / toFloat visibleRangeInMoria
+                    / visibleRangeInMoria
     }
 
 
@@ -426,7 +427,7 @@ encodePitchPositionContext { pitchPositions } degree =
     let
         getAndEncode =
             Maybe.Extra.unwrap "_"
-                (flip DegreeDataDict.get pitchPositions >> Pitch.unwrapPitchPosition >> String.fromInt)
+                (flip DegreeDataDict.get pitchPositions >> PitchPosition.unwrap >> String.fromInt)
     in
     [ getAndEncode (Degree.step degree -1)
     , getAndEncode (Just degree)

@@ -13,7 +13,8 @@ import Byzantine.Frequency as Frequency exposing (Frequency)
 import Byzantine.Interval as Interval exposing (Interval)
 import Byzantine.IntervalCharacter as IntervalCharacter
 import Byzantine.Martyria as Martyria
-import Byzantine.Pitch as Pitch exposing (Pitch, PitchPosition, PitchString)
+import Byzantine.Pitch as Pitch exposing (Pitch, PitchString)
+import Byzantine.PitchPosition as PitchPosition exposing (PitchPosition)
 import Html exposing (Html, button, div, li, span, text)
 import Html.Attributes as Attr exposing (class, classList)
 import Html.Attributes.Extra as Attr exposing (attributeMaybe)
@@ -330,10 +331,10 @@ viewPitchIndicator pitchSpaceData { pitchStandard, listenRegister, responsivenes
             Frequency.toPitchPosition pitchStandard listenRegister detectedPitch
 
         startPosition =
-            toFloat (Pitch.unwrapPitchPosition pitchSpaceData.visibleRange.startPosition)
+            PitchPosition.toFloat pitchSpaceData.visibleRange.startPosition
 
         endPosition =
-            toFloat (Pitch.unwrapPitchPosition pitchSpaceData.visibleRange.endPosition)
+            PitchPosition.toFloat pitchSpaceData.visibleRange.endPosition
 
         position =
             case PitchSpaceData.displayToLayout pitchSpaceData.display of
@@ -399,7 +400,7 @@ closestDegreeHelper : DegreeDataDict PitchPosition -> Float -> Degree -> { degre
 closestDegreeHelper pitchPositions detectedPitch lowerNeighborCandidate =
     let
         lowerNeighborCandidatePosition =
-            toFloat (Pitch.unwrapPitchPosition (DegreeDataDict.get lowerNeighborCandidate pitchPositions))
+            PitchPosition.toFloat (DegreeDataDict.get lowerNeighborCandidate pitchPositions)
     in
     case ( compare lowerNeighborCandidatePosition detectedPitch, Degree.step lowerNeighborCandidate 1 ) of
         ( GT, _ ) ->
@@ -420,7 +421,7 @@ closestDegreeHelper pitchPositions detectedPitch lowerNeighborCandidate =
         ( LT, Just upperNeighborCandidate ) ->
             let
                 upperNeighborCandidatePosition =
-                    toFloat (Pitch.unwrapPitchPosition (DegreeDataDict.get upperNeighborCandidate pitchPositions))
+                    PitchPosition.toFloat (DegreeDataDict.get upperNeighborCandidate pitchPositions)
             in
             if detectedPitch < upperNeighborCandidatePosition then
                 if abs (lowerNeighborCandidatePosition - detectedPitch) < abs (upperNeighborCandidatePosition - detectedPitch) then
