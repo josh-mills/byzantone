@@ -6,6 +6,7 @@ import Byzantine.Frequency as Frequency exposing (Frequency, PitchStandard(..))
 import Byzantine.IntervalCharacter exposing (..)
 import Byzantine.Martyria as Martyria
 import Byzantine.Pitch as Pitch exposing (Pitch)
+import Byzantine.PitchPosition as PitchPosition
 import Byzantine.Register exposing (Register(..))
 import Byzantine.Scale exposing (Scale(..))
 import Copy
@@ -110,7 +111,7 @@ chantEngineNode audioSettings scale currentPitch currentIson =
         frequency pitch =
             Frequency.frequency audioSettings.pitchStandard
                 audioSettings.playbackRegister
-                (Pitch.pitchPosition scale pitch)
+                (Pitch.position scale pitch)
                 |> Frequency.preciseString
     in
     Html.node "chant-engine"

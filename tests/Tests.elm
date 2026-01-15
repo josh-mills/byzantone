@@ -46,8 +46,7 @@ degreeTests =
                         (\degree ->
                             test (Scale.name scale ++ " pitch position for " ++ Degree.toString degree ++ " is not negative") <|
                                 \_ ->
-                                    Pitch.natural degree
-                                        |> Pitch.pitchPosition scale
+                                    PitchPosition.pitchPosition scale degree Nothing
                                         |> PitchPosition.unwrap
                                         |> Expect.greaterThan -1
                         )

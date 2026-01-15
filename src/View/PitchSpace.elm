@@ -15,7 +15,6 @@ import Byzantine.IntervalCharacter as IntervalCharacter
 import Byzantine.Martyria as Martyria
 import Byzantine.Pitch as Pitch exposing (Pitch, PitchString)
 import Byzantine.PitchPosition as PitchPosition exposing (PitchPosition)
-import Byzantine.Utils as Utils
 import Html exposing (Html, button, div, li, span, text)
 import Html.Attributes as Attr exposing (class, classList)
 import Html.Attributes.Extra as Attr exposing (attributeMaybe)
@@ -479,7 +478,7 @@ viewPitch pitchSpaceData modeSettings pitchState currentPitch degree =
             PitchSpaceData.canBeSelectedAsIson isonStatusIndicator
                 || (case pitchState.proposedAccidental of
                         Apply accidental ->
-                            Utils.isValidInflection modeSettings.scale accidental degree
+                            PitchPosition.isValidInflection modeSettings.scale accidental degree
 
                         CancelAccidental ->
                             DegreeDataDict.get degree pitchState.appliedAccidentals

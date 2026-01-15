@@ -50,7 +50,7 @@ create : Scale -> Pitch -> Pitch -> Interval
 create scale fromPitch toPitch =
     { from = fromPitch
     , to = toPitch
-    , moria = calculateSize (Pitch.pitchPosition scale fromPitch) (Pitch.pitchPosition scale toPitch)
+    , moria = calculateSize (Pitch.position scale fromPitch) (Pitch.position scale toPitch)
     }
 
 

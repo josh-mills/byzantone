@@ -1,6 +1,7 @@
 module Byzantine.PitchPosition exposing
     ( PitchPosition
     , pitchPosition, pitchPositions, unwrap, toFloat
+    , isValidInflection
     )
 
 {-| Pitch positions in moria. Di is fixed at 84.
@@ -20,12 +21,18 @@ attractions and inflections.
 
 @docs pitchPosition, pitchPositions, unwrap, toFloat
 
+
+# Validation
+
+@docs isValidInflection
+
 -}
 
 import Array exposing (Array)
 import Byzantine.Accidental as Accidental exposing (Accidental)
 import Byzantine.Degree as Degree exposing (Degree)
 import Byzantine.Scale exposing (Scale(..))
+import Maybe.Extra
 
 
 {-| Pitch Position in moria. Di is constant at 84.
@@ -48,7 +55,7 @@ toFloat (PitchPosition value) =
     Basics.toFloat value
 
 
-{-| Calculate the pitch position in moria for the given degree and optional accidental.
+{-| Calculate the pitch position in moria for the given pitch.
 Di is constant at 84.
 
 (We might want an advanced setting to use Ke for mode II instead as equivalent
@@ -124,3 +131,52 @@ hardChromaticPitchPositions =
     [ 0, 12, 18, 38, 42, 54, 60, 80, 84, 96, 102, 122, 126, 136, 144 ]
         |> Array.fromList
         |> Array.map PitchPosition
+
+
+
+-- VALIDATION
+
+
+{-| Given the scale, does it make sense for the proposed accidental be applied
+to the given degree? An inflected pitch cannot be at or beyond the pitch
+position of the next degree in the direction of inflection.
+-}
+isValidInflection : Scale -> Accidental -> Degree -> Bool
+isValidInflection scale accidental degree =
+    let
+        proposedPitchPosition =
+            pitchPosition scale degree (Just accidental)
+                |> unwrap
+
+        naturalPosition degree_ =
+            pitchPosition scale degree_ Nothing
+                |> unwrap
+    in
+    case accidentalInflectionDirection accidental of
+        Up ->
+            Degree.step degree 1
+                |> Maybe.Extra.unwrap False
+                    (\nextDegree ->
+                        naturalPosition nextDegree > proposedPitchPosition
+                    )
+
+        Down ->
+            Degree.step degree -1
+                |> Maybe.Extra.unwrap False
+                    (\nextDegree ->
+                        naturalPosition nextDegree < proposedPitchPosition
+                    )
+
+
+type AccidentalInflectionDirection
+    = Up
+    | Down
+
+
+accidentalInflectionDirection : Accidental -> AccidentalInflectionDirection
+accidentalInflectionDirection accidental =
+    if Accidental.moriaAdjustment accidental > 0 then
+        Up
+
+    else
+        Down

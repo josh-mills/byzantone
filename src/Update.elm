@@ -9,7 +9,6 @@ import Byzantine.Pitch as Pitch exposing (Pitch)
 import Byzantine.PitchPosition as PitchPosition
 import Byzantine.Register exposing (Register)
 import Byzantine.Scale exposing (Scale)
-import Byzantine.Utils as Utils
 import Maybe.Extra as Maybe
 import Model exposing (Modal, Model)
 import Model.AudioSettings as AudioSettings exposing (AudioSettings)
@@ -636,7 +635,7 @@ applyAccidentalWithValidation scale { pitchPositions } pitchState degree =
         Apply accidental ->
             let
                 isValidInflection =
-                    Utils.isValidInflection scale accidental degree
+                    PitchPosition.isValidInflection scale accidental degree
 
                 inflection =
                     Accidental.moriaAdjustment accidental

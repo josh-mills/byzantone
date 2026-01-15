@@ -95,7 +95,7 @@ isValid : Scale -> Pitch -> Movement -> Bool
 isValid scale currentPitch movement =
     let
         positionOf pitch =
-            Pitch.pitchPosition scale pitch
+            Pitch.position scale pitch
     in
     case movement of
         AscendTo targetPitch ->

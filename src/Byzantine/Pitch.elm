@@ -3,8 +3,7 @@ module Byzantine.Pitch exposing
     , natural, inflected, from, applyAccidental
     , PitchString, encode, decode
     , unwrapDegree, unwrapAccidental
-    , isInflected, toString
-    , pitchPosition
+    , isInflected, toString, position
     )
 
 {-| Pitch representation and operations.
@@ -37,20 +36,14 @@ attractions and inflections.
 
 ## Misc
 
-@docs isInflected, toString
-
-
-## Pitch Positions
-
-@docs pitchPosition
+@docs isInflected, toString, position
 
 -}
 
 import Byzantine.Accidental as Accidental exposing (Accidental)
 import Byzantine.Degree as Degree exposing (Degree)
-import Byzantine.PitchPosition as PitchPosition
+import Byzantine.PitchPosition as PitchPosition exposing (PitchPosition)
 import Byzantine.Scale as Scale exposing (Scale(..))
-import Byzantine.Utils as Utils
 import Tuple.Trio as Trio
 
 
@@ -131,7 +124,7 @@ from : Scale -> Maybe Accidental -> Degree -> Pitch
 from scale maybeAccidental degree =
     case maybeAccidental of
         Just accidental ->
-            if Utils.isValidInflection scale accidental degree then
+            if PitchPosition.isValidInflection scale accidental degree then
                 Inflected accidental degree
 
             else
@@ -152,7 +145,7 @@ natural degree =
 -}
 inflected : Scale -> Accidental -> Degree -> Result String Pitch
 inflected scale accidental degree =
-    if Utils.isValidInflection scale accidental degree then
+    if PitchPosition.isValidInflection scale accidental degree then
         Ok (Inflected accidental degree)
 
     else
@@ -181,7 +174,7 @@ applyAccidental scale pitch maybeAccidental =
             Natural degree
 
         Just accidental ->
-            if Utils.isValidInflection scale accidental degree then
+            if PitchPosition.isValidInflection scale accidental degree then
                 Inflected accidental degree
 
             else
@@ -236,10 +229,8 @@ toString pitch =
             Degree.toString degree ++ " " ++ Accidental.toString accidental
 
 
-{-| Calculate the pitch position in moria for sthe given pitch. This is a
-convenience function that unwraps the pitch and delegates to
-PitchPosition.pitchPosition.
+{-| Get the pitch position in moria for the given pitch within a scale.
 -}
-pitchPosition : Scale -> Pitch -> PitchPosition.PitchPosition
-pitchPosition scale pitch =
+position : Scale -> Pitch -> PitchPosition
+position scale pitch =
     PitchPosition.pitchPosition scale (unwrapDegree pitch) (unwrapAccidental pitch)

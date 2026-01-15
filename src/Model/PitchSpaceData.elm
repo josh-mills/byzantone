@@ -161,7 +161,7 @@ init layoutData modeSettings pitchState =
     , pitchPositions =
         DegreeDataDict.init
             (pitchWithAccidental
-                >> Pitch.pitchPosition modeSettings.scale
+                >> (\pitch -> Pitch.position modeSettings.scale pitch)
             )
     , pitchVisibility = DegreeDataDict.init (visibility visibleRangeData)
     , scalingFactor = 10
@@ -208,8 +208,8 @@ constructVisibleRange : Scale -> Pitch -> Pitch -> VisibleRange
 constructVisibleRange scale startPitch endPitch =
     { startDegreeIndex = Degree.indexOf (Pitch.unwrapDegree startPitch)
     , endDegreeIndex = Degree.indexOf (Pitch.unwrapDegree endPitch)
-    , startPosition = Pitch.pitchPosition scale startPitch
-    , endPosition = Pitch.pitchPosition scale endPitch
+    , startPosition = Pitch.position scale startPitch
+    , endPosition = Pitch.position scale endPitch
     }
 
 
