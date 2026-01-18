@@ -1,6 +1,6 @@
 module Byzantine.Interval exposing
     ( Interval
-    , create, size
+    , create, unwrapSize
     , encode, decode
     )
 
@@ -14,7 +14,7 @@ module Byzantine.Interval exposing
 
 # Functions
 
-@docs create, size
+@docs create, unwrapSize
 
 
 # Encode/Decode
@@ -49,8 +49,8 @@ create scale fromPitch toPitch =
 
 {-| Get the size in moria from an Interval.
 -}
-size : Interval -> Int
-size interval =
+unwrapSize : Interval -> Int
+unwrapSize interval =
     IntervalSize.toInt interval.moria
 
 
@@ -60,7 +60,7 @@ encode : Scale -> Interval -> String
 encode scale interval =
     Pitch.encode scale interval.from
         ++ "~"
-        ++ String.fromInt (size interval)
+        ++ String.fromInt (unwrapSize interval)
         ++ "~"
         ++ Pitch.encode scale interval.to
 
@@ -78,32 +78,28 @@ decode intervalString =
         [ fromPitchStr, moriaStr, toPitchStr ] ->
             Result.map3
                 (\( fromScale, fromPitch ) expectedMoria ( toScale, toPitch ) ->
-                    if fromScale == toScale then
-                        let
-                            calculatedInterval =
-                                create fromScale fromPitch toPitch
-
-                            calculatedMoria =
-                                size calculatedInterval
-                        in
-                        if calculatedMoria == expectedMoria then
-                            Ok calculatedInterval
-
-                        else
-                            Err
-                                ("Moria mismatch: expected "
-                                    ++ String.fromInt expectedMoria
-                                    ++ " but calculated "
-                                    ++ String.fromInt calculatedMoria
-                                )
-
-                    else
+                    let
+                        interval =
+                            create fromScale fromPitch toPitch
+                    in
+                    if fromScale /= toScale then
                         Err
                             ("Scale mismatch: from pitch uses "
                                 ++ Scale.encode fromScale
                                 ++ " but to pitch uses "
                                 ++ Scale.encode toScale
                             )
+
+                    else if unwrapSize interval /= expectedMoria then
+                        Err
+                            ("Moria mismatch: expected "
+                                ++ String.fromInt expectedMoria
+                                ++ " but calculated "
+                                ++ String.fromInt (unwrapSize interval)
+                            )
+
+                    else
+                        Ok interval
                 )
                 (Pitch.decode fromPitchStr)
                 (String.toInt moriaStr

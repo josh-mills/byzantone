@@ -144,7 +144,7 @@ viewIntervalLazy currentPitchString display scalingFactor intervalString positio
             Interval.decode intervalString
 
         intervalMoria =
-            Result.Extra.unwrap -1 Interval.size interval
+            Result.Extra.unwrap -1 Interval.unwrapSize interval
 
         intervalFromDegree =
             Result.Extra.unwrap "err"

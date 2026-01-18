@@ -6,7 +6,6 @@ import Byzantine.Frequency as Frequency exposing (Frequency, PitchStandard(..))
 import Byzantine.IntervalCharacter exposing (..)
 import Byzantine.Martyria as Martyria
 import Byzantine.Pitch as Pitch exposing (Pitch)
-import Byzantine.PitchPosition as PitchPosition
 import Byzantine.Register exposing (Register(..))
 import Byzantine.Scale exposing (Scale(..))
 import Copy
