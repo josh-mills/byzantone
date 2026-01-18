@@ -23,6 +23,7 @@ module Byzantine.Frequency exposing
 
 -}
 
+import Byzantine.PitchPosition as PitchPosition exposing (PitchPosition)
 import Byzantine.Register as Register exposing (Register)
 import Round
 
@@ -88,15 +89,15 @@ diFrequency pitchStandard =
 {-| Calculate frequency relative to a fixed pitch for Natural Di, according to
 the given pitch standard and register.
 
-Takes a pitch position in moria and converts it to a frequency in Hz. The pitch
-position is relative to Natural Di at position 84.
+Takes a PitchPosition and converts it to a frequency in Hz. The pitch position
+is relative to Natural Di at position 84.
 
 -}
-frequency : PitchStandard -> Register -> Int -> Frequency
+frequency : PitchStandard -> Register -> PitchPosition -> Frequency
 frequency pitchStandard register pitchPos =
     let
         position =
-            toFloat (pitchPos - 84)
+            PitchPosition.toFloat pitchPos - 84
     in
     2 ^ (position / 72) * diFrequency pitchStandard * Register.factor register |> Frequency
 

@@ -45,7 +45,9 @@ as a result of model updates.
 
 import Basics.Extra exposing (flip)
 import Byzantine.Degree as Degree exposing (Degree)
-import Byzantine.Pitch as Pitch exposing (Interval, Pitch)
+import Byzantine.Interval as Interval exposing (Interval)
+import Byzantine.Pitch as Pitch exposing (Pitch)
+import Byzantine.PitchPosition as PitchPosition exposing (PitchPosition)
 import Byzantine.Scale exposing (Scale)
 import Maybe.Extra
 import Model.DegreeDataDict as DegreeDataDict exposing (DegreeDataDict)
@@ -72,7 +74,7 @@ Elements include:
   - **`pitches`** – a `DegreedataDict Pitch`, indicating the specific pitch to
     display in the pitch column.
 
-  - **`pitchPositions`** – a `DegreeDataDict Int`, representing the pitch
+  - **`pitchPositions`** – a `DegreeDataDict PitchPosition`, representing the pitch
     position (in moria) of each degree with respect to the given scale, current
     pitch, and proposed movement with proposed accidental applied as
     appropriate.
@@ -100,7 +102,7 @@ type alias PitchSpaceData =
     { display : Display
     , isonIndicators : DegreeDataDict IsonSelectionIndicator
     , pitches : DegreeDataDict Pitch
-    , pitchPositions : DegreeDataDict Int
+    , pitchPositions : DegreeDataDict PitchPosition
     , pitchVisibility : DegreeDataDict PositionWithinVisibleRange
     , scalingFactor : Float
     , visibleRange : VisibleRange
@@ -158,9 +160,7 @@ init layoutData modeSettings pitchState =
             )
     , pitchPositions =
         DegreeDataDict.init
-            (pitchWithAccidental
-                >> Pitch.pitchPosition modeSettings.scale
-            )
+            (Pitch.position modeSettings.scale << pitchWithAccidental)
     , pitchVisibility = DegreeDataDict.init (visibility visibleRangeData)
     , scalingFactor = 10
     , visibleRange = visibleRangeData
@@ -206,8 +206,8 @@ constructVisibleRange : Scale -> Pitch -> Pitch -> VisibleRange
 constructVisibleRange scale startPitch endPitch =
     { startDegreeIndex = Degree.indexOf (Pitch.unwrapDegree startPitch)
     , endDegreeIndex = Degree.indexOf (Pitch.unwrapDegree endPitch)
-    , startPosition = Pitch.pitchPosition scale startPitch
-    , endPosition = Pitch.pitchPosition scale endPitch
+    , startPosition = Pitch.position scale startPitch
+    , endPosition = Pitch.position scale endPitch
     }
 
 
@@ -300,7 +300,7 @@ setScalingFactor : LayoutData -> PitchSpaceData -> PitchSpaceData
 setScalingFactor layoutData pitchSpaceData =
     let
         visibleRangeInMoria =
-            pitchSpaceData.visibleRange.endPosition - pitchSpaceData.visibleRange.startPosition
+            PitchPosition.toFloat pitchSpaceData.visibleRange.endPosition - PitchPosition.toFloat pitchSpaceData.visibleRange.startPosition
     in
     { pitchSpaceData
         | scalingFactor =
@@ -309,13 +309,13 @@ setScalingFactor layoutData pitchSpaceData =
                     - max layoutData.pitchSpace.element.y 128
                     - pitchButtonSize pitchSpaceData.display
                 )
-                    / toFloat visibleRangeInMoria
+                    / visibleRangeInMoria
 
             else
                 (layoutData.pitchSpace.element.width
                     - pitchButtonSize pitchSpaceData.display
                 )
-                    / toFloat visibleRangeInMoria
+                    / visibleRangeInMoria
     }
 
 
@@ -335,8 +335,8 @@ range.
 type alias VisibleRange =
     { startDegreeIndex : Int
     , endDegreeIndex : Int
-    , startPosition : Int
-    , endPosition : Int
+    , startPosition : PitchPosition
+    , endPosition : PitchPosition
     }
 
 
@@ -425,7 +425,7 @@ encodePitchPositionContext { pitchPositions } degree =
     let
         getAndEncode =
             Maybe.Extra.unwrap "_"
-                (flip DegreeDataDict.get pitchPositions >> String.fromInt)
+                (flip DegreeDataDict.get pitchPositions >> PitchPosition.unwrap >> String.fromInt)
     in
     [ getAndEncode (Degree.step degree -1)
     , getAndEncode (Just degree)
@@ -576,8 +576,8 @@ canBeSelectedAsIson indicator =
 -- INTERVALS
 
 
-intervalsWithVisibility : PitchSpaceData -> Movement -> List ( Interval, PositionWithinVisibleRange )
-intervalsWithVisibility pitchSpaceData movement =
+intervalsWithVisibility : Scale -> PitchSpaceData -> Movement -> List ( Interval, PositionWithinVisibleRange )
+intervalsWithVisibility scale pitchSpaceData movement =
     let
         maybeOverrideMovementTarget =
             Movement.unwrapTargetPitch movement
@@ -603,29 +603,31 @@ intervalsWithVisibility pitchSpaceData movement =
                 , DegreeDataDict.get degree pitchSpaceData.pitchPositions
                 )
             )
-        |> intervalsHelper pitchSpaceData
+        |> intervalsHelper scale pitchSpaceData
 
 
 intervalsHelper :
-    PitchSpaceData
-    -> List ( Pitch, Int )
+    Scale
+    -> PitchSpaceData
+    -> List ( Pitch, PitchPosition )
     -> List ( Interval, PositionWithinVisibleRange )
-intervalsHelper pitchSpaceData pitchesWithPositions =
+intervalsHelper scale pitchSpaceData pitchesWithPositions =
     case pitchesWithPositions of
         a :: b :: rest ->
-            getIntervalWithVisibility pitchSpaceData a b
-                :: intervalsHelper pitchSpaceData (b :: rest)
+            getIntervalWithVisibility scale pitchSpaceData a b
+                :: intervalsHelper scale pitchSpaceData (b :: rest)
 
         _ ->
             []
 
 
 getIntervalWithVisibility :
-    PitchSpaceData
-    -> ( Pitch, Int )
-    -> ( Pitch, Int )
+    Scale
+    -> PitchSpaceData
+    -> ( Pitch, PitchPosition )
+    -> ( Pitch, PitchPosition )
     -> ( Interval, PositionWithinVisibleRange )
-getIntervalWithVisibility { visibleRange } ( fromPitch, fromPitchPosition ) ( toPitch, toPitchPosition ) =
+getIntervalWithVisibility scale { visibleRange } ( fromPitch, fromPitchPosition ) ( toPitch, toPitchPosition ) =
     let
         fromPitchDegreeIndex =
             Pitch.unwrapDegree fromPitch |> Degree.indexOf
@@ -639,10 +641,7 @@ getIntervalWithVisibility { visibleRange } ( fromPitch, fromPitchPosition ) ( to
         visibleRangeEndDegreeIndex =
             visibleRange.endDegreeIndex
     in
-    ( { from = fromPitch
-      , to = toPitch
-      , moria = toPitchPosition - fromPitchPosition
-      }
+    ( Interval.create scale fromPitch toPitch
     , if toPitchDegreeIndex <= visibleRangeStartIndex then
         Below
 

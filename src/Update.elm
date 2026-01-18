@@ -6,6 +6,7 @@ import Byzantine.Accidental as Accidental exposing (Accidental)
 import Byzantine.Degree as Degree exposing (Degree(..))
 import Byzantine.Frequency exposing (Frequency(..), PitchStandard)
 import Byzantine.Pitch as Pitch exposing (Pitch)
+import Byzantine.PitchPosition as PitchPosition
 import Byzantine.Register exposing (Register)
 import Byzantine.Scale exposing (Scale)
 import Maybe.Extra as Maybe
@@ -576,7 +577,7 @@ processPitchButtonClick model degree =
                                 model.pitchState.appliedAccidentals
                             )
 
-                        ( ison, Apply accidental, True ) ->
+                        ( ison, Apply _, True ) ->
                             ( ison
                             , model.pitchState.currentDegree
                             , applyAccidentalWithValidation model.modeSettings.scale
@@ -593,7 +594,7 @@ processPitchButtonClick model degree =
                                 model.pitchState.appliedAccidentals
                             )
 
-                        ( ison, Apply accidental, False ) ->
+                        ( ison, Apply _, False ) ->
                             ( ison
                             , Just degree
                             , applyAccidentalWithValidation model.modeSettings.scale
@@ -634,26 +635,29 @@ applyAccidentalWithValidation scale { pitchPositions } pitchState degree =
         Apply accidental ->
             let
                 isValidInflection =
-                    Pitch.isValidInflection scale accidental degree
-
-                inflection =
-                    Accidental.moriaAdjustment accidental
+                    PitchPosition.isValidInflection scale accidental degree
 
                 positonWithInflection =
-                    DegreeDataDict.get degree pitchPositions + inflection
+                    PitchPosition.inflect (DegreeDataDict.get degree pitchPositions) accidental
 
                 wouldNotBeInversion =
-                    if inflection > 0 then
+                    if Accidental.moriaAdjustment accidental > 0 then
                         Maybe.unwrap False
                             (\degreeHigher ->
-                                DegreeDataDict.get degreeHigher pitchPositions > positonWithInflection
+                                PitchPosition.compare
+                                    (DegreeDataDict.get degreeHigher pitchPositions)
+                                    positonWithInflection
+                                    == GT
                             )
                             (Degree.step degree 1)
 
                     else
                         Maybe.unwrap False
                             (\degreeLower ->
-                                DegreeDataDict.get degreeLower pitchPositions < positonWithInflection
+                                PitchPosition.compare
+                                    (DegreeDataDict.get degreeLower pitchPositions)
+                                    positonWithInflection
+                                    == LT
                             )
                             (Degree.step degree -1)
             in

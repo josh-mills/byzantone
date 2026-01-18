@@ -7,7 +7,8 @@ for example, there is no purpose in modeling the ison.
 
 import Byzantine.Accidental exposing (Accidental)
 import Byzantine.Degree as Degree
-import Byzantine.Pitch as Pitch exposing (Interval, Pitch)
+import Byzantine.Interval exposing (Interval)
+import Byzantine.Pitch as Pitch exposing (Pitch)
 import Byzantine.Scale exposing (Scale)
 
 
@@ -91,16 +92,12 @@ modal framework, but it's a bit inelegant in the abstract.
 -}
 isValid : Scale -> Pitch -> Movement -> Bool
 isValid scale currentPitch movement =
-    let
-        positionOf =
-            Pitch.pitchPosition scale
-    in
     case movement of
         AscendTo targetPitch ->
-            positionOf targetPitch > positionOf currentPitch
+            Pitch.compare scale targetPitch currentPitch == GT
 
         DescendTo targetPitch ->
-            positionOf targetPitch < positionOf currentPitch
+            Pitch.compare scale targetPitch currentPitch == LT
 
         None ->
             True

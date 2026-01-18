@@ -3,13 +3,10 @@ module Byzantine.Pitch exposing
     , natural, inflected, from, applyAccidental
     , PitchString, encode, decode
     , unwrapDegree, unwrapAccidental
-    , isInflected, isValidInflection, toString
-    , pitchPosition, pitchPositions
-    , getPitchFrequency
-    , Interval, encodeInterval, decodeInterval
+    , isInflected, toString, position, compare
     )
 
-{-| Pitch positions and derived intervals. Di is fixed at 84.
+{-| Pitch representation and operations.
 
 In actual practice, this will need to be based on the tetrachord for a given
 mode, not a fixed position based merely on the scale. So there will be
@@ -39,33 +36,14 @@ attractions and inflections.
 
 ## Misc
 
-@docs isInflected, isValidInflection, toString
-
-
-## Pitch Positions
-
-@docs pitchPosition, pitchPositions
-
-
-# Frequency
-
-@docs getPitchFrequency
-
-
-# Intervals
-
-@docs Interval, encodeInterval, decodeInterval
+@docs isInflected, toString, position, compare
 
 -}
 
-import Array exposing (Array)
 import Byzantine.Accidental as Accidental exposing (Accidental)
 import Byzantine.Degree as Degree exposing (Degree)
-import Byzantine.Frequency as Frequency exposing (Frequency, PitchStandard)
-import Byzantine.Register exposing (Register)
+import Byzantine.PitchPosition as PitchPosition exposing (PitchPosition)
 import Byzantine.Scale as Scale exposing (Scale(..))
-import Maybe.Extra
-import Result exposing (Result)
 import Tuple.Trio as Trio
 
 
@@ -146,7 +124,7 @@ from : Scale -> Maybe Accidental -> Degree -> Pitch
 from scale maybeAccidental degree =
     case maybeAccidental of
         Just accidental ->
-            if isValidInflection scale accidental degree then
+            if PitchPosition.isValidInflection scale accidental degree then
                 Inflected accidental degree
 
             else
@@ -167,7 +145,7 @@ natural degree =
 -}
 inflected : Scale -> Accidental -> Degree -> Result String Pitch
 inflected scale accidental degree =
-    if isValidInflection scale accidental degree then
+    if PitchPosition.isValidInflection scale accidental degree then
         Ok (Inflected accidental degree)
 
     else
@@ -196,60 +174,11 @@ applyAccidental scale pitch maybeAccidental =
             Natural degree
 
         Just accidental ->
-            if isValidInflection scale accidental degree then
+            if PitchPosition.isValidInflection scale accidental degree then
                 Inflected accidental degree
 
             else
                 Natural degree
-
-
-
--- VALIDATION
-
-
-{-| Given the scale, does it make sense for the proposed accidental be applied
-to the given degree? An inflected pitch cannot be at or beyond the pitch
-position of the next degree in the direction of inflection.
--}
-isValidInflection : Scale -> Accidental -> Degree -> Bool
-isValidInflection scale accidental degree =
-    let
-        proposedPitchPosition =
-            Inflected accidental degree
-                |> pitchPosition scale
-
-        naturalPosition degree_ =
-            Natural degree_
-                |> pitchPosition scale
-    in
-    case accidentalInflectionDirection accidental of
-        Up ->
-            Degree.step degree 1
-                |> Maybe.Extra.unwrap False
-                    (\nextDegree ->
-                        naturalPosition nextDegree > proposedPitchPosition
-                    )
-
-        Down ->
-            Degree.step degree -1
-                |> Maybe.Extra.unwrap False
-                    (\nextDegree ->
-                        naturalPosition nextDegree < proposedPitchPosition
-                    )
-
-
-type AccidentalInflectionDirection
-    = Up
-    | Down
-
-
-accidentalInflectionDirection : Accidental -> AccidentalInflectionDirection
-accidentalInflectionDirection accidental =
-    if Accidental.moriaAdjustment accidental > 0 then
-        Up
-
-    else
-        Down
 
 
 
@@ -300,139 +229,15 @@ toString pitch =
             Degree.toString degree ++ " " ++ Accidental.toString accidental
 
 
-
--- PITCH POSITIONS
-
-
-{-| Calculate the pitch position in moria for the degree. Di is constant at 84.
-
-(We might want an advanced setting to use Ke for mode II instead as equivalent
-to Di for other modes; see discussion in Melling.)
-
+{-| Get the pitch position in moria for the given pitch within a scale.
 -}
-pitchPosition : Scale -> Pitch -> Int
-pitchPosition scale pitch =
-    let
-        ( degree, moriaAdjustment ) =
-            case pitch of
-                Natural degree_ ->
-                    ( degree_, identity )
-
-                Inflected accidental degree_ ->
-                    ( degree_, (+) (Accidental.moriaAdjustment accidental) )
-    in
-    pitchPositions scale
-        |> Array.get (Degree.indexOf degree)
-        |> Maybe.map moriaAdjustment
-        -- tests ensure that the -1 sentinel value never occurs.
-        |> Maybe.withDefault -1
+position : Scale -> Pitch -> PitchPosition
+position scale pitch =
+    PitchPosition.pitchPosition scale (unwrapDegree pitch) (unwrapAccidental pitch)
 
 
-pitchPositions : Scale -> Array Int
-pitchPositions scale =
-    case scale of
-        Diatonic ->
-            diatonicPitchPositions
-
-        Enharmonic ->
-            enharmonicPitchPositions
-
-        SoftChromatic ->
-            softChromaticPitchPositions
-
-        HardChromatic ->
-            hardChromaticPitchPositions
-
-
-diatonicPitchPositions : Array Int
-diatonicPitchPositions =
-    Array.fromList [ 0, 12, 24, 34, 42, 54, 64, 72, 84, 96, 106, 114, 126, 136, 144 ]
-
-
-enharmonicPitchPositions : Array Int
-enharmonicPitchPositions =
-    Array.fromList [ 0, 12, 24, 30, 42, 54, 66, 72, 84, 96, 102, 114, 126, 138, 144 ]
-
-
-{-| Michael Tsiappoutas gives slightly different positions for this: he shows 7
-for the smaller steps rather than 8, and 9 rather than 10 for others. It may be
-worth exploring this and providing this as an option, if this is a standard
-tradition to reflect in the app.
+{-| Compare two pitches within a scale by their pitch positions.
 -}
-softChromaticPitchPositions : Array Int
-softChromaticPitchPositions =
-    Array.fromList [ 0, 8, 22, 30, 42, 50, 64, 72, 84, 92, 106, 114, 126, 134, 148 ]
-
-
-hardChromaticPitchPositions : Array Int
-hardChromaticPitchPositions =
-    Array.fromList [ 0, 12, 18, 38, 42, 54, 60, 80, 84, 96, 102, 122, 126, 136, 144 ]
-
-
-{-| Calculate frequency for a pitch using the given pitch standard and register.
--}
-getPitchFrequency : PitchStandard -> Register -> Scale -> Pitch -> Frequency
-getPitchFrequency pitchStandard register scale pitch =
-    pitchPosition scale pitch
-        |> Frequency.frequency pitchStandard register
-
-
-
--- INTERVALS
-
-
-{-| TODO: this should be reconsidered.
--}
-type alias Interval =
-    { from : Pitch
-    , to : Pitch
-    , moria : Int
-    }
-
-
-encodeInterval : Scale -> Interval -> String
-encodeInterval scale interval =
-    encode scale interval.from
-        ++ "~"
-        ++ String.fromInt interval.moria
-        ++ "~"
-        ++ encode scale interval.to
-
-
-{-| Decode a string representation of an interval back into an Interval record.
-The string must be in the format produced by encodeInterval:
-`<encoded_from_pitch>~<moria>~<encoded_to_pitch>`
-
-Both pitches must use the same scale, otherwise an error is returned.
-
--}
-decodeInterval : String -> Result String Interval
-decodeInterval intervalString =
-    case String.split "~" intervalString of
-        [ fromPitchStr, moriaStr, toPitchStr ] ->
-            Result.map3
-                (\( fromScale, fromPitch ) moria ( toScale, toPitch ) ->
-                    if fromScale == toScale then
-                        Ok
-                            { from = fromPitch
-                            , to = toPitch
-                            , moria = moria
-                            }
-
-                    else
-                        Err
-                            ("Scale mismatch: from pitch uses "
-                                ++ Scale.encode fromScale
-                                ++ " but to pitch uses "
-                                ++ Scale.encode toScale
-                            )
-                )
-                (decode fromPitchStr)
-                (String.toInt moriaStr
-                    |> Result.fromMaybe ("Invalid moria value: " ++ moriaStr)
-                )
-                (decode toPitchStr)
-                |> Result.andThen identity
-
-        _ ->
-            Err ("Invalid interval format: " ++ intervalString)
+compare : Scale -> Pitch -> Pitch -> Order
+compare scale pitch1 pitch2 =
+    PitchPosition.compare (position scale pitch1) (position scale pitch2)

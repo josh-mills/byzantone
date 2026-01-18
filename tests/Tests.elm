@@ -4,6 +4,7 @@ import Array
 import Byzantine.Accidental as Accidental exposing (Accidental(..))
 import Byzantine.Degree as Degree exposing (Degree(..))
 import Byzantine.Pitch as Pitch exposing (Pitch(..))
+import Byzantine.PitchPosition as PitchPosition
 import Byzantine.Scale as Scale exposing (Scale(..))
 import Expect
 import List.Extra
@@ -45,7 +46,9 @@ degreeTests =
                         (\degree ->
                             test (Scale.name scale ++ " pitch position for " ++ Degree.toString degree ++ " is not negative") <|
                                 \_ ->
-                                    Expect.greaterThan -1 (Pitch.pitchPosition scale (Pitch.natural degree))
+                                    PitchPosition.pitchPosition scale degree Nothing
+                                        |> PitchPosition.unwrap
+                                        |> Expect.greaterThan -1
                         )
                         gamutBuilder
                 )

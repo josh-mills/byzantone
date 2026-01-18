@@ -10,9 +10,11 @@ import Byzantine.ByzHtml.Interval as ByzHtmlInterval
 import Byzantine.ByzHtml.Martyria as ByzHtmlMartyria
 import Byzantine.Degree as Degree exposing (Degree)
 import Byzantine.Frequency as Frequency exposing (Frequency)
+import Byzantine.Interval as Interval exposing (Interval)
 import Byzantine.IntervalCharacter as IntervalCharacter
 import Byzantine.Martyria as Martyria
-import Byzantine.Pitch as Pitch exposing (Interval, Pitch, PitchString)
+import Byzantine.Pitch as Pitch exposing (Pitch, PitchString)
+import Byzantine.PitchPosition as PitchPosition exposing (PitchPosition)
 import Html exposing (Html, button, div, li, span, text)
 import Html.Attributes as Attr exposing (class, classList)
 import Html.Attributes.Extra as Attr exposing (attributeMaybe)
@@ -103,7 +105,7 @@ viewIntervals pitchSpaceData modeSettings pitchState =
             :: listAttributes pitchSpaceData.display
         )
         (List.map (viewInterval pitchSpaceData modeSettings pitchState)
-            (PitchSpaceData.intervalsWithVisibility pitchSpaceData pitchState.proposedMovement)
+            (PitchSpaceData.intervalsWithVisibility modeSettings.scale pitchSpaceData pitchState.proposedMovement)
         )
 
 
@@ -123,7 +125,7 @@ viewInterval pitchSpaceData modeSettings pitchState ( interval, position ) =
         currentPitchString
         pitchSpaceData.display
         pitchSpaceData.scalingFactor
-        (Pitch.encodeInterval modeSettings.scale interval)
+        (Interval.encode modeSettings.scale interval)
         position
         shouldHighlight
 
@@ -139,10 +141,10 @@ viewIntervalLazy :
 viewIntervalLazy currentPitchString display scalingFactor intervalString position shouldHighlight =
     let
         interval =
-            Pitch.decodeInterval intervalString
+            Interval.decode intervalString
 
         intervalMoria =
-            Result.Extra.unwrap -1 .moria interval
+            Result.Extra.unwrap -1 Interval.unwrapSize interval
 
         intervalFromDegree =
             Result.Extra.unwrap "err"
@@ -328,13 +330,19 @@ viewPitchIndicator pitchSpaceData { pitchStandard, listenRegister, responsivenes
         detectedPitchInMoria =
             Frequency.toPitchPosition pitchStandard listenRegister detectedPitch
 
+        startPosition =
+            PitchPosition.toFloat pitchSpaceData.visibleRange.startPosition
+
+        endPosition =
+            PitchPosition.toFloat pitchSpaceData.visibleRange.endPosition
+
         position =
             case PitchSpaceData.displayToLayout pitchSpaceData.display of
                 Vertical ->
-                    Styles.top (pitchSpaceData.scalingFactor * (toFloat pitchSpaceData.visibleRange.endPosition - detectedPitchInMoria))
+                    Styles.top (pitchSpaceData.scalingFactor * (endPosition - detectedPitchInMoria))
 
                 Horizontal ->
-                    Styles.left (pitchSpaceData.scalingFactor * (detectedPitchInMoria - toFloat pitchSpaceData.visibleRange.startPosition))
+                    Styles.left (pitchSpaceData.scalingFactor * (detectedPitchInMoria - startPosition))
 
         offset =
             -- TODO: there's functionality here to build out
@@ -368,7 +376,7 @@ viewPitchIndicator pitchSpaceData { pitchStandard, listenRegister, responsivenes
         []
 
 
-closestDegree : DegreeDataDict Int -> Float -> { degree : Degree, offset : Float }
+closestDegree : DegreeDataDict PitchPosition -> Float -> { degree : Degree, offset : Float }
 closestDegree pitchPositions detectedPitchInMoria =
     let
         initialGuessDegreeIndex =
@@ -388,11 +396,11 @@ closestDegree pitchPositions detectedPitchInMoria =
     closestDegreeHelper pitchPositions detectedPitchInMoria initialGuessDegree
 
 
-closestDegreeHelper : DegreeDataDict Int -> Float -> Degree -> { degree : Degree, offset : Float }
+closestDegreeHelper : DegreeDataDict PitchPosition -> Float -> Degree -> { degree : Degree, offset : Float }
 closestDegreeHelper pitchPositions detectedPitch lowerNeighborCandidate =
     let
         lowerNeighborCandidatePosition =
-            toFloat (DegreeDataDict.get lowerNeighborCandidate pitchPositions)
+            PitchPosition.toFloat (DegreeDataDict.get lowerNeighborCandidate pitchPositions)
     in
     case ( compare lowerNeighborCandidatePosition detectedPitch, Degree.step lowerNeighborCandidate 1 ) of
         ( GT, _ ) ->
@@ -413,7 +421,7 @@ closestDegreeHelper pitchPositions detectedPitch lowerNeighborCandidate =
         ( LT, Just upperNeighborCandidate ) ->
             let
                 upperNeighborCandidatePosition =
-                    toFloat (DegreeDataDict.get upperNeighborCandidate pitchPositions)
+                    PitchPosition.toFloat (DegreeDataDict.get upperNeighborCandidate pitchPositions)
             in
             if detectedPitch < upperNeighborCandidatePosition then
                 if abs (lowerNeighborCandidatePosition - detectedPitch) < abs (upperNeighborCandidatePosition - detectedPitch) then
@@ -470,7 +478,7 @@ viewPitch pitchSpaceData modeSettings pitchState currentPitch degree =
             PitchSpaceData.canBeSelectedAsIson isonStatusIndicator
                 || (case pitchState.proposedAccidental of
                         Apply accidental ->
-                            Pitch.isValidInflection modeSettings.scale accidental degree
+                            PitchPosition.isValidInflection modeSettings.scale accidental degree
 
                         CancelAccidental ->
                             DegreeDataDict.get degree pitchState.appliedAccidentals

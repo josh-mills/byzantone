@@ -108,10 +108,9 @@ chantEngineNode : AudioSettings -> Scale -> Maybe Pitch -> Maybe Pitch -> Html m
 chantEngineNode audioSettings scale currentPitch currentIson =
     let
         frequency pitch =
-            Pitch.getPitchFrequency audioSettings.pitchStandard
+            Frequency.frequency audioSettings.pitchStandard
                 audioSettings.playbackRegister
-                scale
-                pitch
+                (Pitch.position scale pitch)
                 |> Frequency.preciseString
     in
     Html.node "chant-engine"
