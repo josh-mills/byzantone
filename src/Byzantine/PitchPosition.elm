@@ -1,7 +1,7 @@
 module Byzantine.PitchPosition exposing
     ( PitchPosition
-    , pitchPosition, pitchPositions, unwrap, toFloat
-    , isValidInflection
+    , pitchPosition, pitchPositions
+    , inflect, compare, isValidInflection, unwrap, toFloat
     )
 
 {-| Pitch positions in moria. Di is fixed at 84.
@@ -15,16 +15,12 @@ attractions and inflections.
 # Pitch Position
 
 @docs PitchPosition
+@docs pitchPosition, pitchPositions
 
 
 ## Functions
 
-@docs pitchPosition, pitchPositions, unwrap, toFloat
-
-
-# Validation
-
-@docs isValidInflection
+@docs inflect, compare, isValidInflection, unwrap, toFloat
 
 -}
 
@@ -80,6 +76,21 @@ pitchPosition scale degree maybeAccidental =
         |> unwrap
         |> (+) moriaAdjustment
         |> PitchPosition
+
+
+{-| Apply an accidental to a pitch position, returning a new pitch position
+adjusted by the accidental's moria adjustment.
+-}
+inflect : PitchPosition -> Accidental -> PitchPosition
+inflect position accidental =
+    PitchPosition (unwrap position + Accidental.moriaAdjustment accidental)
+
+
+{-| Compare two pitch positions and return an Order.
+-}
+compare : PitchPosition -> PitchPosition -> Order
+compare position1 position2 =
+    Basics.compare (unwrap position1) (unwrap position2)
 
 
 {-| Get the pitch positions for a given scale.

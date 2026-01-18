@@ -3,7 +3,7 @@ module Byzantine.Pitch exposing
     , natural, inflected, from, applyAccidental
     , PitchString, encode, decode
     , unwrapDegree, unwrapAccidental
-    , isInflected, toString, position
+    , isInflected, toString, position, compare
     )
 
 {-| Pitch representation and operations.
@@ -36,7 +36,7 @@ attractions and inflections.
 
 ## Misc
 
-@docs isInflected, toString, position
+@docs isInflected, toString, position, compare
 
 -}
 
@@ -234,3 +234,10 @@ toString pitch =
 position : Scale -> Pitch -> PitchPosition
 position scale pitch =
     PitchPosition.pitchPosition scale (unwrapDegree pitch) (unwrapAccidental pitch)
+
+
+{-| Compare two pitches within a scale by their pitch positions.
+-}
+compare : Scale -> Pitch -> Pitch -> Order
+compare scale pitch1 pitch2 =
+    PitchPosition.compare (position scale pitch1) (position scale pitch2)
