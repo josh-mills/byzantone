@@ -1,7 +1,6 @@
 module Byzantine.IntervalSize exposing (IntervalSize, fromPitches, toInt)
 
-{-| Interval Size - represents the difference between two pitch positions in
-moria.
+{-| Interval size between two pitches.
 
 @docs IntervalSize, fromPitches, toInt
 
@@ -34,7 +33,7 @@ fromPitches scale fromPitch toPitch =
     IntervalSize (toPosition - fromPosition)
 
 
-{-| Convert an IntervalSize to an integer (alias for unwrap for clarity).
+{-| Unwrap underlying Int value
 -}
 toInt : IntervalSize -> Int
 toInt (IntervalSize value) =

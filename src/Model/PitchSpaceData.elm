@@ -160,9 +160,7 @@ init layoutData modeSettings pitchState =
             )
     , pitchPositions =
         DegreeDataDict.init
-            (pitchWithAccidental
-                >> (\pitch -> Pitch.position modeSettings.scale pitch)
-            )
+            (Pitch.position modeSettings.scale << pitchWithAccidental)
     , pitchVisibility = DegreeDataDict.init (visibility visibleRangeData)
     , scalingFactor = 10
     , visibleRange = visibleRangeData

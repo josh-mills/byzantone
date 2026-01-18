@@ -32,7 +32,7 @@ import Result exposing (Result)
 type alias Interval =
     { from : Pitch
     , to : Pitch
-    , moria : IntervalSize
+    , size : IntervalSize
     }
 
 
@@ -43,7 +43,7 @@ create : Scale -> Pitch -> Pitch -> Interval
 create scale fromPitch toPitch =
     { from = fromPitch
     , to = toPitch
-    , moria = IntervalSize.fromPitches scale fromPitch toPitch
+    , size = IntervalSize.fromPitches scale fromPitch toPitch
     }
 
 
@@ -51,7 +51,7 @@ create scale fromPitch toPitch =
 -}
 unwrapSize : Interval -> Int
 unwrapSize interval =
-    IntervalSize.toInt interval.moria
+    IntervalSize.toInt interval.size
 
 
 {-| Encode an interval into a string representation.
