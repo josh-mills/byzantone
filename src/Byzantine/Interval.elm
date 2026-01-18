@@ -23,8 +23,8 @@ module Byzantine.Interval exposing
 
 -}
 
+import Byzantine.IntervalSize as IntervalSize exposing (IntervalSize)
 import Byzantine.Pitch as Pitch exposing (Pitch)
-import Byzantine.PitchPosition as PitchPosition exposing (PitchPosition)
 import Byzantine.Scale as Scale exposing (Scale)
 import Result exposing (Result)
 
@@ -32,15 +32,8 @@ import Result exposing (Result)
 type alias Interval =
     { from : Pitch
     , to : Pitch
-    , moria : Size
+    , moria : IntervalSize
     }
-
-
-{-| Interval Size in moria. Represents the difference between two
-PitchPositions.
--}
-type Size
-    = Size Int
 
 
 {-| Create an Interval from two pitches, calculating positions from the given
@@ -50,22 +43,15 @@ create : Scale -> Pitch -> Pitch -> Interval
 create scale fromPitch toPitch =
     { from = fromPitch
     , to = toPitch
-    , moria = calculateSize (Pitch.position scale fromPitch) (Pitch.position scale toPitch)
+    , moria = IntervalSize.fromPitches scale fromPitch toPitch
     }
-
-
-calculateSize : PitchPosition -> PitchPosition -> Size
-calculateSize fromPitch toPitch =
-    Size (PitchPosition.unwrap toPitch - PitchPosition.unwrap fromPitch)
 
 
 {-| Get the size in moria from an Interval.
 -}
 size : Interval -> Int
 size interval =
-    case interval.moria of
-        Size value ->
-            value
+    IntervalSize.toInt interval.moria
 
 
 {-| Encode an interval into a string representation.
@@ -91,13 +77,25 @@ decode intervalString =
     case String.split "~" intervalString of
         [ fromPitchStr, moriaStr, toPitchStr ] ->
             Result.map3
-                (\( fromScale, fromPitch ) moria ( toScale, toPitch ) ->
+                (\( fromScale, fromPitch ) expectedMoria ( toScale, toPitch ) ->
                     if fromScale == toScale then
-                        Ok
-                            { from = fromPitch
-                            , to = toPitch
-                            , moria = Size moria
-                            }
+                        let
+                            calculatedInterval =
+                                create fromScale fromPitch toPitch
+
+                            calculatedMoria =
+                                size calculatedInterval
+                        in
+                        if calculatedMoria == expectedMoria then
+                            Ok calculatedInterval
+
+                        else
+                            Err
+                                ("Moria mismatch: expected "
+                                    ++ String.fromInt expectedMoria
+                                    ++ " but calculated "
+                                    ++ String.fromInt calculatedMoria
+                                )
 
                     else
                         Err
