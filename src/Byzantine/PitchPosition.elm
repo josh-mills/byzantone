@@ -157,25 +157,23 @@ isValidInflection scale accidental degree =
     let
         proposedPitchPosition =
             pitchPosition scale degree (Just accidental)
-                |> unwrap
 
         naturalPosition degree_ =
             pitchPosition scale degree_ Nothing
-                |> unwrap
     in
     case accidentalInflectionDirection accidental of
         Up ->
             Degree.step degree 1
                 |> Maybe.Extra.unwrap False
                     (\nextDegree ->
-                        naturalPosition nextDegree > proposedPitchPosition
+                        compare (naturalPosition nextDegree) proposedPitchPosition == GT
                     )
 
         Down ->
             Degree.step degree -1
                 |> Maybe.Extra.unwrap False
                     (\nextDegree ->
-                        naturalPosition nextDegree < proposedPitchPosition
+                        compare (naturalPosition nextDegree) proposedPitchPosition == LT
                     )
 
 
