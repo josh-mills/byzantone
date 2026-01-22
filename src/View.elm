@@ -78,8 +78,7 @@ view model =
                 model.modeSettings
                 model.pitchState
                 model.openControlMenus
-            , View.Controls.viewOverlay
-                model.openControlMenus
+            , lazy View.Controls.viewOverlay model.openControlMenus
             , lazy3 pitchTracker model.audioSettings model.pitchState model.detectedPitch
             ]
         ]

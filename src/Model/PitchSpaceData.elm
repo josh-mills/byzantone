@@ -412,12 +412,12 @@ pipe-separated string containing three values:
 If any degree's pitch position is not available in the `pitchPositions`
 dictionary, its value in the string will be "\_".
 
-Example: "72|84|96" would represent a degree with position 84 (Di), where the
+Example: `"72|84|96"` would represent a degree with position 84 (Di), where the
 degree below it is at position 72 and the degree above it is at position 96.
 
-Example: "136|144|_" would represent a degree at the upper bound of the diatonic
-scale with position 144, where the degree below it is at position 136 and there
-is no degree above it (represented by "_").
+Example: `"136|144|_"` would represent a degree at the upper bound of the
+diatonic scale with position 144, where the degree below it is at position 136
+and there is no degree above it (represented by "\_").
 
 -}
 encodePitchPositionContext : PitchSpaceData -> Degree -> PitchPositionContextString
@@ -425,13 +425,17 @@ encodePitchPositionContext { pitchPositions } degree =
     let
         getAndEncode =
             Maybe.Extra.unwrap "_"
-                (flip DegreeDataDict.get pitchPositions >> PitchPosition.unwrap >> String.fromInt)
+                (\degree_ ->
+                    DegreeDataDict.get degree_ pitchPositions
+                        |> PitchPosition.unwrap
+                        |> String.fromInt
+                )
     in
-    [ getAndEncode (Degree.step degree -1)
-    , getAndEncode (Just degree)
-    , getAndEncode (Degree.step degree 1)
-    ]
-        |> String.join "|"
+    String.join "|"
+        [ getAndEncode (Degree.step degree -1)
+        , getAndEncode (Just degree)
+        , getAndEncode (Degree.step degree 1)
+        ]
 
 
 {-| Decodes a string created by `encodePitchPositionContext` into a record with
@@ -440,13 +444,13 @@ pitch positions for the current degree and adjacent degrees.
 The string format is "belowPosition|currentPosition|abovePosition", where each
 position is either an integer or "\_" for missing positions.
 
-Example: "72|84|96" decodes to:
+Example: `"72|84|96"` decodes to:
 
   - pitchPosition = 84
   - pitchPositionBelow = Just 72
   - pitchPositionAbove = Just 96
 
-Example: "136|144|\_" decodes to:
+Example: `"136|144|_"` decodes to:
 
   - pitchPosition = 144
   - pitchPositionBelow = Just 136
@@ -466,20 +470,16 @@ decodePitchPositionContext :
             }
 decodePitchPositionContext string =
     let
-        parts =
-            String.split "|" string
-
         parsePosition pos =
             if pos == "_" then
                 Ok Nothing
 
             else
                 String.toInt pos
-                    |> Maybe.map Ok
-                    |> Maybe.withDefault (Err <| "Invalid pitch position: " ++ pos)
+                    |> Maybe.Extra.unpack (\_ -> Err <| "Invalid pitch position: " ++ pos) Ok
                     |> Result.map Just
     in
-    case parts of
+    case String.split "|" string of
         [ below, current, above ] ->
             case String.toInt current of
                 Just position ->
@@ -580,20 +580,16 @@ intervalsWithVisibility : Scale -> PitchSpaceData -> Movement -> List ( Interval
 intervalsWithVisibility scale pitchSpaceData movement =
     let
         maybeOverrideMovementTarget =
-            Movement.unwrapTargetPitch movement
-                |> Maybe.Extra.unwrap identity
-                    (\targetPitch ->
-                        let
-                            targetDegree =
-                                Pitch.unwrapDegree targetPitch
-                        in
-                        \pitch ->
-                            if Pitch.unwrapDegree pitch == targetDegree then
-                                targetPitch
+            Maybe.Extra.unwrap identity
+                (\targetPitch ->
+                    \pitch ->
+                        if Pitch.unwrapDegree pitch == Pitch.unwrapDegree targetPitch then
+                            targetPitch
 
-                            else
-                                pitch
-                    )
+                        else
+                            pitch
+                )
+                (Movement.unwrapTargetPitch movement)
     in
     Degree.gamutList
         |> List.map
@@ -630,28 +626,22 @@ getIntervalWithVisibility :
 getIntervalWithVisibility scale { visibleRange } ( fromPitch, fromPitchPosition ) ( toPitch, toPitchPosition ) =
     let
         fromPitchDegreeIndex =
-            Pitch.unwrapDegree fromPitch |> Degree.indexOf
+            Degree.indexOf (Pitch.unwrapDegree fromPitch)
 
         toPitchDegreeIndex =
-            Pitch.unwrapDegree toPitch |> Degree.indexOf
-
-        visibleRangeStartIndex =
-            visibleRange.startDegreeIndex
-
-        visibleRangeEndDegreeIndex =
-            visibleRange.endDegreeIndex
+            Degree.indexOf (Pitch.unwrapDegree toPitch)
     in
     ( Interval.create scale fromPitch toPitch
-    , if toPitchDegreeIndex <= visibleRangeStartIndex then
+    , if toPitchDegreeIndex <= visibleRange.startDegreeIndex then
         Below
 
-      else if fromPitchDegreeIndex >= visibleRangeEndDegreeIndex then
+      else if fromPitchDegreeIndex >= visibleRange.endDegreeIndex then
         Above
 
-      else if visibleRangeStartIndex == fromPitchDegreeIndex then
+      else if visibleRange.startDegreeIndex == fromPitchDegreeIndex then
         LowerBoundary
 
-      else if visibleRangeEndDegreeIndex == toPitchDegreeIndex then
+      else if visibleRange.endDegreeIndex == toPitchDegreeIndex then
         UpperBoundary
 
       else

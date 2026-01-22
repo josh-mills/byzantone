@@ -66,16 +66,13 @@ pitchPosition scale degree maybeAccidental =
                 |> Array.get (Degree.indexOf degree)
                 -- tests ensure that the -1 sentinel value never occurs.
                 |> Maybe.withDefault (PitchPosition -1)
-
-        moriaAdjustment =
-            maybeAccidental
-                |> Maybe.map Accidental.moriaAdjustment
-                |> Maybe.withDefault 0
     in
-    basePitchPosition
-        |> unwrap
-        |> (+) moriaAdjustment
-        |> PitchPosition
+    case maybeAccidental of
+        Just accidental ->
+            inflect basePitchPosition accidental
+
+        Nothing ->
+            basePitchPosition
 
 
 {-| Apply an accidental to a pitch position, returning a new pitch position
