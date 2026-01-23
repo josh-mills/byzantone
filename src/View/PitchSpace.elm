@@ -526,7 +526,7 @@ viewPitchLazy pitchString isCurrentDegree display isonStatusIndicator pitchPosit
                 }
                 (PitchSpaceData.decodePitchPositionContext pitchPositions)
 
-        scale_ int =
+        scale int =
             (toFloat int / 2) * scalingFactor
 
         size =
@@ -536,7 +536,7 @@ viewPitchLazy pitchString isCurrentDegree display isonStatusIndicator pitchPosit
 
                 LowerBoundary ->
                     Maybe.map
-                        (\above -> scale_ (above - pitchPosition))
+                        (\above -> scale (above - pitchPosition))
                         pitchPositionAbove
                         |> Maybe.withDefault 0
 
@@ -553,7 +553,7 @@ viewPitchLazy pitchString isCurrentDegree display isonStatusIndicator pitchPosit
 
                 UpperBoundary ->
                     Maybe.map
-                        (\below -> scale_ (pitchPosition - below))
+                        (\below -> scale (pitchPosition - below))
                         pitchPositionBelow
                         |> Maybe.withDefault 0
 

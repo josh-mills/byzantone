@@ -1,6 +1,6 @@
 module Byzantine.ByzHtml.Interval exposing (view)
 
-import Byzantine.Accidental as Accidental
+import Byzantine.Accidental exposing (Accidental)
 import Byzantine.ByzHtml.Accidental as Accidental
 import Byzantine.IntervalCharacter exposing (..)
 import Html exposing (Html, node)
@@ -58,7 +58,7 @@ view interval =
             note "x-i" Nothing
 
 
-note : String -> Maybe Accidental.Accidental -> Html msg
+note : String -> Maybe Accidental -> Html msg
 note intervalNeume maybeAccidental =
     node "x-note"
         [ class "lg:text-2xl" ]

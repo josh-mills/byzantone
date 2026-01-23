@@ -54,8 +54,8 @@ ofInterval fromPitch interval =
 
 
 unwrapTargetPitch : Movement -> Maybe Pitch
-unwrapTargetPitch movement_ =
-    case movement_ of
+unwrapTargetPitch movement =
+    case movement of
         AscendTo pitch ->
             Just pitch
 

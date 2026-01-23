@@ -11,6 +11,8 @@ when inside the directory containing this file.
 
 -}
 
+import NoSimpleLetBody
+import NoUnnecessaryTrailingUnderscore
 import NoUnused.Dependencies
 import NoUnused.Variables
 import Review.Rule exposing (Rule)
@@ -18,6 +20,8 @@ import Review.Rule exposing (Rule)
 
 config : List Rule
 config =
-    [ NoUnused.Dependencies.rule
+    [ NoSimpleLetBody.rule
+    , NoUnnecessaryTrailingUnderscore.rule
     , NoUnused.Variables.rule
+    , NoUnused.Dependencies.rule
     ]
