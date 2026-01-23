@@ -77,10 +77,6 @@ decode intervalString =
         [ fromPitchStr, moriaStr, toPitchStr ] ->
             Result.map3
                 (\( fromScale, fromPitch ) expectedMoria ( toScale, toPitch ) ->
-                    let
-                        interval =
-                            create fromScale fromPitch toPitch
-                    in
                     if fromScale /= toScale then
                         Err
                             ("Scale mismatch: from pitch uses "
@@ -89,16 +85,21 @@ decode intervalString =
                                 ++ Scale.encode toScale
                             )
 
-                    else if unwrapSize interval /= expectedMoria then
-                        Err
-                            ("Moria mismatch: expected "
-                                ++ String.fromInt expectedMoria
-                                ++ " but calculated "
-                                ++ String.fromInt (unwrapSize interval)
-                            )
-
                     else
-                        Ok interval
+                        let
+                            interval =
+                                create fromScale fromPitch toPitch
+                        in
+                        if unwrapSize interval /= expectedMoria then
+                            Err
+                                ("Moria mismatch: expected "
+                                    ++ String.fromInt expectedMoria
+                                    ++ " but calculated "
+                                    ++ String.fromInt (unwrapSize interval)
+                                )
+
+                        else
+                            Ok interval
                 )
                 (Pitch.decode fromPitchStr)
                 (String.toInt moriaStr

@@ -515,10 +515,6 @@ type IsonSelectionIndicator
 -}
 isonSelectionIndicator : ModeSettings -> PitchState -> Degree -> IsonSelectionIndicator
 isonSelectionIndicator _ pitchState degree =
-    let
-        degreeIsEligible =
-            Degree.indexOf degree <= 12
-    in
     case pitchState.ison of
         PitchState.NoIson ->
             NotIson
@@ -531,6 +527,10 @@ isonSelectionIndicator _ pitchState degree =
                 CanBeSelected_NotCurrent
 
         PitchState.SelectingIson Nothing ->
+            let
+                degreeIsEligible =
+                    Degree.indexOf degree <= 12
+            in
             if degreeIsEligible then
                 CanBeSelected_NotCurrent
 
@@ -624,9 +624,6 @@ getIntervalWithVisibility :
     -> ( Interval, PositionWithinVisibleRange )
 getIntervalWithVisibility scale { visibleRange } ( fromPitch, fromPitchPosition ) ( toPitch, toPitchPosition ) =
     let
-        fromPitchDegreeIndex =
-            Degree.indexOf (Pitch.unwrapDegree fromPitch)
-
         toPitchDegreeIndex =
             Degree.indexOf (Pitch.unwrapDegree toPitch)
     in
@@ -634,17 +631,22 @@ getIntervalWithVisibility scale { visibleRange } ( fromPitch, fromPitchPosition 
     , if toPitchDegreeIndex <= visibleRange.startDegreeIndex then
         Below
 
-      else if fromPitchDegreeIndex >= visibleRange.endDegreeIndex then
-        Above
-
-      else if visibleRange.startDegreeIndex == fromPitchDegreeIndex then
-        LowerBoundary
-
-      else if visibleRange.endDegreeIndex == toPitchDegreeIndex then
-        UpperBoundary
-
       else
-        Within
+        let
+            fromPitchDegreeIndex =
+                Degree.indexOf (Pitch.unwrapDegree fromPitch)
+        in
+        if fromPitchDegreeIndex >= visibleRange.endDegreeIndex then
+            Above
+
+        else if visibleRange.startDegreeIndex == fromPitchDegreeIndex then
+            LowerBoundary
+
+        else if visibleRange.endDegreeIndex == toPitchDegreeIndex then
+            UpperBoundary
+
+        else
+            Within
     )
 
 

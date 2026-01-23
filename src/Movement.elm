@@ -39,18 +39,20 @@ ofInterval fromPitch interval =
 
                 toDegreeIndex =
                     Degree.indexOf (Pitch.unwrapDegree interval.to)
-
-                fromDegree =
-                    Pitch.unwrapDegree interval.from
             in
             if toDegreeIndex > currentDegreeIndex then
                 AscendTo interval.to
 
-            else if Degree.indexOf fromDegree < currentDegreeIndex then
-                DescendTo interval.from
-
             else
-                None
+                let
+                    fromDegree =
+                        Pitch.unwrapDegree interval.from
+                in
+                if Degree.indexOf fromDegree < currentDegreeIndex then
+                    DescendTo interval.from
+
+                else
+                    None
 
 
 unwrapTargetPitch : Movement -> Maybe Pitch

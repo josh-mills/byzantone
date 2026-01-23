@@ -11,17 +11,28 @@ when inside the directory containing this file.
 
 -}
 
+import NoMissingTypeAnnotation
+import NoPrematureLetComputation
+import NoRedundantlyQualifiedType
 import NoSimpleLetBody
 import NoUnnecessaryTrailingUnderscore
 import NoUnused.Dependencies
 import NoUnused.Variables
-import Review.Rule exposing (Rule)
+import Review.Rule as Rule exposing (Rule)
 
 
 config : List Rule
 config =
-    [ NoSimpleLetBody.rule
+    [ NoMissingTypeAnnotation.rule
+    , NoPrematureLetComputation.rule
+    , NoRedundantlyQualifiedType.rule |> ignoreForGenerated
+    , NoSimpleLetBody.rule
     , NoUnnecessaryTrailingUnderscore.rule
-    , NoUnused.Variables.rule
     , NoUnused.Dependencies.rule
+    , NoUnused.Variables.rule
     ]
+
+
+ignoreForGenerated : Rule -> Rule
+ignoreForGenerated =
+    Rule.ignoreErrorsForDirectories [ "generated/" ]

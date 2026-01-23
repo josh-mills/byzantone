@@ -285,19 +285,21 @@ shouldHighlightInterval currentPitch proposedMovement interval =
             let
                 currentPitchIndex =
                     Degree.indexOf current
-
-                fromIndex =
-                    Degree.indexOf (Pitch.unwrapDegree interval.from)
-
-                toIndex =
-                    Degree.indexOf (Pitch.unwrapDegree interval.to)
             in
             case proposedMovement of
                 AscendTo degree ->
+                    let
+                        toIndex =
+                            Degree.indexOf (Pitch.unwrapDegree interval.to)
+                    in
                     (currentPitchIndex < toIndex)
                         && (toIndex <= Degree.indexOf (Pitch.unwrapDegree degree))
 
                 DescendTo degree ->
+                    let
+                        fromIndex =
+                            Degree.indexOf (Pitch.unwrapDegree interval.from)
+                    in
                     (currentPitchIndex > fromIndex)
                         && (fromIndex >= Degree.indexOf (Pitch.unwrapDegree degree))
 
@@ -330,18 +332,20 @@ viewPitchIndicator pitchSpaceData { pitchStandard, listenRegister, responsivenes
         detectedPitchInMoria =
             Frequency.toPitchPosition pitchStandard listenRegister detectedPitch
 
-        startPosition =
-            PitchPosition.toFloat pitchSpaceData.visibleRange.startPosition
-
-        endPosition =
-            PitchPosition.toFloat pitchSpaceData.visibleRange.endPosition
-
         position =
             case PitchSpaceData.displayToLayout pitchSpaceData.display of
                 Vertical ->
+                    let
+                        endPosition =
+                            PitchPosition.toFloat pitchSpaceData.visibleRange.endPosition
+                    in
                     Styles.top (pitchSpaceData.scalingFactor * (endPosition - detectedPitchInMoria))
 
                 Horizontal ->
+                    let
+                        startPosition =
+                            PitchPosition.toFloat pitchSpaceData.visibleRange.startPosition
+                    in
                     Styles.left (pitchSpaceData.scalingFactor * (detectedPitchInMoria - startPosition))
 
         offset =
