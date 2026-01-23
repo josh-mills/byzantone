@@ -4,7 +4,7 @@ import Array
 import Browser.Dom as Dom
 import Byzantine.Accidental as Accidental exposing (Accidental)
 import Byzantine.Degree as Degree exposing (Degree(..))
-import Byzantine.Frequency exposing (Frequency(..), PitchStandard)
+import Byzantine.Frequency exposing (Frequency, PitchStandard)
 import Byzantine.Pitch as Pitch exposing (Pitch)
 import Byzantine.PitchPosition as PitchPosition
 import Byzantine.Register exposing (Register)
@@ -19,7 +19,6 @@ import Model.ModeSettings exposing (ModeSettings)
 import Model.PitchSpaceData as PitchSpaceData exposing (PitchSpaceData)
 import Model.PitchState as PitchState exposing (IsonStatus(..), PitchState, ProposedAccidental(..))
 import Movement exposing (Movement)
-import Platform.Cmd as Cmd
 import Task
 
 

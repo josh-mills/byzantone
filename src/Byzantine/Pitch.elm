@@ -43,7 +43,7 @@ attractions and inflections.
 import Byzantine.Accidental as Accidental exposing (Accidental)
 import Byzantine.Degree as Degree exposing (Degree)
 import Byzantine.PitchPosition as PitchPosition exposing (PitchPosition)
-import Byzantine.Scale as Scale exposing (Scale(..))
+import Byzantine.Scale as Scale exposing (Scale)
 import Tuple.Trio as Trio
 
 

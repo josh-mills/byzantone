@@ -3,10 +3,8 @@ module View exposing (view)
 import Byzantine.ByzHtml.Martyria as Martyria
 import Byzantine.Degree as Degree exposing (Degree(..))
 import Byzantine.Frequency as Frequency exposing (Frequency, PitchStandard(..))
-import Byzantine.IntervalCharacter exposing (..)
 import Byzantine.Martyria as Martyria
 import Byzantine.Pitch as Pitch exposing (Pitch)
-import Byzantine.Register exposing (Register(..))
 import Byzantine.Scale exposing (Scale(..))
 import Copy
 import Html exposing (Html, button, datalist, div, h1, h2, main_, p, span, text)
@@ -17,14 +15,12 @@ import Html.Extra exposing (viewIf)
 import Html.Lazy exposing (lazy, lazy2, lazy3, lazy4, lazy5)
 import Icons
 import Json.Decode exposing (Decoder)
-import List.Extra as List
 import Maybe.Extra as Maybe
 import Model exposing (Modal(..), Model)
 import Model.AudioSettings as AudioSettings exposing (AudioSettings)
 import Model.LayoutData as LayoutData exposing (Layout(..), LayoutData, LayoutSelection(..), layoutFor)
 import Model.ModeSettings exposing (ModeSettings)
 import Model.PitchState as PitchState exposing (PitchState)
-import Movement exposing (Movement(..))
 import RadioFieldset
 import Styles
 import Svg.Attributes

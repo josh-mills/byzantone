@@ -43,7 +43,6 @@ as a result of model updates.
 
 -}
 
-import Basics.Extra exposing (flip)
 import Byzantine.Degree as Degree exposing (Degree)
 import Byzantine.Interval as Interval exposing (Interval)
 import Byzantine.Pitch as Pitch exposing (Pitch)

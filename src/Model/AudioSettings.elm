@@ -12,7 +12,6 @@ module Model.AudioSettings exposing
 
 -}
 
-import Byzantine.Degree exposing (Degree(..))
 import Byzantine.Frequency exposing (PitchStandard(..))
 import Byzantine.Register exposing (Register(..))
 

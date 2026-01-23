@@ -34,7 +34,7 @@ import Model.PitchSpaceData as PitchSpaceData
         , PitchSpaceData
         , PositionWithinVisibleRange(..)
         )
-import Model.PitchState as PitchState exposing (IsonStatus(..), PitchState, ProposedAccidental(..))
+import Model.PitchState as PitchState exposing (PitchState, ProposedAccidental(..))
 import Movement exposing (Movement(..))
 import Result.Extra
 import Round

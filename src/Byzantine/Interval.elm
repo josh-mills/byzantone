@@ -26,7 +26,6 @@ module Byzantine.Interval exposing
 import Byzantine.IntervalSize as IntervalSize exposing (IntervalSize)
 import Byzantine.Pitch as Pitch exposing (Pitch)
 import Byzantine.Scale as Scale exposing (Scale)
-import Result exposing (Result)
 
 
 type alias Interval =
