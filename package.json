@@ -9,6 +9,8 @@
     "clean": "rm -rf public elm-stuff && mkdir public && cp src/index.html public/",
     "codegen": "node codegen/run.js",
     "dev": "npm run clean && concurrently \"npm run tailwind\" \"npm run start\" \"npx elm-watch hot\" \"npm run watch\"",
+    "review": "elm-format review/src/ --yes && elm-review",
+    "review-fix": "elm-format review/src/ --yes && elm-review --fix",
     "start": "node server.cjs",
     "tailwind": "npx @tailwindcss/cli -i src/main.css -o public/dist/main.css --watch",
     "test": "npx elm-test",
@@ -22,7 +24,9 @@
   "devDependencies": {
     "concurrently": "^8.0.1",
     "elm-codegen": "^0.5.3",
+    "elm-format": "^0.8.8",
     "elm-live": "^4.0.2",
+    "elm-review": "^2.13.5",
     "elm-test": "^0.19.1-revision12",
     "elm-watch": "^1.1.2",
     "nodemon": "^2.0.22",
