@@ -1,6 +1,6 @@
 module View exposing (view)
 
-import Byzantine.ByzHtml.Martyria as Martyria
+import Byzantine.ByzHtml.Martyria as ByzHtmlMartyria
 import Byzantine.Degree as Degree exposing (Degree(..))
 import Byzantine.Frequency as Frequency exposing (Frequency, PitchStandard(..))
 import Byzantine.Martyria as Martyria
@@ -316,12 +316,12 @@ viewPitchStandard pitchStandard =
         ( martyria, frequency ) =
             case pitchStandard of
                 Ni256 ->
-                    ( Martyria.for Diatonic Ni |> Martyria.view
+                    ( Martyria.for Diatonic Ni |> ByzHtmlMartyria.view
                     , " = 256 Hz"
                     )
 
                 Ke440 ->
-                    ( Martyria.for Diatonic Ke |> Martyria.view
+                    ( Martyria.for Diatonic Ke |> ByzHtmlMartyria.view
                     , " = 440 Hz"
                     )
     in

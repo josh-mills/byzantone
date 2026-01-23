@@ -5,7 +5,7 @@ module View.PitchSpace exposing (view)
 
 import Array
 import Byzantine.Accidental as Accidental
-import Byzantine.ByzHtml.Accidental as Accidental
+import Byzantine.ByzHtml.Accidental as ByzHtmlAccidental
 import Byzantine.ByzHtml.Interval as ByzHtmlInterval
 import Byzantine.ByzHtml.Martyria as ByzHtmlMartyria
 import Byzantine.Degree as Degree exposing (Degree)
@@ -674,7 +674,7 @@ pitchButton pitchString isCurrentDegree display pitchPositions shouldHighlight p
         [ Html.Extra.viewMaybe
             (\accidental ->
                 span [ class "absolute mt-2 md:mt-4", Styles.left 12 ]
-                    [ Accidental.view Accidental.Red accidental ]
+                    [ ByzHtmlAccidental.view ByzHtmlAccidental.Red accidental ]
             )
             (Maybe.andThen Pitch.unwrapAccidental decodedPitch)
         , Maybe.map2
@@ -826,7 +826,7 @@ viewAccidentalButton currentProposedAccidental buttonProposedAccidental =
         buttonContent =
             case buttonProposedAccidental of
                 Apply accidental ->
-                    Accidental.view Accidental.InheritColor accidental
+                    ByzHtmlAccidental.view ByzHtmlAccidental.InheritColor accidental
 
                 CancelAccidental ->
                     Html.text "×"
