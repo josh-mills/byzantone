@@ -19,6 +19,7 @@ import NoUnnecessaryTrailingUnderscore
 import NoUnused.Dependencies
 import NoUnused.Variables
 import Review.Rule as Rule exposing (Rule)
+import Simplify
 
 
 config : List Rule
@@ -30,6 +31,7 @@ config =
     , NoUnnecessaryTrailingUnderscore.rule
     , NoUnused.Dependencies.rule
     , NoUnused.Variables.rule
+    , Simplify.rule Simplify.defaults
     ]
 
 

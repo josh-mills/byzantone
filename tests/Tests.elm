@@ -273,7 +273,7 @@ pitchTests =
                                     pitch =
                                         Pitch.natural degree
                                 in
-                                test (Scale.name scale ++ " " ++ "Natural " ++ Pitch.toString pitch) <|
+                                test (Scale.name scale ++ " Natural " ++ Pitch.toString pitch) <|
                                     \_ ->
                                         pitch
                                             |> Pitch.encode scale
