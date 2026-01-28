@@ -149,7 +149,7 @@ init layoutData modeSettings pitchState =
                         degree
     in
     { display = determineDisplay layoutData
-    , isonIndicators = DegreeDataDict.init (isonSelectionIndicator modeSettings pitchState)
+    , isonIndicators = DegreeDataDict.init (isonSelectionIndicator pitchState)
     , pitches =
         DegreeDataDict.init
             (\degree ->
@@ -513,8 +513,8 @@ type IsonSelectionIndicator
 
 {-| TODO: we'll need to get modal logic actually built out.
 -}
-isonSelectionIndicator : ModeSettings -> PitchState -> Degree -> IsonSelectionIndicator
-isonSelectionIndicator _ pitchState degree =
+isonSelectionIndicator : PitchState -> Degree -> IsonSelectionIndicator
+isonSelectionIndicator pitchState degree =
     case pitchState.ison of
         PitchState.NoIson ->
             NotIson
@@ -593,10 +593,8 @@ intervalsWithVisibility scale pitchSpaceData movement =
     Degree.gamutList
         |> List.map
             (\degree ->
-                ( DegreeDataDict.get degree pitchSpaceData.pitches
+                DegreeDataDict.get degree pitchSpaceData.pitches
                     |> maybeOverrideMovementTarget
-                , DegreeDataDict.get degree pitchSpaceData.pitchPositions
-                )
             )
         |> intervalsHelper scale pitchSpaceData
 
@@ -604,7 +602,7 @@ intervalsWithVisibility scale pitchSpaceData movement =
 intervalsHelper :
     Scale
     -> PitchSpaceData
-    -> List ( Pitch, PitchPosition )
+    -> List Pitch
     -> List ( Interval, PositionWithinVisibleRange )
 intervalsHelper scale pitchSpaceData pitchesWithPositions =
     case pitchesWithPositions of
@@ -619,10 +617,10 @@ intervalsHelper scale pitchSpaceData pitchesWithPositions =
 getIntervalWithVisibility :
     Scale
     -> PitchSpaceData
-    -> ( Pitch, PitchPosition )
-    -> ( Pitch, PitchPosition )
+    -> Pitch
+    -> Pitch
     -> ( Interval, PositionWithinVisibleRange )
-getIntervalWithVisibility scale { visibleRange } ( fromPitch, fromPitchPosition ) ( toPitch, toPitchPosition ) =
+getIntervalWithVisibility scale { visibleRange } fromPitch toPitch =
     let
         toPitchDegreeIndex =
             Degree.indexOf (Pitch.unwrapDegree toPitch)
