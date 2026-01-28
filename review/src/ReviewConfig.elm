@@ -11,6 +11,7 @@ when inside the directory containing this file.
 
 -}
 
+import CognitiveComplexity
 import NoMissingTypeAnnotation
 import NoPrematureLetComputation
 import NoRedundantlyQualifiedType
@@ -24,7 +25,8 @@ import Simplify
 
 config : List Rule
 config =
-    [ NoMissingTypeAnnotation.rule
+    [ CognitiveComplexity.rule 12
+    , NoMissingTypeAnnotation.rule
     , NoPrematureLetComputation.rule
     , NoRedundantlyQualifiedType.rule |> ignoreForGenerated
     , NoSimpleLetBody.rule
