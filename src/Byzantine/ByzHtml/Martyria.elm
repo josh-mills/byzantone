@@ -2,7 +2,6 @@ module Byzantine.ByzHtml.Martyria exposing (view, viewWithAttributes)
 
 import Byzantine.Degree exposing (Degree(..))
 import Byzantine.Martyria as Martyria exposing (Martyria, ModalSignature(..))
-import Byzantine.Scale exposing (Scale(..))
 import Html exposing (Html)
 
 

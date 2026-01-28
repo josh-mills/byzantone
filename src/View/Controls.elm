@@ -5,7 +5,7 @@ import Byzantine.Degree as Degree
 import Byzantine.IntervalCharacter as Character
 import Byzantine.Pitch as Pitch exposing (Pitch)
 import Byzantine.Register as Register exposing (Register)
-import Byzantine.Scale as Scale exposing (Scale(..))
+import Byzantine.Scale as Scale exposing (Scale)
 import Html exposing (Html, button, div, span, text)
 import Html.Attributes as Attr exposing (class, classList, id)
 import Html.Events exposing (onClick, onInput)

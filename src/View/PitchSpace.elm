@@ -5,7 +5,7 @@ module View.PitchSpace exposing (view)
 
 import Array
 import Byzantine.Accidental as Accidental
-import Byzantine.ByzHtml.Accidental as Accidental
+import Byzantine.ByzHtml.Accidental as ByzHtmlAccidental
 import Byzantine.ByzHtml.Interval as ByzHtmlInterval
 import Byzantine.ByzHtml.Martyria as ByzHtmlMartyria
 import Byzantine.Degree as Degree exposing (Degree)
@@ -34,7 +34,7 @@ import Model.PitchSpaceData as PitchSpaceData
         , PitchSpaceData
         , PositionWithinVisibleRange(..)
         )
-import Model.PitchState as PitchState exposing (IsonStatus(..), PitchState, ProposedAccidental(..))
+import Model.PitchState as PitchState exposing (PitchState, ProposedAccidental(..))
 import Movement exposing (Movement(..))
 import Result.Extra
 import Round
@@ -285,19 +285,21 @@ shouldHighlightInterval currentPitch proposedMovement interval =
             let
                 currentPitchIndex =
                     Degree.indexOf current
-
-                fromIndex =
-                    Degree.indexOf (Pitch.unwrapDegree interval.from)
-
-                toIndex =
-                    Degree.indexOf (Pitch.unwrapDegree interval.to)
             in
             case proposedMovement of
                 AscendTo degree ->
+                    let
+                        toIndex =
+                            Degree.indexOf (Pitch.unwrapDegree interval.to)
+                    in
                     (currentPitchIndex < toIndex)
                         && (toIndex <= Degree.indexOf (Pitch.unwrapDegree degree))
 
                 DescendTo degree ->
+                    let
+                        fromIndex =
+                            Degree.indexOf (Pitch.unwrapDegree interval.from)
+                    in
                     (currentPitchIndex > fromIndex)
                         && (fromIndex >= Degree.indexOf (Pitch.unwrapDegree degree))
 
@@ -330,18 +332,20 @@ viewPitchIndicator pitchSpaceData { pitchStandard, listenRegister, responsivenes
         detectedPitchInMoria =
             Frequency.toPitchPosition pitchStandard listenRegister detectedPitch
 
-        startPosition =
-            PitchPosition.toFloat pitchSpaceData.visibleRange.startPosition
-
-        endPosition =
-            PitchPosition.toFloat pitchSpaceData.visibleRange.endPosition
-
         position =
             case PitchSpaceData.displayToLayout pitchSpaceData.display of
                 Vertical ->
+                    let
+                        endPosition =
+                            PitchPosition.toFloat pitchSpaceData.visibleRange.endPosition
+                    in
                     Styles.top (pitchSpaceData.scalingFactor * (endPosition - detectedPitchInMoria))
 
                 Horizontal ->
+                    let
+                        startPosition =
+                            PitchPosition.toFloat pitchSpaceData.visibleRange.startPosition
+                    in
                     Styles.left (pitchSpaceData.scalingFactor * (detectedPitchInMoria - startPosition))
 
         offset =
@@ -526,7 +530,7 @@ viewPitchLazy pitchString isCurrentDegree display isonStatusIndicator pitchPosit
                 }
                 (PitchSpaceData.decodePitchPositionContext pitchPositions)
 
-        scale_ int =
+        scale int =
             (toFloat int / 2) * scalingFactor
 
         size =
@@ -536,7 +540,7 @@ viewPitchLazy pitchString isCurrentDegree display isonStatusIndicator pitchPosit
 
                 LowerBoundary ->
                     Maybe.map
-                        (\above -> scale_ (above - pitchPosition))
+                        (\above -> scale (above - pitchPosition))
                         pitchPositionAbove
                         |> Maybe.withDefault 0
 
@@ -553,7 +557,7 @@ viewPitchLazy pitchString isCurrentDegree display isonStatusIndicator pitchPosit
 
                 UpperBoundary ->
                     Maybe.map
-                        (\below -> scale_ (pitchPosition - below))
+                        (\below -> scale (pitchPosition - below))
                         pitchPositionBelow
                         |> Maybe.withDefault 0
 
@@ -674,7 +678,7 @@ pitchButton pitchString isCurrentDegree display pitchPositions shouldHighlight p
         [ Html.Extra.viewMaybe
             (\accidental ->
                 span [ class "absolute mt-2 md:mt-4", Styles.left 12 ]
-                    [ Accidental.view Accidental.Red accidental ]
+                    [ ByzHtmlAccidental.view ByzHtmlAccidental.Red accidental ]
             )
             (Maybe.andThen Pitch.unwrapAccidental decodedPitch)
         , Maybe.map2
@@ -826,7 +830,7 @@ viewAccidentalButton currentProposedAccidental buttonProposedAccidental =
         buttonContent =
             case buttonProposedAccidental of
                 Apply accidental ->
-                    Accidental.view Accidental.InheritColor accidental
+                    ByzHtmlAccidental.view ByzHtmlAccidental.InheritColor accidental
 
                 CancelAccidental ->
                     Html.text "×"

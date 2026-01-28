@@ -17,9 +17,7 @@ module Model exposing
 
 -}
 
-import Byzantine.Degree exposing (Degree(..))
 import Byzantine.Frequency exposing (Frequency)
-import Byzantine.Scale exposing (Scale(..))
 import Model.AudioSettings as AudioSettings exposing (AudioSettings)
 import Model.ControlsMenu as ControlsMenu exposing (OpenControlMenus)
 import Model.DeviceInfo exposing (DeviceInfo)
@@ -27,7 +25,6 @@ import Model.LayoutData as LayoutData exposing (LayoutData)
 import Model.ModeSettings as ModeSettings exposing (ModeSettings)
 import Model.PitchSpaceData as PitchSpaceData exposing (PitchSpaceData)
 import Model.PitchState as PitchState exposing (PitchState)
-import Movement exposing (Movement(..))
 
 
 type alias Model =
