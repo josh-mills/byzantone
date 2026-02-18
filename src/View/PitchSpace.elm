@@ -339,14 +339,22 @@ viewPitchIndicator pitchSpaceData { pitchStandard, listenRegister, responsivenes
                         endPosition =
                             PitchPosition.toFloat pitchSpaceData.visibleRange.endPosition
                     in
-                    Styles.top (pitchSpaceData.scalingFactor * (endPosition - detectedPitchInMoria))
+                    Styles.top
+                        ((endPosition - detectedPitchInMoria)
+                            * pitchSpaceData.scalingFactor
+                            - PitchSpaceData.pitchIndicatorOffset pitchSpaceData.display
+                        )
 
                 Horizontal ->
                     let
                         startPosition =
                             PitchPosition.toFloat pitchSpaceData.visibleRange.startPosition
                     in
-                    Styles.left (pitchSpaceData.scalingFactor * (detectedPitchInMoria - startPosition))
+                    Styles.left
+                        ((detectedPitchInMoria - startPosition)
+                            * pitchSpaceData.scalingFactor
+                            + PitchSpaceData.pitchIndicatorOffset pitchSpaceData.display
+                        )
 
         offset =
             -- TODO: there's functionality here to build out
