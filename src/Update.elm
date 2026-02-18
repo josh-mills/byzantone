@@ -4,6 +4,7 @@ import Array
 import Browser.Dom as Dom
 import Byzantine.Accidental as Accidental exposing (Accidental)
 import Byzantine.Degree as Degree exposing (Degree(..))
+import Byzantine.DetectedPitch as DetectedPitch
 import Byzantine.Frequency exposing (Frequency, PitchStandard)
 import Byzantine.Pitch as Pitch exposing (Pitch)
 import Byzantine.PitchPosition as PitchPosition
@@ -205,7 +206,12 @@ update msg model =
             )
 
         SetDetectedPitch pitchFrequency ->
-            ( { model | detectedPitch = pitchFrequency }
+            ( { model
+                | detectedPitch =
+                    Maybe.map
+                        (DetectedPitch.fromFrequency model.audioSettings model.pitchSpaceData)
+                        pitchFrequency
+              }
             , Cmd.none
             )
 

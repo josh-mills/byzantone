@@ -2,7 +2,8 @@ module View exposing (view)
 
 import Byzantine.ByzHtml.Martyria as ByzHtmlMartyria
 import Byzantine.Degree as Degree exposing (Degree(..))
-import Byzantine.Frequency as Frequency exposing (Frequency, PitchStandard(..))
+import Byzantine.DetectedPitch exposing (DetectedPitch)
+import Byzantine.Frequency as Frequency exposing (PitchStandard(..))
 import Byzantine.Martyria as Martyria
 import Byzantine.Pitch as Pitch exposing (Pitch)
 import Byzantine.Scale exposing (Scale(..))
@@ -331,7 +332,7 @@ viewPitchStandard pitchStandard =
         ]
 
 
-pitchTracker : AudioSettings -> PitchState -> Maybe Frequency -> Html Msg
+pitchTracker : AudioSettings -> PitchState -> Maybe DetectedPitch -> Html Msg
 pitchTracker audioSettings _ _ =
     case audioSettings.audioMode of
         AudioSettings.Listen ->

@@ -17,7 +17,7 @@ module Model exposing
 
 -}
 
-import Byzantine.Frequency exposing (Frequency)
+import Byzantine.DetectedPitch exposing (DetectedPitch)
 import Model.AudioSettings as AudioSettings exposing (AudioSettings)
 import Model.ControlsMenu as ControlsMenu exposing (OpenControlMenus)
 import Model.DeviceInfo exposing (DeviceInfo)
@@ -29,7 +29,7 @@ import Model.PitchState as PitchState exposing (PitchState)
 
 type alias Model =
     { audioSettings : AudioSettings
-    , detectedPitch : Maybe Frequency
+    , detectedPitch : Maybe DetectedPitch
     , deviceInfo : DeviceInfo
     , layoutData : LayoutData
     , menuOpen : Bool
