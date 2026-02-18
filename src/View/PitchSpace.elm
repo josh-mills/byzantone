@@ -9,7 +9,6 @@ import Byzantine.ByzHtml.Interval as ByzHtmlInterval
 import Byzantine.ByzHtml.Martyria as ByzHtmlMartyria
 import Byzantine.Degree as Degree exposing (Degree)
 import Byzantine.DetectedPitch exposing (DetectedPitch)
-import Byzantine.Frequency as Frequency
 import Byzantine.Interval as Interval exposing (Interval)
 import Byzantine.IntervalCharacter as IntervalCharacter
 import Byzantine.Martyria as Martyria
@@ -327,11 +326,8 @@ viewPitchTracker pitchSpaceData audioSettings detectedPitch =
 
 
 viewPitchIndicator : PitchSpaceData -> AudioSettings -> DetectedPitch -> Html Msg
-viewPitchIndicator pitchSpaceData { pitchStandard, listenRegister, responsiveness } detectedPitch =
+viewPitchIndicator pitchSpaceData { responsiveness } detectedPitch =
     let
-        detectedPitchInMoria =
-            Frequency.toPitchPosition pitchStandard listenRegister detectedPitch.frequency
-
         position =
             case PitchSpaceData.displayToLayout pitchSpaceData.display of
                 Vertical ->
@@ -340,7 +336,7 @@ viewPitchIndicator pitchSpaceData { pitchStandard, listenRegister, responsivenes
                             PitchPosition.toFloat pitchSpaceData.visibleRange.endPosition
                     in
                     Styles.top
-                        ((endPosition - detectedPitchInMoria)
+                        ((endPosition - detectedPitch.pitchPosition)
                             * pitchSpaceData.scalingFactor
                             - PitchSpaceData.pitchIndicatorOffset pitchSpaceData.display
                         )
@@ -351,7 +347,7 @@ viewPitchIndicator pitchSpaceData { pitchStandard, listenRegister, responsivenes
                             PitchPosition.toFloat pitchSpaceData.visibleRange.startPosition
                     in
                     Styles.left
-                        ((detectedPitchInMoria - startPosition)
+                        ((detectedPitch.pitchPosition - startPosition)
                             * pitchSpaceData.scalingFactor
                             + PitchSpaceData.pitchIndicatorOffset pitchSpaceData.display
                         )

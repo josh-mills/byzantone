@@ -17,11 +17,12 @@ import Model.DegreeDataDict as DegreeDataDict exposing (DegreeDataDict)
 import Model.PitchSpaceData exposing (PitchSpaceData)
 
 
-{-| Represents a detected pitch with its frequency, closest degree, and offset
-from that degree.
+{-| Represents a detected pitch with its frequency, pitch position, closest
+degree, and offset from that degree.
 -}
 type alias DetectedPitch =
     { frequency : Frequency
+    , pitchPosition : Float
     , degree : Degree
     , offset : Float
     }
@@ -33,16 +34,17 @@ data.
 fromFrequency : AudioSettings -> PitchSpaceData -> Frequency -> DetectedPitch
 fromFrequency audioSettings pitchSpaceData frequency =
     let
-        detectedPitchInMoria =
+        pitchPosition =
             Frequency.toPitchPosition
                 audioSettings.pitchStandard
                 audioSettings.listenRegister
                 frequency
 
         degreeInfo =
-            closestDegree pitchSpaceData.pitchPositions detectedPitchInMoria
+            closestDegree pitchSpaceData.pitchPositions pitchPosition
     in
     { frequency = frequency
+    , pitchPosition = pitchPosition
     , degree = degreeInfo.degree
     , offset = degreeInfo.offset
     }
@@ -52,10 +54,10 @@ fromFrequency audioSettings pitchSpaceData frequency =
 offset.
 -}
 closestDegree : DegreeDataDict PitchPosition -> Float -> { degree : Degree, offset : Float }
-closestDegree pitchPositions detectedPitchInMoria =
+closestDegree pitchPositions pitchPosition =
     let
         initialGuessDegreeIndex =
-            floor (detectedPitchInMoria / 72 * 7)
+            floor (pitchPosition / 72 * 7)
 
         initialGuessDegree =
             Array.get initialGuessDegreeIndex Degree.gamut
@@ -68,47 +70,47 @@ closestDegree pitchPositions detectedPitchInMoria =
                             Degree.Ga_
                     )
     in
-    closestDegreeHelper pitchPositions detectedPitchInMoria initialGuessDegree
+    closestDegreeHelper pitchPositions pitchPosition initialGuessDegree
 
 
 closestDegreeHelper : DegreeDataDict PitchPosition -> Float -> Degree -> { degree : Degree, offset : Float }
-closestDegreeHelper pitchPositions detectedPitch lowerNeighborCandidate =
+closestDegreeHelper pitchPositions pitchPosition lowerNeighborCandidate =
     let
         lowerNeighborCandidatePosition =
             PitchPosition.toFloat (DegreeDataDict.get lowerNeighborCandidate pitchPositions)
     in
-    case ( compare lowerNeighborCandidatePosition detectedPitch, Degree.step lowerNeighborCandidate 1 ) of
+    case ( compare lowerNeighborCandidatePosition pitchPosition, Degree.step lowerNeighborCandidate 1 ) of
         ( GT, _ ) ->
             case Degree.step lowerNeighborCandidate -1 of
                 Just newTest ->
-                    closestDegreeHelper pitchPositions detectedPitch newTest
+                    closestDegreeHelper pitchPositions pitchPosition newTest
 
                 Nothing ->
-                    { degree = lowerNeighborCandidate, offset = detectedPitch - lowerNeighborCandidatePosition }
+                    { degree = lowerNeighborCandidate, offset = pitchPosition - lowerNeighborCandidatePosition }
 
         ( EQ, _ ) ->
             -- don't hold your breath for this one.
             { degree = lowerNeighborCandidate, offset = 0 }
 
         ( LT, Nothing ) ->
-            { degree = lowerNeighborCandidate, offset = detectedPitch - lowerNeighborCandidatePosition }
+            { degree = lowerNeighborCandidate, offset = pitchPosition - lowerNeighborCandidatePosition }
 
         ( LT, Just upperNeighborCandidate ) ->
             let
                 upperNeighborCandidatePosition =
                     PitchPosition.toFloat (DegreeDataDict.get upperNeighborCandidate pitchPositions)
             in
-            if detectedPitch < upperNeighborCandidatePosition then
-                if abs (lowerNeighborCandidatePosition - detectedPitch) < abs (upperNeighborCandidatePosition - detectedPitch) then
-                    { degree = lowerNeighborCandidate, offset = detectedPitch - lowerNeighborCandidatePosition }
+            if pitchPosition < upperNeighborCandidatePosition then
+                if abs (lowerNeighborCandidatePosition - pitchPosition) < abs (upperNeighborCandidatePosition - pitchPosition) then
+                    { degree = lowerNeighborCandidate, offset = pitchPosition - lowerNeighborCandidatePosition }
 
                 else
-                    { degree = upperNeighborCandidate, offset = detectedPitch - upperNeighborCandidatePosition }
+                    { degree = upperNeighborCandidate, offset = pitchPosition - upperNeighborCandidatePosition }
 
             else
                 case Degree.step upperNeighborCandidate 1 of
                     Just newTest ->
-                        closestDegreeHelper pitchPositions detectedPitch newTest
+                        closestDegreeHelper pitchPositions pitchPosition newTest
 
                     Nothing ->
-                        { degree = upperNeighborCandidate, offset = detectedPitch - upperNeighborCandidatePosition }
+                        { degree = upperNeighborCandidate, offset = pitchPosition - upperNeighborCandidatePosition }
