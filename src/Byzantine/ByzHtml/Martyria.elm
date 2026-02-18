@@ -111,6 +111,11 @@ viewDegree degree =
     the soft chromatic. SBMuFL calls these "hardChromaticDi" and
     "softChromaticKe".
 
+Placement of bottom three is off out-of-the-box. e.g., nana-above looks better
+if style={position: relative; left: 12px; bottom: 6px;} It may be that I'm using
+it wrong, or it may be that this is an edge case that the library doesn't really
+support.
+
 -}
 viewSignature : Bool -> ModalSignature -> Html msg
 viewSignature positionBelow signature =
