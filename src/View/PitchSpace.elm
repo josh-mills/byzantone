@@ -9,6 +9,7 @@ import Byzantine.ByzHtml.Interval as ByzHtmlInterval
 import Byzantine.ByzHtml.Martyria as ByzHtmlMartyria
 import Byzantine.Degree as Degree exposing (Degree)
 import Byzantine.DetectedPitch exposing (DetectedPitch)
+import Byzantine.Frequency as Frequency
 import Byzantine.Interval as Interval exposing (Interval)
 import Byzantine.IntervalCharacter as IntervalCharacter
 import Byzantine.Martyria as Martyria
@@ -322,7 +323,55 @@ viewPitchTracker pitchSpaceData audioSettings detectedPitch =
             [ Styles.flexRow, class "h-6 w-full" ]
         )
         [ viewMaybe (viewPitchIndicator pitchSpaceData audioSettings) detectedPitch
+        , viewMaybe (viewDetectedPitch pitchSpaceData audioSettings) detectedPitch
         ]
+
+
+viewDetectedPitch : PitchSpaceData -> AudioSettings -> DetectedPitch -> Html Msg
+viewDetectedPitch pitchSpaceData audioSettings detectedPitch =
+    div
+        [ class "w-full h-full font-mono text-center sm:text-lg lg:text-xl z-10 flex items-center"
+        , classList
+            [ ( "justify-center", not (PitchSpaceData.isVertical pitchSpaceData.display) )
+            ]
+        ]
+        [ text (formatPitchFeedback audioSettings.pitchFeedback detectedPitch)
+        ]
+
+
+formatPitchFeedback : AudioSettings.PitchFeedback -> DetectedPitch -> String
+formatPitchFeedback pitchFeedback detectedPitch =
+    case pitchFeedback of
+        AudioSettings.Hz ->
+            Frequency.displayString detectedPitch.frequency
+
+        AudioSettings.Cents ->
+            let
+                cents =
+                    detectedPitch.offset * 1200 / 72
+
+                sign =
+                    if cents >= 0 then
+                        "+"
+
+                    else
+                        ""
+            in
+            sign ++ String.fromInt (round cents) ++ " cents"
+
+        AudioSettings.Moria ->
+            let
+                moria =
+                    detectedPitch.offset
+
+                sign =
+                    if moria >= 0 then
+                        "+"
+
+                    else
+                        ""
+            in
+            sign ++ Round.round 1 moria ++ " moria"
 
 
 viewPitchIndicator : PitchSpaceData -> AudioSettings -> DetectedPitch -> Html Msg

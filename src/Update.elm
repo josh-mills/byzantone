@@ -47,6 +47,7 @@ type Msg
     | SetPlaybackRegister Register
     | SetListenRegister Register
     | SetResponsiveness AudioSettings.Responsiveness
+    | SetPitchFeedback AudioSettings.PitchFeedback
     | SetScale Scale
     | ToggleControlMenu ControlsMenu.MenuOption
     | ToggleMenu
@@ -196,6 +197,13 @@ update msg model =
             , Cmd.none
             )
 
+        SetPitchFeedback pitchFeedback ->
+            ( updateAudioSettings
+                (\audioSettings -> { audioSettings | pitchFeedback = pitchFeedback })
+                model
+            , Cmd.none
+            )
+
         SetScale scale ->
             ( updateModeSettings
                 (\modeSettings -> { modeSettings | scale = scale })
@@ -206,12 +214,18 @@ update msg model =
             )
 
         SetDetectedPitch pitchFrequency ->
-            ( { model
-                | detectedPitch =
-                    Maybe.map
-                        (DetectedPitch.fromFrequency model.audioSettings model.pitchSpaceData)
-                        pitchFrequency
-              }
+            -- should probably handle this in the web component
+            ( case model.audioSettings.audioMode of
+                AudioSettings.Listen ->
+                    { model
+                        | detectedPitch =
+                            Maybe.map
+                                (DetectedPitch.fromFrequency model.audioSettings model.pitchSpaceData)
+                                pitchFrequency
+                    }
+
+                AudioSettings.Play ->
+                    model
             , Cmd.none
             )
 

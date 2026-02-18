@@ -2,6 +2,7 @@ module Model.AudioSettings exposing
     ( AudioSettings, defaultAudioSettings
     , AudioMode(..), audioModeToString, modes
     , Responsiveness(..), responsivenessToString
+    , PitchFeedback(..), pitchFeedbackToString
     )
 
 {-|
@@ -9,6 +10,7 @@ module Model.AudioSettings exposing
 @docs AudioSettings, defaultAudioSettings
 @docs AudioMode, audioModeToString, modes
 @docs Responsiveness, responsivenessToString
+@docs PitchFeedback, pitchFeedbackToString
 
 -}
 
@@ -23,6 +25,7 @@ type alias AudioSettings =
     , playbackRegister : Register
     , listenRegister : Register
     , responsiveness : Responsiveness
+    , pitchFeedback : PitchFeedback
     }
 
 
@@ -34,6 +37,7 @@ defaultAudioSettings =
     , playbackRegister = Treble
     , listenRegister = Bass
     , responsiveness = Smooth
+    , pitchFeedback = Moria
     }
 
 
@@ -70,3 +74,22 @@ responsivenessToString responsiveness =
 
         Smooth ->
             "Smooth"
+
+
+type PitchFeedback
+    = Cents
+    | Hz
+    | Moria
+
+
+pitchFeedbackToString : PitchFeedback -> String
+pitchFeedbackToString pitchFeedback =
+    case pitchFeedback of
+        Cents ->
+            "Cents"
+
+        Hz ->
+            "Hz"
+
+        Moria ->
+            "Moria"

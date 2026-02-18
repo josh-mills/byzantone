@@ -198,6 +198,7 @@ optionContent audioSettings modeSettings pitchState isOpen menuOption =
                                 (registerRadioConfig "Listen Register" Update.SetListenRegister)
                                 audioSettings.listenRegister
                             , lazy2 RadioFieldset.view responsivenessRadioConfig audioSettings.responsiveness
+                            , lazy2 RadioFieldset.view pitchFeedbackRadioConfig audioSettings.pitchFeedback
                             ]
 
                         AudioSettings.Play ->
@@ -251,6 +252,16 @@ responsivenessRadioConfig =
     , legendText = "Listening Sensitivity"
     , onSelect = Update.SetResponsiveness
     , options = [ AudioSettings.Sensitive, AudioSettings.Smooth ]
+    , viewItem = Nothing
+    }
+
+
+pitchFeedbackRadioConfig : RadioFieldset.Config AudioSettings.PitchFeedback Msg
+pitchFeedbackRadioConfig =
+    { itemToString = AudioSettings.pitchFeedbackToString
+    , legendText = "Pitch Feedback"
+    , onSelect = Update.SetPitchFeedback
+    , options = [ AudioSettings.Cents, AudioSettings.Hz, AudioSettings.Moria ]
     , viewItem = Nothing
     }
 
