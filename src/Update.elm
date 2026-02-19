@@ -12,7 +12,7 @@ import Byzantine.Register exposing (Register)
 import Byzantine.Scale exposing (Scale)
 import Maybe.Extra as Maybe
 import Model exposing (Modal, Model)
-import Model.AudioSettings as AudioSettings exposing (AudioSettings)
+import Model.AudioSettings as AudioSettings exposing (AudioSettings, ListenRegister)
 import Model.ControlsMenu as ControlsMenu
 import Model.DegreeDataDict as DegreeDataDict exposing (DegreeDataDict)
 import Model.LayoutData exposing (LayoutData, LayoutSelection)
@@ -45,7 +45,7 @@ type Msg
     | SetRangeStart String
     | SetRangeEnd String
     | SetPlaybackRegister Register
-    | SetListenRegister Register
+    | SetListenRegister ListenRegister
     | SetResponsiveness AudioSettings.Responsiveness
     | SetPitchFeedback AudioSettings.PitchFeedback
     | SetScale Scale
@@ -176,9 +176,9 @@ update msg model =
             , Cmd.none
             )
 
-        SetListenRegister register ->
+        SetListenRegister listenRegister ->
             ( updateAudioSettings
-                (\audioSettings -> { audioSettings | listenRegister = register })
+                (\audioSettings -> { audioSettings | listenRegister = listenRegister })
                 model
             , Cmd.none
             )
@@ -221,7 +221,11 @@ update msg model =
             ( case model.audioSettings.audioMode of
                 AudioSettings.Listen ->
                     { model
-                        | detectedPitch =
+                        | audioSettings =
+                            Maybe.unwrap model.audioSettings
+                                (AudioSettings.setAutoListenRegister model.modeSettings model.audioSettings)
+                                pitchFrequency
+                        , detectedPitch =
                             Maybe.map
                                 (DetectedPitch.fromFrequency model.audioSettings model.pitchSpaceData)
                                 pitchFrequency

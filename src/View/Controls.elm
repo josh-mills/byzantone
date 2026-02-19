@@ -13,7 +13,7 @@ import Html.Extra exposing (viewIf)
 import Html.Lazy exposing (..)
 import Icons
 import Maybe.Extra as Maybe
-import Model.AudioSettings as AudioSettings exposing (AudioSettings)
+import Model.AudioSettings as AudioSettings exposing (AudioSettings, ListenRegister)
 import Model.ControlsMenu as ControlsMenu exposing (MenuOption(..), OpenControlMenus)
 import Model.ModeSettings exposing (ModeSettings)
 import Model.PitchState as PitchState exposing (IsonStatus, PitchState)
@@ -195,7 +195,7 @@ optionContent audioSettings modeSettings pitchState isOpen menuOption =
                     (case audioSettings.audioMode of
                         AudioSettings.Listen ->
                             [ lazy2 RadioFieldset.view
-                                (registerRadioConfig "Listen Register" Update.SetListenRegister)
+                                (listenRegisterRadioConfig audioSettings)
                                 audioSettings.listenRegister
                             , lazy2 RadioFieldset.view responsivenessRadioConfig audioSettings.responsiveness
                             , lazy2 RadioFieldset.view pitchFeedbackRadioConfig audioSettings.pitchFeedback
@@ -203,7 +203,7 @@ optionContent audioSettings modeSettings pitchState isOpen menuOption =
 
                         AudioSettings.Play ->
                             [ lazy2 RadioFieldset.view
-                                (registerRadioConfig "Set Playback Register" Update.SetPlaybackRegister)
+                                playbackRegisterRadioConfig
                                 audioSettings.playbackRegister
                             ]
                     )
@@ -236,12 +236,26 @@ audioModeRadioConfig =
     }
 
 
-registerRadioConfig : String -> (Register -> Msg) -> RadioFieldset.Config Register Msg
-registerRadioConfig legendText onSelect =
+playbackRegisterRadioConfig : RadioFieldset.Config Register Msg
+playbackRegisterRadioConfig =
     { itemToString = Register.toString
-    , legendText = legendText
-    , onSelect = onSelect
+    , legendText = "Set Playback Register"
+    , onSelect = Update.SetPlaybackRegister
     , options = [ Register.Treble, Register.Bass ]
+    , viewItem = Nothing
+    }
+
+
+listenRegisterRadioConfig : AudioSettings -> RadioFieldset.Config ListenRegister Msg
+listenRegisterRadioConfig audioSettings =
+    { itemToString = AudioSettings.listenRegisterToString
+    , legendText = "Listen Register"
+    , onSelect = Update.SetListenRegister
+    , options =
+        [ AudioSettings.Auto (AudioSettings.listenRegister audioSettings)
+        , AudioSettings.Manual Register.Treble
+        , AudioSettings.Manual Register.Bass
+        ]
     , viewItem = Nothing
     }
 

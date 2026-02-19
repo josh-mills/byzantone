@@ -12,7 +12,7 @@ import Byzantine.Degree as Degree exposing (Degree)
 import Byzantine.Frequency as Frequency exposing (Frequency)
 import Byzantine.PitchPosition as PitchPosition exposing (PitchPosition)
 import Maybe.Extra as Maybe
-import Model.AudioSettings exposing (AudioSettings)
+import Model.AudioSettings as AudioSettings exposing (AudioSettings)
 import Model.DegreeDataDict as DegreeDataDict exposing (DegreeDataDict)
 import Model.PitchSpaceData exposing (PitchSpaceData)
 
@@ -37,7 +37,7 @@ fromFrequency audioSettings pitchSpaceData frequency =
         pitchPosition =
             Frequency.toPitchPosition
                 audioSettings.pitchStandard
-                audioSettings.listenRegister
+                (AudioSettings.listenRegister audioSettings)
                 frequency
 
         degreeInfo =
