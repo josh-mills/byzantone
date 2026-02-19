@@ -68,15 +68,13 @@ view model =
                 model.modeSettings
                 model.pitchState
                 model.detectedPitch
-
-            -- TODO: view detected pitch here?
             , View.Controls.view
                 model.audioSettings
                 model.modeSettings
                 model.pitchState
                 model.openControlMenus
             , lazy View.Controls.viewOverlay model.openControlMenus
-            , lazy3 pitchTracker model.audioSettings model.pitchState model.detectedPitch
+            , lazy pitchTracker model.audioSettings
             ]
         ]
 
@@ -332,8 +330,8 @@ viewPitchStandard pitchStandard =
         ]
 
 
-pitchTracker : AudioSettings -> PitchState -> Maybe DetectedPitch -> Html Msg
-pitchTracker audioSettings _ _ =
+pitchTracker : AudioSettings -> Html Msg
+pitchTracker audioSettings =
     case audioSettings.audioMode of
         AudioSettings.Listen ->
             div [ class "m-4" ]
