@@ -412,18 +412,14 @@ viewPitchIndicator pitchSpaceData { responsiveness } detectedPitch =
                             + PitchSpaceData.pitchIndicatorOffset pitchSpaceData.display
                         )
 
-        offset =
-            -- TODO: there's functionality here to build out
-            detectedPitch.offset
-
         absOffset =
-            abs offset
+            abs detectedPitch.offset
 
         color =
-            if absOffset < 0.5 then
+            if absOffset < 0.6 then
                 "bg-green-500"
 
-            else if absOffset <= 1 then
+            else if absOffset <= 1.2 then
                 "bg-amber-400"
 
             else
