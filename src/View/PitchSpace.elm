@@ -63,8 +63,7 @@ view pitchSpaceData audioSettings modeSettings pitchState detectedPitch =
                )
         )
         [ Html.Lazy.lazy3 viewIntervals pitchSpaceData modeSettings pitchState
-        , viewIfLazy (audioSettings.audioMode == AudioSettings.Listen)
-            (\_ -> viewPitchTracker pitchSpaceData audioSettings detectedPitch)
+        , Html.Lazy.lazy3 viewPitchTracker pitchSpaceData audioSettings detectedPitch
         , Html.Lazy.lazy3 viewPitches pitchSpaceData modeSettings pitchState
         , Html.Lazy.lazy2 viewAccidentalButtons pitchSpaceData.display pitchState.proposedAccidental
         ]
@@ -317,10 +316,22 @@ viewPitchTracker : PitchSpaceData -> AudioSettings -> Maybe DetectedPitch -> Htm
 viewPitchTracker pitchSpaceData audioSettings detectedPitch =
     div
         (if PitchSpaceData.isVertical pitchSpaceData.display then
-            [ Styles.flexCol, class "w-6" ]
+            [ Styles.flexCol
+            , Styles.transition
+            , classList
+                [ ( "w-6 md:w-12", audioSettings.audioMode == AudioSettings.Listen )
+                , ( "w-0", audioSettings.audioMode == AudioSettings.Play )
+                ]
+            ]
 
          else
-            [ Styles.flexRow, class "h-6 w-full" ]
+            [ Styles.flexRow
+            , Styles.transition
+            , classList
+                [ ( "h-6 w-full", audioSettings.audioMode == AudioSettings.Listen )
+                , ( "h-0", audioSettings.audioMode == AudioSettings.Play )
+                ]
+            ]
         )
         [ viewMaybe (viewPitchIndicator pitchSpaceData audioSettings) detectedPitch
         , viewMaybe (viewDetectedPitch pitchSpaceData audioSettings) detectedPitch

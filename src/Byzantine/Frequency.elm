@@ -34,11 +34,11 @@ type Frequency
     = Frequency Float
 
 
-{-| Rounded to two decimal points with "Hz" label
+{-| Rounded to one decimal points with "Hz" label
 -}
 displayString : Frequency -> String
 displayString (Frequency frequency_) =
-    Round.round 2 frequency_ ++ " Hz"
+    Round.round 1 frequency_ ++ " Hz"
 
 
 {-| Unrounded toFloat (for audio processing)

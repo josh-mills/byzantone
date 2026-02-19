@@ -130,10 +130,13 @@ update msg model =
             )
 
         SetAudioMode mode ->
-            ( { model | pitchState = PitchState.initialPitchState }
+            ( { model
+                | detectedPitch = Nothing
+                , pitchState = PitchState.initialPitchState
+              }
                 |> updateAudioSettings (\audioSettings -> { audioSettings | audioMode = mode })
                 |> resetPitchSpaceData
-            , Cmd.none
+            , Task.perform GotViewport Dom.getViewport
             )
 
         SetGain gain ->
