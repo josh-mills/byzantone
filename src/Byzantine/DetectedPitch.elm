@@ -1,12 +1,5 @@
 module Byzantine.DetectedPitch exposing (DetectedPitch, fromFrequency)
 
-{-| Utilities for analyzing detected pitch frequencies and converting them to
-degree information.
-
-@docs DetectedPitch, fromFrequency
-
--}
-
 import Array
 import Byzantine.Degree as Degree exposing (Degree)
 import Byzantine.Frequency as Frequency exposing (Frequency)
@@ -18,7 +11,8 @@ import Model.PitchSpaceData exposing (PitchSpaceData)
 
 
 {-| Represents a detected pitch with its frequency, pitch position, closest
-degree, and offset from that degree.
+degree, and offset from that degree. The closest degree and offset assume any
+currently applied accidentals.
 -}
 type alias DetectedPitch =
     { frequency : Frequency

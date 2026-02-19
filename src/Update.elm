@@ -218,20 +218,22 @@ update msg model =
 
         SetDetectedPitch pitchFrequency ->
             -- should probably handle this in the web component
-            ( case model.audioSettings.audioMode of
-                AudioSettings.Listen ->
+            ( case ( model.audioSettings.audioMode, pitchFrequency ) of
+                ( AudioSettings.Listen, Just frequency ) ->
+                    let
+                        audioSettings =
+                            AudioSettings.setAutoListenRegister model.modeSettings model.audioSettings frequency
+                    in
                     { model
-                        | audioSettings =
-                            Maybe.unwrap model.audioSettings
-                                (AudioSettings.setAutoListenRegister model.modeSettings model.audioSettings)
-                                pitchFrequency
+                        | audioSettings = audioSettings
                         , detectedPitch =
-                            Maybe.map
-                                (DetectedPitch.fromFrequency model.audioSettings model.pitchSpaceData)
-                                pitchFrequency
+                            Just (DetectedPitch.fromFrequency audioSettings model.pitchSpaceData frequency)
                     }
 
-                AudioSettings.Play ->
+                ( AudioSettings.Listen, Nothing ) ->
+                    { model | detectedPitch = Nothing }
+
+                ( AudioSettings.Play, _ ) ->
                     model
             , Cmd.none
             )
