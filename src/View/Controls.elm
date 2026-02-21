@@ -270,9 +270,9 @@ responsivenessRadioConfig =
     }
 
 
-pitchFeedbackRadioConfig : RadioFieldset.Config AudioSettings.PitchFeedback Msg
+pitchFeedbackRadioConfig : RadioFieldset.Config AudioSettings.PitchFeedbackUnit Msg
 pitchFeedbackRadioConfig =
-    { itemToString = AudioSettings.pitchFeedbackToString
+    { itemToString = AudioSettings.pitchFeedbackUnitToString
     , legendText = "Pitch Feedback"
     , onSelect = Update.SetPitchFeedback
     , options = [ AudioSettings.Cents, AudioSettings.Hz, AudioSettings.Moria ]

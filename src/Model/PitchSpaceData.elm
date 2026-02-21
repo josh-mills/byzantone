@@ -1,6 +1,6 @@
 module Model.PitchSpaceData exposing
     ( PitchSpaceData, init
-    , Display, displayToLayout, isVertical, pitchButtonSize, pitchIndicatorOffset
+    , Display, displayToLayout, isVertical, pitchButtonSize, pitchIndicatorPositionAdjustment
     , VisibleRange, PositionWithinVisibleRange(..), positionIsVisible
     , PitchPositionContextString, encodePitchPositionContext, decodePitchPositionContext
     , intervalsWithVisibility
@@ -19,7 +19,7 @@ as a result of model updates.
 
 # Display
 
-@docs Display, displayToLayout, isVertical, pitchButtonSize, pitchIndicatorOffset
+@docs Display, displayToLayout, isVertical, pitchButtonSize, pitchIndicatorPositionAdjustment
 
 
 # Visibility
@@ -289,14 +289,10 @@ pitchButtonSize display =
             64
 
 
-{-| todo: we'll need to think about name.
-pitch indicator has w-6 h-6, which is 24x24px.
-
-half pitch button size minus half the pitch indicator size.
-
+{-| Half pitch button size minus half the pitch indicator size.
 -}
-pitchIndicatorOffset : Display -> Float
-pitchIndicatorOffset display =
+pitchIndicatorPositionAdjustment : Display -> Float
+pitchIndicatorPositionAdjustment display =
     case display of
         VerticalSmall ->
             -- 48 / 2 - 12

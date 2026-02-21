@@ -1,19 +1,18 @@
 module Model.AudioSettings exposing
     ( AudioSettings, defaultAudioSettings
     , AudioMode(..), audioModeToString, modes
-    , ListenRegister(..), listenRegister
+    , ListenRegister(..), listenRegister, listenRegisterToString, setAutoListenRegister
     , Responsiveness(..), responsivenessToString
-    , PitchFeedback(..), pitchFeedbackToString
-    , listenRegisterToString, setAutoListenRegister
+    , PitchFeedbackUnit(..), pitchFeedbackUnitToString
     )
 
 {-|
 
 @docs AudioSettings, defaultAudioSettings
 @docs AudioMode, audioModeToString, modes
-@docs ListenRegister, listenRegister
+@docs ListenRegister, listenRegister, listenRegisterToString, setAutoListenRegister
 @docs Responsiveness, responsivenessToString
-@docs PitchFeedback, pitchFeedbackToString
+@docs PitchFeedbackUnit, pitchFeedbackUnitToString
 
 -}
 
@@ -32,7 +31,7 @@ type alias AudioSettings =
     , playbackRegister : Register
     , listenRegister : ListenRegister
     , responsiveness : Responsiveness
-    , pitchFeedback : PitchFeedback
+    , pitchFeedback : PitchFeedbackUnit
     }
 
 
@@ -108,14 +107,14 @@ responsivenessToString responsiveness =
             "Smooth"
 
 
-type PitchFeedback
+type PitchFeedbackUnit
     = Cents
     | Hz
     | Moria
 
 
-pitchFeedbackToString : PitchFeedback -> String
-pitchFeedbackToString pitchFeedback =
+pitchFeedbackUnitToString : PitchFeedbackUnit -> String
+pitchFeedbackUnitToString pitchFeedback =
     case pitchFeedback of
         Cents ->
             "Cents"
@@ -127,6 +126,20 @@ pitchFeedbackToString pitchFeedback =
             "Moria"
 
 
+{-| If the AudioSettings has a listen regester of Auto, then adjust the
+auto-selected register with reference to the detected frequency.
+
+If the current auto-selected listening register is the Bass register, and if the
+detected pitch is higher than one step above the upper range of the current mode
+settings, this swaps the auto-selected listening register to the Treble
+register.
+
+Similarly, if the current auto-selected listening register is the Treble
+register, and if the detected pitch is lower than one step below the lower range
+of the current mode settings, this swaps the auto-selected listening register to
+the Bass register.
+
+-}
 setAutoListenRegister : ModeSettings -> AudioSettings -> Frequency -> AudioSettings
 setAutoListenRegister modeSettings audioSettings detectedFrequency =
     case audioSettings.listenRegister of

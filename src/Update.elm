@@ -47,7 +47,7 @@ type Msg
     | SetPlaybackRegister Register
     | SetListenRegister ListenRegister
     | SetResponsiveness AudioSettings.Responsiveness
-    | SetPitchFeedback AudioSettings.PitchFeedback
+    | SetPitchFeedback AudioSettings.PitchFeedbackUnit
     | SetScale Scale
     | ToggleControlMenu ControlsMenu.MenuOption
     | ToggleMenu

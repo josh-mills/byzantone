@@ -350,7 +350,7 @@ viewDetectedPitch pitchSpaceData audioSettings detectedPitch =
         ]
 
 
-formatPitchFeedback : AudioSettings.PitchFeedback -> DetectedPitch -> String
+formatPitchFeedback : AudioSettings.PitchFeedbackUnit -> DetectedPitch -> String
 formatPitchFeedback pitchFeedback detectedPitch =
     case pitchFeedback of
         AudioSettings.Hz ->
@@ -398,7 +398,7 @@ viewPitchIndicator pitchSpaceData { responsiveness } detectedPitch =
                     Styles.top
                         ((endPosition - detectedPitch.pitchPosition)
                             * pitchSpaceData.scalingFactor
-                            - PitchSpaceData.pitchIndicatorOffset pitchSpaceData.display
+                            - PitchSpaceData.pitchIndicatorPositionAdjustment pitchSpaceData.display
                         )
 
                 Horizontal ->
@@ -409,7 +409,7 @@ viewPitchIndicator pitchSpaceData { responsiveness } detectedPitch =
                     Styles.left
                         ((detectedPitch.pitchPosition - startPosition)
                             * pitchSpaceData.scalingFactor
-                            + PitchSpaceData.pitchIndicatorOffset pitchSpaceData.display
+                            + PitchSpaceData.pitchIndicatorPositionAdjustment pitchSpaceData.display
                         )
 
         absOffset =
@@ -719,9 +719,6 @@ type PitchElementTarget
     | IsonIndicator
 
 
-{-| We need to steal some things from this to better position the
-pitch indicator
--}
 pitchElementPosition :
     PitchElementTarget
     -> Display
