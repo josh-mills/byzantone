@@ -19,6 +19,6 @@ type alias ModeSettings =
 initialModeSettings : ModeSettings
 initialModeSettings =
     { rangeStart = Ni
-    , rangeEnd = Ni_
+    , rangeEnd = Pa_
     , scale = Diatonic
     }
