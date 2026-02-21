@@ -1,5 +1,5 @@
 module Byzantine.Frequency exposing
-    ( Frequency(..), displayString, preciseString
+    ( Frequency(..), compare, displayString, preciseString
     , PitchStandard(..), pitchStandardToString
     , frequency, toPitchPosition
     )
@@ -9,7 +9,7 @@ module Byzantine.Frequency exposing
 
 # Frequency
 
-@docs Frequency, displayString, preciseString
+@docs Frequency, compare, displayString, preciseString
 
 
 # Pitch Standard
@@ -34,11 +34,18 @@ type Frequency
     = Frequency Float
 
 
-{-| Rounded to two decimal points with "Hz" label
+{-| Compare the underlying float values
+-}
+compare : Frequency -> Frequency -> Order
+compare (Frequency f1) (Frequency f2) =
+    Basics.compare f1 f2
+
+
+{-| Rounded to one decimal points with "Hz" label
 -}
 displayString : Frequency -> String
 displayString (Frequency frequency_) =
-    Round.round 2 frequency_ ++ " Hz"
+    Round.round 1 frequency_ ++ " Hz"
 
 
 {-| Unrounded toFloat (for audio processing)

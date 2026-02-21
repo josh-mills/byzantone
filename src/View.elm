@@ -2,7 +2,8 @@ module View exposing (view)
 
 import Byzantine.ByzHtml.Martyria as ByzHtmlMartyria
 import Byzantine.Degree as Degree exposing (Degree(..))
-import Byzantine.Frequency as Frequency exposing (Frequency, PitchStandard(..))
+import Byzantine.DetectedPitch exposing (DetectedPitch)
+import Byzantine.Frequency as Frequency exposing (PitchStandard(..))
 import Byzantine.Martyria as Martyria
 import Byzantine.Pitch as Pitch exposing (Pitch)
 import Byzantine.Scale exposing (Scale(..))
@@ -67,15 +68,13 @@ view model =
                 model.modeSettings
                 model.pitchState
                 model.detectedPitch
-
-            -- TODO: view detected pitch here?
             , View.Controls.view
                 model.audioSettings
                 model.modeSettings
                 model.pitchState
                 model.openControlMenus
             , lazy View.Controls.viewOverlay model.openControlMenus
-            , lazy3 pitchTracker model.audioSettings model.pitchState model.detectedPitch
+            , lazy pitchTracker model.audioSettings
             ]
         ]
 
@@ -331,8 +330,8 @@ viewPitchStandard pitchStandard =
         ]
 
 
-pitchTracker : AudioSettings -> PitchState -> Maybe Frequency -> Html Msg
-pitchTracker audioSettings _ _ =
+pitchTracker : AudioSettings -> Html Msg
+pitchTracker audioSettings =
     case audioSettings.audioMode of
         AudioSettings.Listen ->
             div [ class "m-4" ]

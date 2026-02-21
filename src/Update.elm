@@ -4,6 +4,7 @@ import Array
 import Browser.Dom as Dom
 import Byzantine.Accidental as Accidental exposing (Accidental)
 import Byzantine.Degree as Degree exposing (Degree(..))
+import Byzantine.DetectedPitch as DetectedPitch
 import Byzantine.Frequency exposing (Frequency, PitchStandard)
 import Byzantine.Pitch as Pitch exposing (Pitch)
 import Byzantine.PitchPosition as PitchPosition
@@ -11,7 +12,7 @@ import Byzantine.Register exposing (Register)
 import Byzantine.Scale exposing (Scale)
 import Maybe.Extra as Maybe
 import Model exposing (Modal, Model)
-import Model.AudioSettings as AudioSettings exposing (AudioSettings)
+import Model.AudioSettings as AudioSettings exposing (AudioSettings, ListenRegister)
 import Model.ControlsMenu as ControlsMenu
 import Model.DegreeDataDict as DegreeDataDict exposing (DegreeDataDict)
 import Model.LayoutData exposing (LayoutData, LayoutSelection)
@@ -44,8 +45,9 @@ type Msg
     | SetRangeStart String
     | SetRangeEnd String
     | SetPlaybackRegister Register
-    | SetListenRegister Register
+    | SetListenRegister ListenRegister
     | SetResponsiveness AudioSettings.Responsiveness
+    | SetPitchFeedback AudioSettings.PitchFeedbackUnit
     | SetScale Scale
     | ToggleControlMenu ControlsMenu.MenuOption
     | ToggleMenu
@@ -128,10 +130,13 @@ update msg model =
             )
 
         SetAudioMode mode ->
-            ( { model | pitchState = PitchState.initialPitchState }
+            ( { model
+                | detectedPitch = Nothing
+                , pitchState = PitchState.initialPitchState
+              }
                 |> updateAudioSettings (\audioSettings -> { audioSettings | audioMode = mode })
                 |> resetPitchSpaceData
-            , Cmd.none
+            , Task.perform GotViewport Dom.getViewport
             )
 
         SetGain gain ->
@@ -171,9 +176,9 @@ update msg model =
             , Cmd.none
             )
 
-        SetListenRegister register ->
+        SetListenRegister listenRegister ->
             ( updateAudioSettings
-                (\audioSettings -> { audioSettings | listenRegister = register })
+                (\audioSettings -> { audioSettings | listenRegister = listenRegister })
                 model
             , Cmd.none
             )
@@ -195,6 +200,13 @@ update msg model =
             , Cmd.none
             )
 
+        SetPitchFeedback pitchFeedback ->
+            ( updateAudioSettings
+                (\audioSettings -> { audioSettings | pitchFeedback = pitchFeedback })
+                model
+            , Cmd.none
+            )
+
         SetScale scale ->
             ( updateModeSettings
                 (\modeSettings -> { modeSettings | scale = scale })
@@ -205,7 +217,24 @@ update msg model =
             )
 
         SetDetectedPitch pitchFrequency ->
-            ( { model | detectedPitch = pitchFrequency }
+            -- should probably handle this in the web component
+            ( case ( model.audioSettings.audioMode, pitchFrequency ) of
+                ( AudioSettings.Listen, Just frequency ) ->
+                    let
+                        audioSettings =
+                            AudioSettings.setAutoListenRegister model.modeSettings model.audioSettings frequency
+                    in
+                    { model
+                        | audioSettings = audioSettings
+                        , detectedPitch =
+                            Just (DetectedPitch.fromFrequency audioSettings model.pitchSpaceData frequency)
+                    }
+
+                ( AudioSettings.Listen, Nothing ) ->
+                    { model | detectedPitch = Nothing }
+
+                ( AudioSettings.Play, _ ) ->
+                    model
             , Cmd.none
             )
 

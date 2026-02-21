@@ -3,18 +3,18 @@ module View.PitchSpace exposing (view)
 {-| View logic for pitch space (i.e., the intervalic space and positioned pitches)
 -}
 
-import Array
 import Byzantine.Accidental as Accidental
 import Byzantine.ByzHtml.Accidental as ByzHtmlAccidental
 import Byzantine.ByzHtml.Interval as ByzHtmlInterval
 import Byzantine.ByzHtml.Martyria as ByzHtmlMartyria
 import Byzantine.Degree as Degree exposing (Degree)
-import Byzantine.Frequency as Frequency exposing (Frequency)
+import Byzantine.DetectedPitch exposing (DetectedPitch)
+import Byzantine.Frequency as Frequency
 import Byzantine.Interval as Interval exposing (Interval)
 import Byzantine.IntervalCharacter as IntervalCharacter
 import Byzantine.Martyria as Martyria
 import Byzantine.Pitch as Pitch exposing (Pitch, PitchString)
-import Byzantine.PitchPosition as PitchPosition exposing (PitchPosition)
+import Byzantine.PitchPosition as PitchPosition
 import Html exposing (Html, button, div, li, span, text)
 import Html.Attributes as Attr exposing (class, classList)
 import Html.Attributes.Extra as Attr exposing (attributeMaybe)
@@ -23,7 +23,7 @@ import Html.Extra exposing (viewIf, viewIfLazy, viewMaybe)
 import Html.Lazy
 import Maybe.Extra as Maybe
 import Model.AudioSettings as AudioSettings exposing (AudioSettings, Responsiveness(..))
-import Model.DegreeDataDict as DegreeDataDict exposing (DegreeDataDict)
+import Model.DegreeDataDict as DegreeDataDict
 import Model.LayoutData as LayoutData exposing (Layout(..))
 import Model.ModeSettings exposing (ModeSettings)
 import Model.PitchSpaceData as PitchSpaceData
@@ -46,7 +46,7 @@ import Update exposing (Msg(..))
 -- WRAPPER AND VIEW HELPERS
 
 
-view : PitchSpaceData -> AudioSettings -> ModeSettings -> PitchState -> Maybe Frequency -> Html Msg
+view : PitchSpaceData -> AudioSettings -> ModeSettings -> PitchState -> Maybe DetectedPitch -> Html Msg
 view pitchSpaceData audioSettings modeSettings pitchState detectedPitch =
     div
         ([ Attr.id "pitch-space"
@@ -63,8 +63,7 @@ view pitchSpaceData audioSettings modeSettings pitchState detectedPitch =
                )
         )
         [ Html.Lazy.lazy3 viewIntervals pitchSpaceData modeSettings pitchState
-        , viewIf (audioSettings.audioMode == AudioSettings.Listen)
-            (viewPitchTracker pitchSpaceData audioSettings detectedPitch)
+        , Html.Lazy.lazy3 viewPitchTracker pitchSpaceData audioSettings detectedPitch
         , Html.Lazy.lazy3 viewPitches pitchSpaceData modeSettings pitchState
         , Html.Lazy.lazy2 viewAccidentalButtons pitchSpaceData.display pitchState.proposedAccidental
         ]
@@ -313,25 +312,82 @@ shouldHighlightInterval currentPitch proposedMovement interval =
 -- PITCH TRACKER COLUMN
 
 
-viewPitchTracker : PitchSpaceData -> AudioSettings -> Maybe Frequency -> Html Msg
+viewPitchTracker : PitchSpaceData -> AudioSettings -> Maybe DetectedPitch -> Html Msg
 viewPitchTracker pitchSpaceData audioSettings detectedPitch =
     div
         (if PitchSpaceData.isVertical pitchSpaceData.display then
-            [ Styles.flexCol, class "w-6" ]
+            [ Styles.flexCol
+            , Styles.transition
+            , classList
+                [ ( "w-6 md:w-12", audioSettings.audioMode == AudioSettings.Listen )
+                , ( "w-0", audioSettings.audioMode == AudioSettings.Play )
+                ]
+            ]
 
          else
-            [ Styles.flexRow, class "h-6 w-full" ]
+            [ Styles.flexRow
+            , Styles.transition
+            , classList
+                [ ( "h-6 w-full", audioSettings.audioMode == AudioSettings.Listen )
+                , ( "h-0", audioSettings.audioMode == AudioSettings.Play )
+                ]
+            ]
         )
         [ viewMaybe (viewPitchIndicator pitchSpaceData audioSettings) detectedPitch
+        , viewMaybe (viewDetectedPitch pitchSpaceData audioSettings) detectedPitch
         ]
 
 
-viewPitchIndicator : PitchSpaceData -> AudioSettings -> Frequency -> Html Msg
-viewPitchIndicator pitchSpaceData { pitchStandard, listenRegister, responsiveness } detectedPitch =
-    let
-        detectedPitchInMoria =
-            Frequency.toPitchPosition pitchStandard listenRegister detectedPitch
+viewDetectedPitch : PitchSpaceData -> AudioSettings -> DetectedPitch -> Html Msg
+viewDetectedPitch pitchSpaceData audioSettings detectedPitch =
+    div
+        [ class "w-full h-full font-mono text-center sm:text-lg lg:text-xl z-10 flex items-center"
+        , classList
+            [ ( "justify-center", not (PitchSpaceData.isVertical pitchSpaceData.display) )
+            ]
+        ]
+        [ text (formatPitchFeedback audioSettings.pitchFeedback detectedPitch)
+        ]
 
+
+formatPitchFeedback : AudioSettings.PitchFeedbackUnit -> DetectedPitch -> String
+formatPitchFeedback pitchFeedback detectedPitch =
+    case pitchFeedback of
+        AudioSettings.Hz ->
+            Frequency.displayString detectedPitch.frequency
+
+        AudioSettings.Cents ->
+            let
+                cents =
+                    detectedPitch.offset * 1200 / 72
+
+                sign =
+                    if cents >= 0 then
+                        "+"
+
+                    else
+                        ""
+            in
+            sign ++ String.fromInt (round cents) ++ " cents"
+
+        AudioSettings.Moria ->
+            let
+                moria =
+                    detectedPitch.offset
+
+                sign =
+                    if moria >= 0 then
+                        "+"
+
+                    else
+                        ""
+            in
+            sign ++ Round.round 1 moria ++ " moria"
+
+
+viewPitchIndicator : PitchSpaceData -> AudioSettings -> DetectedPitch -> Html Msg
+viewPitchIndicator pitchSpaceData { responsiveness } detectedPitch =
+    let
         position =
             case PitchSpaceData.displayToLayout pitchSpaceData.display of
                 Vertical ->
@@ -339,27 +395,31 @@ viewPitchIndicator pitchSpaceData { pitchStandard, listenRegister, responsivenes
                         endPosition =
                             PitchPosition.toFloat pitchSpaceData.visibleRange.endPosition
                     in
-                    Styles.top (pitchSpaceData.scalingFactor * (endPosition - detectedPitchInMoria))
+                    Styles.top
+                        ((endPosition - detectedPitch.pitchPosition)
+                            * pitchSpaceData.scalingFactor
+                            - PitchSpaceData.pitchIndicatorPositionAdjustment pitchSpaceData.display
+                        )
 
                 Horizontal ->
                     let
                         startPosition =
                             PitchPosition.toFloat pitchSpaceData.visibleRange.startPosition
                     in
-                    Styles.left (pitchSpaceData.scalingFactor * (detectedPitchInMoria - startPosition))
-
-        offset =
-            -- TODO: there's functionality here to build out
-            (closestDegree pitchSpaceData.pitchPositions detectedPitchInMoria).offset
+                    Styles.left
+                        ((detectedPitch.pitchPosition - startPosition)
+                            * pitchSpaceData.scalingFactor
+                            + PitchSpaceData.pitchIndicatorPositionAdjustment pitchSpaceData.display
+                        )
 
         absOffset =
-            abs offset
+            abs detectedPitch.offset
 
         color =
-            if absOffset < 0.5 then
+            if absOffset < 0.6 then
                 "bg-green-500"
 
-            else if absOffset <= 1 then
+            else if absOffset <= 1.2 then
                 "bg-amber-400"
 
             else
@@ -378,69 +438,6 @@ viewPitchIndicator pitchSpaceData { pitchStandard, listenRegister, responsivenes
         , class color
         ]
         []
-
-
-closestDegree : DegreeDataDict PitchPosition -> Float -> { degree : Degree, offset : Float }
-closestDegree pitchPositions detectedPitchInMoria =
-    let
-        initialGuessDegreeIndex =
-            floor (detectedPitchInMoria / 72 * 7)
-
-        initialGuessDegree =
-            Array.get initialGuessDegreeIndex Degree.gamut
-                |> Maybe.withDefaultLazy
-                    (\_ ->
-                        if initialGuessDegreeIndex < 0 then
-                            Degree.GA
-
-                        else
-                            Degree.Ga_
-                    )
-    in
-    closestDegreeHelper pitchPositions detectedPitchInMoria initialGuessDegree
-
-
-closestDegreeHelper : DegreeDataDict PitchPosition -> Float -> Degree -> { degree : Degree, offset : Float }
-closestDegreeHelper pitchPositions detectedPitch lowerNeighborCandidate =
-    let
-        lowerNeighborCandidatePosition =
-            PitchPosition.toFloat (DegreeDataDict.get lowerNeighborCandidate pitchPositions)
-    in
-    case ( compare lowerNeighborCandidatePosition detectedPitch, Degree.step lowerNeighborCandidate 1 ) of
-        ( GT, _ ) ->
-            case Degree.step lowerNeighborCandidate -1 of
-                Just newTest ->
-                    closestDegreeHelper pitchPositions detectedPitch newTest
-
-                Nothing ->
-                    { degree = lowerNeighborCandidate, offset = detectedPitch - lowerNeighborCandidatePosition }
-
-        ( EQ, _ ) ->
-            -- don't hold your breath for this one.
-            { degree = lowerNeighborCandidate, offset = 0 }
-
-        ( LT, Nothing ) ->
-            { degree = lowerNeighborCandidate, offset = detectedPitch - lowerNeighborCandidatePosition }
-
-        ( LT, Just upperNeighborCandidate ) ->
-            let
-                upperNeighborCandidatePosition =
-                    PitchPosition.toFloat (DegreeDataDict.get upperNeighborCandidate pitchPositions)
-            in
-            if detectedPitch < upperNeighborCandidatePosition then
-                if abs (lowerNeighborCandidatePosition - detectedPitch) < abs (upperNeighborCandidatePosition - detectedPitch) then
-                    { degree = lowerNeighborCandidate, offset = detectedPitch - lowerNeighborCandidatePosition }
-
-                else
-                    { degree = upperNeighborCandidate, offset = detectedPitch - upperNeighborCandidatePosition }
-
-            else
-                case Degree.step upperNeighborCandidate 1 of
-                    Just newTest ->
-                        closestDegreeHelper pitchPositions detectedPitch newTest
-
-                    Nothing ->
-                        { degree = upperNeighborCandidate, offset = detectedPitch - upperNeighborCandidatePosition }
 
 
 
