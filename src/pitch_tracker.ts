@@ -9,19 +9,19 @@ class PitchTracker extends HTMLElement {
     private animationFrameId: number | null = null;
     private noteAnimationFrameId: number | null = null;
     private smoothing: string = "sensitive";
+    private renderVisualization: boolean = true;
 
     private shadow: ShadowRoot;
     private resizeObserver: ResizeObserver | null = null;
 
     constructor() {
         super();
-        console.log("PitchTracker constructor called");
         this.shadow = this.attachShadow({ mode: "open" });
-        this.createUI();
+        this.createBaseUI();
     }
 
     static get observedAttributes(): string[] {
-        return ["smoothing"];
+        return ["smoothing", "renderVisualization"];
     }
 
     attributeChangedCallback(
@@ -40,11 +40,45 @@ class PitchTracker extends HTMLElement {
                     this.init();
                 }
             }
+        } else if (name === "renderVisualization") {
+            const newRenderVisualization = newValue === "true";
+            if (this.renderVisualization !== newRenderVisualization) {
+                this.renderVisualization = newRenderVisualization;
+                // Recreate visual elements to match new renderVisualization setting
+                this.createVisualElements();
+                // Reinitialize canvas context if needed
+                if (this.canvas) {
+                    this.canvasContext = this.canvas.getContext("2d");
+                }
+            }
         }
     }
 
+    get renderVisualizationEnabled(): boolean {
+        return this.renderVisualization;
+    }
+
     connectedCallback() {
+        // Process initial attributes before initializing
+        this.processInitialAttributes();
         this.init();
+    }
+
+    private processInitialAttributes() {
+        // Process renderVisualization attribute
+        const renderVizAttr = this.getAttribute("renderVisualization");
+        if (renderVizAttr !== null) {
+            this.renderVisualization = renderVizAttr === "true";
+        }
+
+        // Process smoothing attribute
+        const smoothingAttr = this.getAttribute("smoothing");
+        if (
+            smoothingAttr &&
+            (smoothingAttr === "sensitive" || smoothingAttr === "smooth")
+        ) {
+            this.smoothing = smoothingAttr;
+        }
     }
 
     disconnectedCallback() {
@@ -57,7 +91,7 @@ class PitchTracker extends HTMLElement {
         }
     }
 
-    private createUI() {
+    private createBaseUI() {
         // Add styles
         const style = document.createElement("style");
         style.textContent = `
@@ -91,20 +125,35 @@ class PitchTracker extends HTMLElement {
             }
         `;
 
-        // Create note display
-        this.noteDisplay = document.createElement("div");
-        this.noteDisplay.id = "note";
-
-        // Create canvas
-        this.canvas = document.createElement("canvas");
-        this.canvas.className = "visualizer";
-        this.canvas.width = 800;
-        this.canvas.height = 200;
-
-        // Append everything to shadow DOM
         this.shadow.appendChild(style);
-        this.shadow.appendChild(this.noteDisplay);
-        this.shadow.appendChild(this.canvas);
+    }
+
+    private createVisualElements() {
+        // Remove existing visual elements
+        const existingNote = this.shadow.querySelector("#note");
+        const existingCanvas = this.shadow.querySelector(".visualizer");
+        if (existingNote) existingNote.remove();
+        if (existingCanvas) existingCanvas.remove();
+
+        if (this.renderVisualization) {
+            // Create note display
+            this.noteDisplay = document.createElement("div");
+            this.noteDisplay.id = "note";
+
+            // Create canvas
+            this.canvas = document.createElement("canvas");
+            this.canvas.className = "visualizer";
+            this.canvas.width = 800;
+            this.canvas.height = 200;
+
+            // Append visual elements to shadow DOM
+            this.shadow.appendChild(this.noteDisplay);
+            this.shadow.appendChild(this.canvas);
+        } else {
+            this.noteDisplay = null;
+            this.canvas = null;
+            this.canvasContext = null;
+        }
     }
 
     private dispatchPitchDetected = (pitch: number | null) => {
@@ -152,6 +201,9 @@ https://alexanderell.is/posts/tuner/
                 this.stopAudioProcessing();
             }
 
+            // Create visual elements based on current renderVisualization setting
+            this.createVisualElements();
+
             // Create audio context
             this.audioContext = new (window.AudioContext ||
                 (window as any).webkitAudioContext)();
@@ -181,8 +233,8 @@ https://alexanderell.is/posts/tuner/
                 // Connect the source node to the analyzer
                 this.source.connect(this.analyser);
 
-                // Initialize canvas context
-                if (this.canvas) {
+                // Initialize canvas context only if renderVisualization is true
+                if (this.canvas && this.renderVisualization) {
                     this.canvasContext = this.canvas.getContext("2d");
 
                     // Set up resize observer for the canvas
@@ -195,9 +247,10 @@ https://alexanderell.is/posts/tuner/
                         }
                     });
                     this.resizeObserver.observe(this.canvas);
-
-                    this.visualize();
                 }
+
+                // Always start pitch detection, regardless of visualization
+                this.visualize();
             } catch (mediaError) {
                 if (this.noteDisplay) {
                     if ((mediaError as Error).name === "NotAllowedError") {
@@ -255,18 +308,13 @@ https://alexanderell.is/posts/tuner/
     }
 
     private visualize() {
-        if (
-            !this.canvas ||
-            !this.canvasContext ||
-            !this.analyser ||
-            !this.audioContext
-        ) {
+        if (!this.analyser || !this.audioContext) {
             return;
         }
 
-        // Get current canvas dimensions each time we draw
-        const WIDTH = this.canvas.width;
-        const HEIGHT = this.canvas.height;
+        // Get current canvas dimensions each time we draw (only if canvas exists)
+        const WIDTH = this.canvas?.width || 0;
+        const HEIGHT = this.canvas?.height || 0;
 
         let previousValueToDisplay: number | string = 0;
         let smoothingCount = 0;
@@ -339,64 +387,73 @@ https://alexanderell.is/posts/tuner/
             }
 
             if (typeof valueToDisplay === "number") {
-                // Format with 2 decimal places for better readability while keeping precision
-                valueToDisplay = valueToDisplay.toFixed(2) + " Hz";
-
                 // Dispatch pitch detected event when we have a valid frequency
                 this.dispatchPitchDetected(autoCorrelateValue);
+
+                // Only update visual display if renderVisualization is true
+                if (this.renderVisualization) {
+                    // Format with 2 decimal places for better readability while keeping precision
+                    valueToDisplay = valueToDisplay.toFixed(2) + " Hz";
+                    if (this.noteDisplay) {
+                        this.noteDisplay.innerText = valueToDisplay;
+                    }
+                }
             } else {
                 // Dispatch null when no pitch is detected
                 this.dispatchPitchDetected(null);
-            }
 
-            if (this.noteDisplay) {
-                this.noteDisplay.innerText = valueToDisplay;
+                // Only update visual display if renderVisualization is true
+                if (this.renderVisualization && this.noteDisplay) {
+                    this.noteDisplay.innerText = valueToDisplay;
+                }
             }
         };
 
-        // Draw frequency visualization
-        const drawFrequency = () => {
-            if (!this.analyser || !this.canvasContext) return;
-
-            const bufferLengthAlt = this.analyser.frequencyBinCount;
-            const dataArrayAlt = new Uint8Array(bufferLengthAlt);
-
-            this.canvasContext.clearRect(0, 0, WIDTH, HEIGHT);
-
-            const drawAlt = () => {
-                this.animationFrameId = requestAnimationFrame(drawAlt);
-
+        // Draw frequency visualization only if renderVisualization is true
+        if (this.renderVisualization && this.canvas && this.canvasContext) {
+            const drawFrequency = () => {
                 if (!this.analyser || !this.canvasContext) return;
 
-                this.analyser.getByteFrequencyData(dataArrayAlt);
+                const bufferLengthAlt = this.analyser.frequencyBinCount;
+                const dataArrayAlt = new Uint8Array(bufferLengthAlt);
 
-                this.canvasContext.fillStyle = "rgb(0, 0, 0)";
-                this.canvasContext.fillRect(0, 0, WIDTH, HEIGHT);
+                this.canvasContext.clearRect(0, 0, WIDTH, HEIGHT);
 
-                const barWidth = (WIDTH / bufferLengthAlt) * 2.5;
-                let barHeight;
-                let x = 0;
+                const drawAlt = () => {
+                    this.animationFrameId = requestAnimationFrame(drawAlt);
 
-                for (let i = 0; i < bufferLengthAlt; i++) {
-                    barHeight = dataArrayAlt[i];
+                    if (!this.analyser || !this.canvasContext) return;
 
-                    this.canvasContext.fillStyle =
-                        "rgb(" + (barHeight + 100) + ",50,50)";
-                    this.canvasContext.fillRect(
-                        x,
-                        HEIGHT - barHeight / 2,
-                        barWidth,
-                        barHeight / 2,
-                    );
+                    this.analyser.getByteFrequencyData(dataArrayAlt);
 
-                    x += barWidth + 1;
-                }
+                    this.canvasContext.fillStyle = "rgb(0, 0, 0)";
+                    this.canvasContext.fillRect(0, 0, WIDTH, HEIGHT);
+
+                    const barWidth = (WIDTH / bufferLengthAlt) * 2.5;
+                    let barHeight;
+                    let x = 0;
+
+                    for (let i = 0; i < bufferLengthAlt; i++) {
+                        barHeight = dataArrayAlt[i];
+
+                        this.canvasContext.fillStyle =
+                            "rgb(" + (barHeight + 100) + ",50,50)";
+                        this.canvasContext.fillRect(
+                            x,
+                            HEIGHT - barHeight / 2,
+                            barWidth,
+                            barHeight / 2,
+                        );
+
+                        x += barWidth + 1;
+                    }
+                };
+
+                drawAlt();
             };
 
-            drawAlt();
-        };
-
-        drawFrequency();
+            drawFrequency();
+        }
 
         drawNote();
     }

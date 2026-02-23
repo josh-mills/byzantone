@@ -2,7 +2,6 @@ module View exposing (view)
 
 import Byzantine.ByzHtml.Martyria as ByzHtmlMartyria
 import Byzantine.Degree as Degree exposing (Degree(..))
-import Byzantine.DetectedPitch exposing (DetectedPitch)
 import Byzantine.Frequency as Frequency exposing (PitchStandard(..))
 import Byzantine.Martyria as Martyria
 import Byzantine.Pitch as Pitch exposing (Pitch)
@@ -21,7 +20,7 @@ import Model exposing (Modal(..), Model)
 import Model.AudioSettings as AudioSettings exposing (AudioSettings)
 import Model.LayoutData as LayoutData exposing (Layout(..), LayoutData, LayoutSelection(..), layoutFor)
 import Model.ModeSettings exposing (ModeSettings)
-import Model.PitchState as PitchState exposing (PitchState)
+import Model.PitchState as PitchState
 import RadioFieldset
 import Styles
 import Svg.Attributes
@@ -74,7 +73,7 @@ view model =
                 model.pitchState
                 model.openControlMenus
             , lazy View.Controls.viewOverlay model.openControlMenus
-            , lazy pitchTracker model.audioSettings
+            , lazy2 pitchTracker model.audioSettings model.layoutData
             ]
         ]
 
@@ -330,10 +329,16 @@ viewPitchStandard pitchStandard =
         ]
 
 
-pitchTracker : AudioSettings -> Html Msg
-pitchTracker audioSettings =
+pitchTracker : AudioSettings -> LayoutData -> Html Msg
+pitchTracker audioSettings layoutData =
     case audioSettings.audioMode of
         AudioSettings.Listen ->
+            let
+                -- Tailwind 'sm' breakpoint is 640px
+                -- Disable visualization on small screens for performance
+                shouldRenderVisualization =
+                    layoutData.viewport.viewport.width >= 640
+            in
             div [ class "m-4" ]
                 [ Html.node "pitch-tracker"
                     [ Attr.attribute "smoothing"
@@ -343,6 +348,13 @@ pitchTracker audioSettings =
 
                             AudioSettings.Smooth ->
                                 "smooth"
+                        )
+                    , Attr.attribute "renderVisualization"
+                        (if shouldRenderVisualization then
+                            "true"
+
+                         else
+                            "false"
                         )
                     , class "hidden sm:block"
                     ]
