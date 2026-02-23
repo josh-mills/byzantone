@@ -312,17 +312,23 @@ https://alexanderell.is/posts/tuner/
             return;
         }
 
-        // Get current canvas dimensions each time we draw (only if canvas exists)
-        const WIDTH = this.canvas?.width || 0;
-        const HEIGHT = this.canvas?.height || 0;
+        // Start pitch detection (always runs)
+        this.startPitchDetection();
 
+        // Start visual rendering (only if renderVisualization is true)
+        if (this.renderVisualization && this.canvas && this.canvasContext) {
+            this.startVisualRendering();
+        }
+    }
+
+    private startPitchDetection() {
         let previousValueToDisplay: number | string = 0;
         let smoothingCount = 0;
         let smoothingThreshold = 5;
         let smoothingCountThreshold = 5;
 
-        const drawNote = () => {
-            this.noteAnimationFrameId = requestAnimationFrame(drawNote);
+        const detectPitch = () => {
+            this.noteAnimationFrameId = requestAnimationFrame(detectPitch);
 
             if (!this.analyser || !this.audioContext) return;
 
@@ -334,20 +340,18 @@ https://alexanderell.is/posts/tuner/
                 this.audioContext.sampleRate,
             );
 
-            // Use full precision
+            // Use full precision for processing
             let valueToDisplay: number | string = autoCorrelateValue;
-
             const smoothingValue = this.smoothing;
 
             if (autoCorrelateValue === -1) {
-                if (this.noteDisplay) {
-                    this.noteDisplay.innerText = "Too quiet...";
-                }
                 // Dispatch null when no pitch is detected (too quiet)
                 this.dispatchPitchDetected(null);
+                this.updateNoteDisplay("Too quiet...");
                 return;
             }
 
+            // Set smoothing parameters based on current setting
             if (smoothingValue === "sensitive") {
                 smoothingThreshold = 10;
                 smoothingCountThreshold = 5;
@@ -357,7 +361,6 @@ https://alexanderell.is/posts/tuner/
             }
 
             const noteIsSimilarEnough = () => {
-                // Check threshold for number, or just difference for notes.
                 if (
                     typeof valueToDisplay === "number" &&
                     typeof previousValueToDisplay === "number"
@@ -371,7 +374,7 @@ https://alexanderell.is/posts/tuner/
                 }
             };
 
-            // Check if this value has been within the given range for n iterations
+            // Apply smoothing logic
             if (noteIsSimilarEnough()) {
                 if (smoothingCount < smoothingCountThreshold) {
                     smoothingCount++;
@@ -386,76 +389,80 @@ https://alexanderell.is/posts/tuner/
                 return;
             }
 
+            // Process the final detected pitch
             if (typeof valueToDisplay === "number") {
                 // Dispatch pitch detected event when we have a valid frequency
                 this.dispatchPitchDetected(autoCorrelateValue);
 
-                // Only update visual display if renderVisualization is true
-                if (this.renderVisualization) {
-                    // Format with 2 decimal places for better readability while keeping precision
-                    valueToDisplay = valueToDisplay.toFixed(2) + " Hz";
-                    if (this.noteDisplay) {
-                        this.noteDisplay.innerText = valueToDisplay;
-                    }
-                }
+                // Update visual display
+                const formattedValue = valueToDisplay.toFixed(2) + " Hz";
+                this.updateNoteDisplay(formattedValue);
             } else {
                 // Dispatch null when no pitch is detected
                 this.dispatchPitchDetected(null);
-
-                // Only update visual display if renderVisualization is true
-                if (this.renderVisualization && this.noteDisplay) {
-                    this.noteDisplay.innerText = valueToDisplay;
-                }
+                this.updateNoteDisplay(valueToDisplay);
             }
         };
 
-        // Draw frequency visualization only if renderVisualization is true
-        if (this.renderVisualization && this.canvas && this.canvasContext) {
-            const drawFrequency = () => {
+        detectPitch();
+    }
+
+    private updateNoteDisplay(text: string | number) {
+        // Only update display if renderVisualization is enabled and noteDisplay exists
+        if (this.renderVisualization && this.noteDisplay) {
+            this.noteDisplay.innerText = String(text);
+        }
+    }
+
+    private startVisualRendering() {
+        if (!this.canvas || !this.canvasContext) return;
+
+        // Get current canvas dimensions
+        const WIDTH = this.canvas.width;
+        const HEIGHT = this.canvas.height;
+
+        const drawFrequency = () => {
+            if (!this.analyser || !this.canvasContext) return;
+
+            const bufferLengthAlt = this.analyser.frequencyBinCount;
+            const dataArrayAlt = new Uint8Array(bufferLengthAlt);
+
+            this.canvasContext.clearRect(0, 0, WIDTH, HEIGHT);
+
+            const drawAlt = () => {
+                this.animationFrameId = requestAnimationFrame(drawAlt);
+
                 if (!this.analyser || !this.canvasContext) return;
 
-                const bufferLengthAlt = this.analyser.frequencyBinCount;
-                const dataArrayAlt = new Uint8Array(bufferLengthAlt);
+                this.analyser.getByteFrequencyData(dataArrayAlt);
 
-                this.canvasContext.clearRect(0, 0, WIDTH, HEIGHT);
+                this.canvasContext.fillStyle = "rgb(0, 0, 0)";
+                this.canvasContext.fillRect(0, 0, WIDTH, HEIGHT);
 
-                const drawAlt = () => {
-                    this.animationFrameId = requestAnimationFrame(drawAlt);
+                const barWidth = (WIDTH / bufferLengthAlt) * 2.5;
+                let barHeight;
+                let x = 0;
 
-                    if (!this.analyser || !this.canvasContext) return;
+                for (let i = 0; i < bufferLengthAlt; i++) {
+                    barHeight = dataArrayAlt[i];
 
-                    this.analyser.getByteFrequencyData(dataArrayAlt);
+                    this.canvasContext.fillStyle =
+                        "rgb(" + (barHeight + 100) + ",50,50)";
+                    this.canvasContext.fillRect(
+                        x,
+                        HEIGHT - barHeight / 2,
+                        barWidth,
+                        barHeight / 2,
+                    );
 
-                    this.canvasContext.fillStyle = "rgb(0, 0, 0)";
-                    this.canvasContext.fillRect(0, 0, WIDTH, HEIGHT);
-
-                    const barWidth = (WIDTH / bufferLengthAlt) * 2.5;
-                    let barHeight;
-                    let x = 0;
-
-                    for (let i = 0; i < bufferLengthAlt; i++) {
-                        barHeight = dataArrayAlt[i];
-
-                        this.canvasContext.fillStyle =
-                            "rgb(" + (barHeight + 100) + ",50,50)";
-                        this.canvasContext.fillRect(
-                            x,
-                            HEIGHT - barHeight / 2,
-                            barWidth,
-                            barHeight / 2,
-                        );
-
-                        x += barWidth + 1;
-                    }
-                };
-
-                drawAlt();
+                    x += barWidth + 1;
+                }
             };
 
-            drawFrequency();
-        }
+            drawAlt();
+        };
 
-        drawNote();
+        drawFrequency();
     }
 
     private autoCorrelate(buffer: Float32Array, sampleRate: number): number {
