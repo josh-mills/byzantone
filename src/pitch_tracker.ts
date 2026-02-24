@@ -157,7 +157,10 @@ class PitchTracker extends HTMLElement {
         const event = new CustomEvent("pitchDetected", {
             bubbles: true,
             composed: true, // Allows the event to cross the shadow DOM boundary
-            detail: { pitch: pitch },
+            detail: {
+                pitch: pitch,
+                timestamp: Date.now(),
+            },
         });
 
         this.dispatchEvent(event);

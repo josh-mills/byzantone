@@ -21,6 +21,7 @@ import Model.PitchSpaceData as PitchSpaceData exposing (PitchSpaceData)
 import Model.PitchState as PitchState exposing (IsonStatus(..), PitchState, ProposedAccidental(..))
 import Movement exposing (Movement)
 import Task
+import Time
 
 
 type Msg
@@ -37,7 +38,7 @@ type Msg
     | SelectProposedAccidental ProposedAccidental
     | SelectProposedMovement Movement
     | SetAudioMode AudioSettings.AudioMode
-    | SetDetectedPitch (Maybe Frequency)
+    | SetDetectedPitch { maybeFrequency : Maybe Frequency, timestamp : Time.Posix }
     | SetGain Float
     | SetIson IsonStatus
     | SetLayout LayoutSelection
@@ -216,9 +217,9 @@ update msg model =
             , Cmd.none
             )
 
-        SetDetectedPitch pitchFrequency ->
+        SetDetectedPitch { maybeFrequency, timestamp } ->
             -- should probably handle this in the web component
-            ( case ( model.audioSettings.audioMode, pitchFrequency ) of
+            ( case ( model.audioSettings.audioMode, maybeFrequency ) of
                 ( AudioSettings.Listen, Just frequency ) ->
                     let
                         audioSettings =
