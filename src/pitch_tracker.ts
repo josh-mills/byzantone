@@ -12,7 +12,6 @@ class PitchTracker extends HTMLElement {
     private renderVisualization: boolean = true;
 
     private shadow: ShadowRoot;
-    private resizeObserver: ResizeObserver | null = null;
 
     constructor() {
         super();
@@ -21,7 +20,7 @@ class PitchTracker extends HTMLElement {
     }
 
     static get observedAttributes(): string[] {
-        return ["smoothing", "renderVisualization"];
+        return ["smoothing", "render-visualization"];
     }
 
     attributeChangedCallback(
@@ -40,15 +39,28 @@ class PitchTracker extends HTMLElement {
                     this.init();
                 }
             }
-        } else if (name === "renderVisualization") {
+        } else if (name === "render-visualization") {
             const newRenderVisualization = newValue === "true";
             if (this.renderVisualization !== newRenderVisualization) {
                 this.renderVisualization = newRenderVisualization;
-                // Recreate visual elements to match new renderVisualization setting
-                this.createVisualElements();
-                // Reinitialize canvas context if needed
-                if (this.canvas) {
-                    this.canvasContext = this.canvas.getContext("2d");
+
+                if (this.renderVisualization) {
+                    // Enabling visualization
+                    this.createVisualElements();
+                    if (this.canvas) {
+                        this.canvasContext = this.canvas.getContext("2d");
+                        // Start visual rendering if audio is already initialized
+                        if (this.analyser && this.audioContext) {
+                            // Add slight delay to ensure canvas is properly attached to DOM
+                            setTimeout(() => {
+                                this.startVisualRendering();
+                            }, 10);
+                        }
+                    }
+                } else {
+                    // Disabling visualization
+                    this.stopVisualRendering();
+                    this.createVisualElements(); // This will remove visual elements
                 }
             }
         }
@@ -66,7 +78,7 @@ class PitchTracker extends HTMLElement {
 
     private processInitialAttributes() {
         // Process renderVisualization attribute
-        const renderVizAttr = this.getAttribute("renderVisualization");
+        const renderVizAttr = this.getAttribute("render-visualization");
         if (renderVizAttr !== null) {
             this.renderVisualization = renderVizAttr === "true";
         }
@@ -83,12 +95,6 @@ class PitchTracker extends HTMLElement {
 
     disconnectedCallback() {
         this.stopAudioProcessing();
-
-        // Disconnect the resize observer
-        if (this.resizeObserver) {
-            this.resizeObserver.disconnect();
-            this.resizeObserver = null;
-        }
     }
 
     private createBaseUI() {
@@ -100,12 +106,6 @@ class PitchTracker extends HTMLElement {
                 max-width: 800px;
                 margin: 0 auto;
                 padding: 20px;
-            }
-            .controls {
-                margin: 0 0 20px 0;
-            }
-            .control-group {
-                margin-bottom: 15px;
             }
             canvas {
                 width: 100%;
@@ -120,9 +120,6 @@ class PitchTracker extends HTMLElement {
                 margin: 20px 0;
                 min-height: 36px;
             }
-            .controls {
-                margin-top: 0;
-            }
         `;
 
         this.shadow.appendChild(style);
@@ -131,7 +128,7 @@ class PitchTracker extends HTMLElement {
     private createVisualElements() {
         // Remove existing visual elements
         const existingNote = this.shadow.querySelector("#note");
-        const existingCanvas = this.shadow.querySelector(".visualizer");
+        const existingCanvas = this.shadow.querySelector("canvas");
         if (existingNote) existingNote.remove();
         if (existingCanvas) existingCanvas.remove();
 
@@ -142,7 +139,6 @@ class PitchTracker extends HTMLElement {
 
             // Create canvas
             this.canvas = document.createElement("canvas");
-            this.canvas.className = "visualizer";
             this.canvas.width = 800;
             this.canvas.height = 200;
 
@@ -236,17 +232,6 @@ https://alexanderell.is/posts/tuner/
                 // Initialize canvas context only if renderVisualization is true
                 if (this.canvas && this.renderVisualization) {
                     this.canvasContext = this.canvas.getContext("2d");
-
-                    // Set up resize observer for the canvas
-                    this.resizeObserver = new ResizeObserver(() => {
-                        if (this.canvas) {
-                            // Update canvas dimensions when container resizes
-                            const rect = this.canvas.getBoundingClientRect();
-                            this.canvas.width = rect.width;
-                            this.canvas.height = rect.height;
-                        }
-                    });
-                    this.resizeObserver.observe(this.canvas);
                 }
 
                 // Always start pitch detection, regardless of visualization
@@ -278,10 +263,7 @@ https://alexanderell.is/posts/tuner/
 
     private stopAudioProcessing() {
         // Cancel any ongoing animation frames
-        if (this.animationFrameId !== null) {
-            cancelAnimationFrame(this.animationFrameId);
-            this.animationFrameId = null;
-        }
+        this.stopVisualRendering();
 
         if (this.noteAnimationFrameId !== null) {
             cancelAnimationFrame(this.noteAnimationFrameId);
@@ -414,8 +396,30 @@ https://alexanderell.is/posts/tuner/
         }
     }
 
+    private stopVisualRendering() {
+        if (this.animationFrameId !== null) {
+            cancelAnimationFrame(this.animationFrameId);
+            this.animationFrameId = null;
+        }
+    }
+
     private startVisualRendering() {
-        if (!this.canvas || !this.canvasContext) return;
+        if (!this.canvas || !this.canvasContext) {
+            return;
+        }
+
+        // Check canvas dimensions
+        const rect = this.canvas.getBoundingClientRect();
+
+        if (rect.width === 0 || rect.height === 0) {
+            setTimeout(() => {
+                this.startVisualRendering();
+            }, 50);
+            return;
+        }
+
+        // Stop any existing visual rendering first
+        this.stopVisualRendering();
 
         // Get current canvas dimensions
         const WIDTH = this.canvas.width;

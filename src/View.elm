@@ -349,7 +349,7 @@ pitchTracker audioSettings layoutData =
                             AudioSettings.Smooth ->
                                 "smooth"
                         )
-                    , Attr.attribute "renderVisualization"
+                    , Attr.attribute "render-visualization"
                         (if shouldRenderVisualization then
                             "true"
 
