@@ -228,22 +228,23 @@ settings audioSettings layoutData modeSettings =
 
 layoutRadioConfig : RadioFieldset.Config LayoutSelection Msg
 layoutRadioConfig =
-    { itemToString = LayoutData.layoutString
-    , legendText = "Layout"
-    , onSelect = SetLayout
-    , options = [ Auto, Manual Vertical, Manual Horizontal ]
-    , viewItem = Nothing
-    }
+    RadioFieldset.baseConfig
+        { itemToString = LayoutData.layoutString
+        , legendText = "Layout"
+        , onSelect = SetLayout
+        , options = [ Auto, Manual Vertical, Manual Horizontal ]
+        }
 
 
 pitchStandardRadioConfig : RadioFieldset.Config PitchStandard Msg
 pitchStandardRadioConfig =
-    { itemToString = Frequency.pitchStandardToString
-    , legendText = "Pitch Standard"
-    , onSelect = SetPitchStandard
-    , options = [ Ni256, Ke440 ]
-    , viewItem = Just viewPitchStandard
-    }
+    RadioFieldset.baseConfig
+        { itemToString = Frequency.pitchStandardToString
+        , legendText = "Pitch Standard"
+        , onSelect = SetPitchStandard
+        , options = [ Ni256, Ke440 ]
+        }
+        |> RadioFieldset.withCustomViewItem viewPitchStandard
 
 
 {-| Set the visible range of the pitch space. A minimum of a tetrachord is
