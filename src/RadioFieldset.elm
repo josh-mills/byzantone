@@ -1,5 +1,6 @@
 module RadioFieldset exposing
-    ( Config, baseConfig, withCustomSelected, withCustomViewItem
+    ( Config, baseConfig
+    , withCustomSelected, withCustomViewItem, withBottomElement
     , view
     )
 
@@ -8,7 +9,8 @@ module RadioFieldset exposing
 
 # Config Builder
 
-@docs Config, baseConfig, withCustomSelected, withCustomViewItem
+@docs Config, baseConfig
+@docs withCustomSelected, withCustomViewItem, withBottomElement
 
 
 # View
@@ -21,6 +23,7 @@ import Html exposing (Html, div, fieldset, input, label, legend, text)
 import Html.Attributes as Attr exposing (checked, class, type_)
 import Html.Events exposing (onClick)
 import Html.Lazy exposing (lazy3)
+import List.Extra
 import String.Extra exposing (dasherize)
 import Styles
 
@@ -35,6 +38,7 @@ type Config a msg
         , legendText : String
         , onSelect : a -> msg
         , options : List a
+        , maybeBottomElement : Maybe (a -> Html msg)
         , optionIsSelected : Maybe (a -> a -> Bool)
         , viewItem : Maybe (a -> Html msg)
         }
@@ -53,6 +57,7 @@ baseConfig { itemToString, legendText, onSelect, options } =
         , legendText = legendText
         , onSelect = onSelect
         , options = options
+        , maybeBottomElement = Nothing
         , optionIsSelected = Nothing
         , viewItem = Nothing
         }
@@ -66,6 +71,16 @@ withCustomSelected optionIsSelected (Config config) =
 withCustomViewItem : (a -> Html msg) -> Config a msg -> Config a msg
 withCustomViewItem viewItem (Config config) =
     Config { config | viewItem = Just viewItem }
+
+
+{-| Add a bottom element. The argument will be the selected option.
+
+TODO: could probably get a better name here
+
+-}
+withBottomElement : (a -> Html msg) -> Config a msg -> Config a msg
+withBottomElement bottomElement (Config config) =
+    Config { config | maybeBottomElement = Just bottomElement }
 
 
 
@@ -117,8 +132,20 @@ view config selected =
                     (getOptionIsSelected config option selected)
                     option
             )
+        |> addBottomElement config selected
+        -- could include an optional instruction text here, too
         |> (::) (legend [ class "px-1" ] [ text (getLegendText config) ])
         |> fieldset [ Styles.borderRounded, class "px-2 pb-1 mb-2" ]
+
+
+addBottomElement : Config a msg -> a -> List (Html msg) -> List (Html msg)
+addBottomElement (Config { maybeBottomElement }) selected items =
+    case maybeBottomElement of
+        Just bottomElement ->
+            List.Extra.push (bottomElement selected) items
+
+        Nothing ->
+            items
 
 
 radioOption : Config a msg -> Bool -> a -> Html msg
