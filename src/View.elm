@@ -236,27 +236,31 @@ layoutRadioConfig =
         }
 
 
-{-| TODO: this should take in the current pitch standard, variable
-defaulted to current Di value.
--}
 pitchStandardRadioConfig : PitchStandard -> RadioFieldset.Config PitchStandard Msg
-pitchStandardRadioConfig pitchStandard =
+pitchStandardRadioConfig currentPitchStandard =
+    let
+        isSelectedEqualityCheck =
+            case currentPitchStandard of
+                VariableDi _ ->
+                    \option _ ->
+                        case option of
+                            VariableDi _ ->
+                                True
+
+                            _ ->
+                                False
+
+                _ ->
+                    (==)
+    in
     RadioFieldset.baseConfig
         { itemToString = Frequency.pitchStandardToString
         , legendText = "Pitch Standard"
         , onSelect = SetPitchStandard
-        , options = [ Ni256, Ke440, VariableDi (Frequency.pitchStandardToDiFrequency pitchStandard) ]
+        , options = [ Ni256, Ke440, VariableDi (Frequency.pitchStandardToDiFrequency currentPitchStandard) ]
         }
         |> RadioFieldset.withCustomViewItem viewPitchStandard
-        |> RadioFieldset.withCustomSelected
-            (\a b ->
-                case ( a, b ) of
-                    ( VariableDi _, VariableDi _ ) ->
-                        True
-
-                    _ ->
-                        a == b
-            )
+        |> RadioFieldset.withCustomSelected isSelectedEqualityCheck
         |> RadioFieldset.withConditionalPostpend
             (\selectedPitchStandard ->
                 case selectedPitchStandard of

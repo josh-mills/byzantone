@@ -86,7 +86,7 @@ based on the given pitch standard.
 
   - Ni256: Δι = 384.0 Hz (based on Νη = 256 Hz)
   - Ke440: Δι = 391.995 Hz (based on Κε = 440 Hz)
-  - VariableDi: Δι = arbitrary payload
+  - VariableDi: Δι = arbitrary payload, bounded between 300 and 480 Hz
 
 For purposes of this external API helper, the underlying Float value of the
 Frequency is rounded to a precision of two points.
@@ -111,7 +111,7 @@ diFrequency pitchStandard =
             391.995
 
         VariableDi (Frequency freq) ->
-            freq
+            clamp 300 480 freq
 
 
 {-| Calculate frequency relative to a fixed pitch for Natural Di, according to
