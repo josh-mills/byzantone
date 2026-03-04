@@ -62,6 +62,7 @@ classical standard.
 type PitchStandard
     = Ni256
     | Ke440
+    | VariableDi Frequency
 
 
 {-| Convert a PitchStandard to a String representation
@@ -74,6 +75,9 @@ pitchStandardToString pitchStandard =
 
         Ke440 ->
             "Ke440"
+
+        VariableDi freq ->
+            "Variable" ++ preciseString freq
 
 
 {-| Di is used as a fixed point of reference. Returns the frequency in Hz for Di
@@ -91,6 +95,9 @@ diFrequency pitchStandard =
 
         Ke440 ->
             391.995
+
+        VariableDi (Frequency diFreq) ->
+            diFreq
 
 
 {-| Calculate frequency relative to a fixed pitch for Natural Di, according to

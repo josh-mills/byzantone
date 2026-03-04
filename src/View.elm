@@ -2,7 +2,7 @@ module View exposing (view)
 
 import Byzantine.ByzHtml.Martyria as ByzHtmlMartyria
 import Byzantine.Degree as Degree exposing (Degree(..))
-import Byzantine.Frequency as Frequency exposing (PitchStandard(..))
+import Byzantine.Frequency as Frequency exposing (Frequency(..), PitchStandard(..))
 import Byzantine.Martyria as Martyria
 import Byzantine.Pitch as Pitch exposing (Pitch)
 import Byzantine.Scale exposing (Scale(..))
@@ -236,15 +236,74 @@ layoutRadioConfig =
         }
 
 
+{-| TODO: this should take in the current pitch standard, variable
+defaulted to current Di value.
+-}
 pitchStandardRadioConfig : RadioFieldset.Config PitchStandard Msg
 pitchStandardRadioConfig =
     RadioFieldset.baseConfig
         { itemToString = Frequency.pitchStandardToString
         , legendText = "Pitch Standard"
         , onSelect = SetPitchStandard
-        , options = [ Ni256, Ke440 ]
+        , options = [ Ni256, Ke440, VariableDi (Frequency 384) ]
         }
         |> RadioFieldset.withCustomViewItem viewPitchStandard
+        |> RadioFieldset.withCustomSelected
+            (\a b ->
+                case ( a, b ) of
+                    ( VariableDi _, VariableDi _ ) ->
+                        True
+
+                    _ ->
+                        a == b
+            )
+        |> RadioFieldset.withBottomElement
+            (\pitchStandard ->
+                case pitchStandard of
+                    VariableDi someFreq ->
+                        variableDiFrequencyInput someFreq
+
+                    _ ->
+                        Html.Extra.nothing
+            )
+
+
+variableDiFrequencyInput : Frequency -> Html Msg
+variableDiFrequencyInput diFrequency =
+    let
+        input type_ attrs =
+            Html.input
+                ([ Attr.type_ type_
+                 , Attr.id ("variable_di_" ++ type_)
+                 , Attr.min "300"
+                 , Attr.max "480"
+                 , Attr.step "0.1"
+                 , Attr.value (Frequency.preciseString diFrequency)
+                 , onInput setPitchStandard
+                 ]
+                    ++ attrs
+                )
+                []
+
+        setPitchStandard string =
+            String.toFloat string
+                |> Maybe.unwrap diFrequency Frequency
+                |> VariableDi
+                |> SetPitchStandard
+    in
+    div [ Styles.flexCol, class "mx-8 my-2 gap-2" ]
+        [ p [ class "max-w-xs italic text-sm" ]
+            [ text "Priest (or cantor) not much one for strict adherance to a pitch standard? "
+            , text "Set an arbitrary frequency for a reference "
+            , span [ class "font-greek" ] [ text "Δι" ]
+            , text " here."
+            ]
+        , div [ Styles.flexRow ]
+            [ input "number" [ class "text-right" ]
+            , span [ class "mr-4" ] [ text "Hz" ]
+            , input "range" [ class "w-full max-w-64" ]
+            ]
+        ]
 
 
 {-| Set the visible range of the pitch space. A minimum of a tetrachord is
@@ -322,6 +381,11 @@ viewPitchStandard pitchStandard =
                 Ke440 ->
                     ( Martyria.for Diatonic Ke |> ByzHtmlMartyria.view
                     , " = 440 Hz"
+                    )
+
+                VariableDi _ ->
+                    ( Martyria.for Diatonic Di |> ByzHtmlMartyria.view
+                    , " = Priest’s Special"
                     )
     in
     div [ class "mb-1" ]
