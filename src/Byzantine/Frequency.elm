@@ -1,6 +1,6 @@
 module Byzantine.Frequency exposing
     ( Frequency(..), compare, displayString, preciseString
-    , PitchStandard(..), pitchStandardToString
+    , PitchStandard(..), pitchStandardToString, pitchStandardToDiFrequency
     , frequency, toPitchPosition
     )
 
@@ -14,7 +14,7 @@ module Byzantine.Frequency exposing
 
 # Pitch Standard
 
-@docs PitchStandard, pitchStandardToString
+@docs PitchStandard, pitchStandardToString, pitchStandardToDiFrequency
 
 
 # Calculations
@@ -25,6 +25,7 @@ module Byzantine.Frequency exposing
 
 import Byzantine.PitchPosition as PitchPosition exposing (PitchPosition)
 import Byzantine.Register as Register exposing (Register)
+import Maybe.Extra
 import Round
 
 
@@ -80,13 +81,26 @@ pitchStandardToString pitchStandard =
             "Variable" ++ preciseString freq
 
 
-{-| Di is used as a fixed point of reference. Returns the frequency in Hz for Di
+{-| Δι is used as a fixed point of reference. Returns the frequency in Hz for Δι
 based on the given pitch standard.
 
-  - Ni256: Di = 384.0 Hz (based on Ni = 256 Hz)
-  - Ke440: Di = 391.995 Hz (based on Ke = 440 Hz)
+  - Ni256: Δι = 384.0 Hz (based on Νη = 256 Hz)
+  - Ke440: Δι = 391.995 Hz (based on Κε = 440 Hz)
+  - VariableDi: Δι = arbitrary payload
+
+For purposes of this external API helper, the underlying Float value of the
+Frequency is rounded to a precision of two points.
 
 -}
+pitchStandardToDiFrequency : PitchStandard -> Frequency
+pitchStandardToDiFrequency pitchStandard =
+    diFrequency pitchStandard
+        |> Round.round 2
+        |> String.toFloat
+        |> Maybe.Extra.withDefaultLazy (\_ -> diFrequency pitchStandard)
+        |> Frequency
+
+
 diFrequency : PitchStandard -> Float
 diFrequency pitchStandard =
     case pitchStandard of
@@ -96,8 +110,8 @@ diFrequency pitchStandard =
         Ke440 ->
             391.995
 
-        VariableDi (Frequency diFreq) ->
-            diFreq
+        VariableDi (Frequency freq) ->
+            freq
 
 
 {-| Calculate frequency relative to a fixed pitch for Natural Di, according to

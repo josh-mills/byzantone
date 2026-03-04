@@ -1,6 +1,6 @@
 module RadioFieldset exposing
     ( Config, baseConfig
-    , withCustomSelected, withCustomViewItem, withBottomElement
+    , withCustomSelected, withCustomViewItem, withConditionalPostpend
     , view
     )
 
@@ -10,7 +10,7 @@ module RadioFieldset exposing
 # Config Builder
 
 @docs Config, baseConfig
-@docs withCustomSelected, withCustomViewItem, withBottomElement
+@docs withCustomSelected, withCustomViewItem, withConditionalPostpend
 
 
 # View
@@ -63,6 +63,11 @@ baseConfig { itemToString, legendText, onSelect, options } =
         }
 
 
+{-| In case a basic equality check (`(==)`) won't work for determining if the
+given radio button `a` option is the currently selected `a`, provide a custom
+equivalency function. For example, this can be used to ignore the payload on a
+custom type constructor.
+-}
 withCustomSelected : (a -> a -> Bool) -> Config a msg -> Config a msg
 withCustomSelected optionIsSelected (Config config) =
     Config { config | optionIsSelected = Just optionIsSelected }
@@ -73,13 +78,11 @@ withCustomViewItem viewItem (Config config) =
     Config { config | viewItem = Just viewItem }
 
 
-{-| Add a bottom element. The argument will be the selected option.
-
-TODO: could probably get a better name here
-
+{-| Add an element after the list of radio button input elements at the bottom
+of the fieldset. The argument will be the selected option.
 -}
-withBottomElement : (a -> Html msg) -> Config a msg -> Config a msg
-withBottomElement bottomElement (Config config) =
+withConditionalPostpend : (a -> Html msg) -> Config a msg -> Config a msg
+withConditionalPostpend bottomElement (Config config) =
     Config { config | maybeBottomElement = Just bottomElement }
 
 
@@ -133,7 +136,7 @@ view config selected =
                     option
             )
         |> addBottomElement config selected
-        -- could include an optional instruction text here, too
+        -- we could include an optional instruction text here, too
         |> (::) (legend [ class "px-1" ] [ text (getLegendText config) ])
         |> fieldset [ Styles.borderRounded, class "px-2 pb-1 mb-2" ]
 

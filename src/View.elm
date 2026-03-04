@@ -218,10 +218,10 @@ modalContent audioSettings layoutData modeSettings modal =
 
 
 settings : AudioSettings -> LayoutData -> ModeSettings -> Html Msg
-settings audioSettings layoutData modeSettings =
+settings { pitchStandard } layoutData modeSettings =
     div [ Styles.flexCol, class "gap-2" ]
         [ lazy2 RadioFieldset.view layoutRadioConfig layoutData.layoutSelection
-        , lazy2 RadioFieldset.view pitchStandardRadioConfig audioSettings.pitchStandard
+        , RadioFieldset.view (pitchStandardRadioConfig pitchStandard) pitchStandard
         , lazy rangeFieldset modeSettings
         ]
 
@@ -239,13 +239,13 @@ layoutRadioConfig =
 {-| TODO: this should take in the current pitch standard, variable
 defaulted to current Di value.
 -}
-pitchStandardRadioConfig : RadioFieldset.Config PitchStandard Msg
-pitchStandardRadioConfig =
+pitchStandardRadioConfig : PitchStandard -> RadioFieldset.Config PitchStandard Msg
+pitchStandardRadioConfig pitchStandard =
     RadioFieldset.baseConfig
         { itemToString = Frequency.pitchStandardToString
         , legendText = "Pitch Standard"
         , onSelect = SetPitchStandard
-        , options = [ Ni256, Ke440, VariableDi (Frequency 384) ]
+        , options = [ Ni256, Ke440, VariableDi (Frequency.pitchStandardToDiFrequency pitchStandard) ]
         }
         |> RadioFieldset.withCustomViewItem viewPitchStandard
         |> RadioFieldset.withCustomSelected
@@ -257,9 +257,9 @@ pitchStandardRadioConfig =
                     _ ->
                         a == b
             )
-        |> RadioFieldset.withBottomElement
-            (\pitchStandard ->
-                case pitchStandard of
+        |> RadioFieldset.withConditionalPostpend
+            (\selectedPitchStandard ->
+                case selectedPitchStandard of
                     VariableDi someFreq ->
                         variableDiFrequencyInput someFreq
 
@@ -399,7 +399,6 @@ pitchTracker audioSettings layoutData =
     case audioSettings.audioMode of
         AudioSettings.Listen ->
             let
-                -- Tailwind 'sm' breakpoint is 640px
                 -- Disable visualization on small screens for performance
                 shouldRenderVisualization =
                     layoutData.viewport.viewport.width >= 640
