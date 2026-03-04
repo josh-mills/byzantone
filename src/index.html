@@ -64,6 +64,7 @@
                 if (elm.ports && elm.ports.pitchDetected) {
                     elm.ports.pitchDetected.send({
                         pitch: event.detail.pitch,
+                        timestamp: event.detail.timestamp,
                     });
                 }
             });

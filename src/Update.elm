@@ -12,7 +12,7 @@ import Byzantine.Register exposing (Register)
 import Byzantine.Scale exposing (Scale)
 import Maybe.Extra as Maybe
 import Model exposing (Modal, Model)
-import Model.AudioSettings as AudioSettings exposing (AudioSettings, ListenRegister)
+import Model.AudioSettings as AudioSettings exposing (AudioSettings, ListenRegister, Responsiveness(..))
 import Model.ControlsMenu as ControlsMenu
 import Model.DegreeDataDict as DegreeDataDict exposing (DegreeDataDict)
 import Model.LayoutData exposing (LayoutData, LayoutSelection)
@@ -21,6 +21,7 @@ import Model.PitchSpaceData as PitchSpaceData exposing (PitchSpaceData)
 import Model.PitchState as PitchState exposing (IsonStatus(..), PitchState, ProposedAccidental(..))
 import Movement exposing (Movement)
 import Task
+import Time
 
 
 type Msg
@@ -37,7 +38,7 @@ type Msg
     | SelectProposedAccidental ProposedAccidental
     | SelectProposedMovement Movement
     | SetAudioMode AudioSettings.AudioMode
-    | SetDetectedPitch (Maybe Frequency)
+    | SetDetectedPitch { maybeFrequency : Maybe Frequency, timestamp : Time.Posix }
     | SetGain Float
     | SetIson IsonStatus
     | SetLayout LayoutSelection
@@ -216,24 +217,12 @@ update msg model =
             , Cmd.none
             )
 
-        SetDetectedPitch pitchFrequency ->
-            -- should probably handle this in the web component
-            ( case ( model.audioSettings.audioMode, pitchFrequency ) of
-                ( AudioSettings.Listen, Just frequency ) ->
-                    let
-                        audioSettings =
-                            AudioSettings.setAutoListenRegister model.modeSettings model.audioSettings frequency
-                    in
-                    { model
-                        | audioSettings = audioSettings
-                        , detectedPitch =
-                            Just (DetectedPitch.fromFrequency audioSettings model.pitchSpaceData frequency)
-                    }
+        SetDetectedPitch { maybeFrequency, timestamp } ->
+            ( case model.audioSettings.audioMode of
+                AudioSettings.Listen ->
+                    updateDetectedPitch model maybeFrequency timestamp
 
-                ( AudioSettings.Listen, Nothing ) ->
-                    { model | detectedPitch = Nothing }
-
-                ( AudioSettings.Play, _ ) ->
+                AudioSettings.Play ->
                     model
             , Cmd.none
             )
@@ -410,6 +399,48 @@ resetPitchSpaceData model =
                 model.modeSettings
                 model.pitchState
     }
+
+
+updateDetectedPitch : Model -> Maybe Frequency -> Time.Posix -> Model
+updateDetectedPitch model maybeFrequency timestamp =
+    case maybeFrequency of
+        Just frequency ->
+            let
+                audioSettings =
+                    AudioSettings.setAutoListenRegister model.modeSettings model.audioSettings frequency
+            in
+            { model
+                | audioSettings = audioSettings
+                , detectedPitch =
+                    Just
+                        { detectedPitch = DetectedPitch.fromFrequency audioSettings model.pitchSpaceData frequency
+                        , timestamp = timestamp
+                        }
+            }
+
+        Nothing ->
+            case model.detectedPitch of
+                Just timestampedDetectedPitch ->
+                    let
+                        timeoutMillis =
+                            case model.audioSettings.responsiveness of
+                                Sensitive ->
+                                    450
+
+                                Smooth ->
+                                    900
+
+                        timeDiff =
+                            Time.posixToMillis timestamp - Time.posixToMillis timestampedDetectedPitch.timestamp
+                    in
+                    if timeDiff > timeoutMillis then
+                        { model | detectedPitch = Nothing }
+
+                    else
+                        model
+
+                Nothing ->
+                    model
 
 
 updateAudioSettings : (AudioSettings -> AudioSettings) -> Model -> Model

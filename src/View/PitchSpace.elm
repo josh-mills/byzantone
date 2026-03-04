@@ -39,6 +39,7 @@ import Movement exposing (Movement(..))
 import Result.Extra
 import Round
 import Styles
+import Time
 import Update exposing (Msg(..))
 
 
@@ -46,8 +47,8 @@ import Update exposing (Msg(..))
 -- WRAPPER AND VIEW HELPERS
 
 
-view : PitchSpaceData -> AudioSettings -> ModeSettings -> PitchState -> Maybe DetectedPitch -> Html Msg
-view pitchSpaceData audioSettings modeSettings pitchState detectedPitch =
+view : PitchSpaceData -> AudioSettings -> ModeSettings -> PitchState -> Maybe { detectedPitch : DetectedPitch, timestamp : Time.Posix } -> Html Msg
+view pitchSpaceData audioSettings modeSettings pitchState maybeTimestampedDetectedPitch =
     div
         ([ Attr.id "pitch-space"
          , Styles.transition
@@ -63,7 +64,10 @@ view pitchSpaceData audioSettings modeSettings pitchState detectedPitch =
                )
         )
         [ Html.Lazy.lazy3 viewIntervals pitchSpaceData modeSettings pitchState
-        , Html.Lazy.lazy3 viewPitchTracker pitchSpaceData audioSettings detectedPitch
+        , Html.Lazy.lazy3 viewPitchTracker
+            pitchSpaceData
+            audioSettings
+            (Maybe.map .detectedPitch maybeTimestampedDetectedPitch)
         , Html.Lazy.lazy3 viewPitches pitchSpaceData modeSettings pitchState
         , Html.Lazy.lazy2 viewAccidentalButtons pitchSpaceData.display pitchState.proposedAccidental
         ]

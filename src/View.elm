@@ -2,8 +2,7 @@ module View exposing (view)
 
 import Byzantine.ByzHtml.Martyria as ByzHtmlMartyria
 import Byzantine.Degree as Degree exposing (Degree(..))
-import Byzantine.DetectedPitch exposing (DetectedPitch)
-import Byzantine.Frequency as Frequency exposing (PitchStandard(..))
+import Byzantine.Frequency as Frequency exposing (Frequency(..), PitchStandard(..))
 import Byzantine.Martyria as Martyria
 import Byzantine.Pitch as Pitch exposing (Pitch)
 import Byzantine.Scale exposing (Scale(..))
@@ -21,7 +20,7 @@ import Model exposing (Modal(..), Model)
 import Model.AudioSettings as AudioSettings exposing (AudioSettings)
 import Model.LayoutData as LayoutData exposing (Layout(..), LayoutData, LayoutSelection(..), layoutFor)
 import Model.ModeSettings exposing (ModeSettings)
-import Model.PitchState as PitchState exposing (PitchState)
+import Model.PitchState as PitchState
 import RadioFieldset
 import Styles
 import Svg.Attributes
@@ -74,7 +73,7 @@ view model =
                 model.pitchState
                 model.openControlMenus
             , lazy View.Controls.viewOverlay model.openControlMenus
-            , lazy pitchTracker model.audioSettings
+            , lazy2 pitchTracker model.audioSettings model.layoutData
             ]
         ]
 
@@ -219,32 +218,96 @@ modalContent audioSettings layoutData modeSettings modal =
 
 
 settings : AudioSettings -> LayoutData -> ModeSettings -> Html Msg
-settings audioSettings layoutData modeSettings =
+settings { pitchStandard } layoutData modeSettings =
     div [ Styles.flexCol, class "gap-2" ]
         [ lazy2 RadioFieldset.view layoutRadioConfig layoutData.layoutSelection
-        , lazy2 RadioFieldset.view pitchStandardRadioConfig audioSettings.pitchStandard
+        , RadioFieldset.view (pitchStandardRadioConfig pitchStandard) pitchStandard
         , lazy rangeFieldset modeSettings
         ]
 
 
 layoutRadioConfig : RadioFieldset.Config LayoutSelection Msg
 layoutRadioConfig =
-    { itemToString = LayoutData.layoutString
-    , legendText = "Layout"
-    , onSelect = SetLayout
-    , options = [ Auto, Manual Vertical, Manual Horizontal ]
-    , viewItem = Nothing
-    }
+    RadioFieldset.baseConfig
+        { itemToString = LayoutData.layoutString
+        , legendText = "Layout"
+        , onSelect = SetLayout
+        , options = [ Auto, Manual Vertical, Manual Horizontal ]
+        }
 
 
-pitchStandardRadioConfig : RadioFieldset.Config PitchStandard Msg
-pitchStandardRadioConfig =
-    { itemToString = Frequency.pitchStandardToString
-    , legendText = "Pitch Standard"
-    , onSelect = SetPitchStandard
-    , options = [ Ni256, Ke440 ]
-    , viewItem = Just viewPitchStandard
-    }
+pitchStandardRadioConfig : PitchStandard -> RadioFieldset.Config PitchStandard Msg
+pitchStandardRadioConfig currentPitchStandard =
+    let
+        isSelectedEqualityCheck =
+            case currentPitchStandard of
+                VariableDi _ ->
+                    \option _ ->
+                        case option of
+                            VariableDi _ ->
+                                True
+
+                            _ ->
+                                False
+
+                _ ->
+                    (==)
+    in
+    RadioFieldset.baseConfig
+        { itemToString = Frequency.pitchStandardToString
+        , legendText = "Pitch Standard"
+        , onSelect = SetPitchStandard
+        , options = [ Ni256, Ke440, VariableDi (Frequency.pitchStandardToDiFrequency currentPitchStandard) ]
+        }
+        |> RadioFieldset.withCustomViewItem viewPitchStandard
+        |> RadioFieldset.withCustomSelected isSelectedEqualityCheck
+        |> RadioFieldset.withConditionalPostpend
+            (\selectedPitchStandard ->
+                case selectedPitchStandard of
+                    VariableDi someFreq ->
+                        variableDiFrequencyInput someFreq
+
+                    _ ->
+                        Html.Extra.nothing
+            )
+
+
+variableDiFrequencyInput : Frequency -> Html Msg
+variableDiFrequencyInput diFrequency =
+    let
+        input type_ attrs =
+            Html.input
+                ([ Attr.type_ type_
+                 , Attr.id ("variable_di_" ++ type_)
+                 , Attr.min "300"
+                 , Attr.max "480"
+                 , Attr.step "0.1"
+                 , Attr.value (Frequency.preciseString diFrequency)
+                 , onInput setPitchStandard
+                 ]
+                    ++ attrs
+                )
+                []
+
+        setPitchStandard string =
+            String.toFloat string
+                |> Maybe.unwrap diFrequency Frequency
+                |> VariableDi
+                |> SetPitchStandard
+    in
+    div [ Styles.flexCol, class "mx-8 my-2 gap-2" ]
+        [ p [ class "max-w-xs italic text-sm" ]
+            [ text "Priest (or cantor) not much one for strict adherance to a pitch standard? "
+            , text "Set an arbitrary frequency for a reference "
+            , span [ class "font-greek" ] [ text "Δι" ]
+            , text " here."
+            ]
+        , div [ Styles.flexRow ]
+            [ input "number" [ class "text-right" ]
+            , span [ class "mr-4" ] [ text "Hz" ]
+            , input "range" [ class "w-full max-w-64" ]
+            ]
+        ]
 
 
 {-| Set the visible range of the pitch space. A minimum of a tetrachord is
@@ -323,6 +386,11 @@ viewPitchStandard pitchStandard =
                     ( Martyria.for Diatonic Ke |> ByzHtmlMartyria.view
                     , " = 440 Hz"
                     )
+
+                VariableDi _ ->
+                    ( Martyria.for Diatonic Di |> ByzHtmlMartyria.view
+                    , " = Priest’s Special"
+                    )
     in
     div [ class "mb-1" ]
         [ span [ class "text-xl relative bottom-1.5" ] [ martyria ]
@@ -330,10 +398,15 @@ viewPitchStandard pitchStandard =
         ]
 
 
-pitchTracker : AudioSettings -> Html Msg
-pitchTracker audioSettings =
+pitchTracker : AudioSettings -> LayoutData -> Html Msg
+pitchTracker audioSettings layoutData =
     case audioSettings.audioMode of
         AudioSettings.Listen ->
+            let
+                -- Disable visualization on small screens for performance
+                shouldRenderVisualization =
+                    layoutData.viewport.viewport.width >= 640
+            in
             div [ class "m-4" ]
                 [ Html.node "pitch-tracker"
                     [ Attr.attribute "smoothing"
@@ -343,6 +416,13 @@ pitchTracker audioSettings =
 
                             AudioSettings.Smooth ->
                                 "smooth"
+                        )
+                    , Attr.attribute "render-visualization"
+                        (if shouldRenderVisualization then
+                            "true"
+
+                         else
+                            "false"
                         )
                     , class "hidden sm:block"
                     ]

@@ -25,11 +25,12 @@ import Model.LayoutData as LayoutData exposing (LayoutData)
 import Model.ModeSettings as ModeSettings exposing (ModeSettings)
 import Model.PitchSpaceData as PitchSpaceData exposing (PitchSpaceData)
 import Model.PitchState as PitchState exposing (PitchState)
+import Time
 
 
 type alias Model =
     { audioSettings : AudioSettings
-    , detectedPitch : Maybe DetectedPitch
+    , detectedPitch : Maybe { detectedPitch : DetectedPitch, timestamp : Time.Posix }
     , deviceInfo : DeviceInfo
     , layoutData : LayoutData
     , menuOpen : Bool

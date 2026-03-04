@@ -228,56 +228,56 @@ optionContent audioSettings modeSettings pitchState isOpen menuOption =
 
 audioModeRadioConfig : RadioFieldset.Config AudioSettings.AudioMode Msg
 audioModeRadioConfig =
-    { itemToString = AudioSettings.audioModeToString
-    , legendText = "Audio Mode"
-    , onSelect = Update.SetAudioMode
-    , options = AudioSettings.modes
-    , viewItem = Nothing
-    }
+    RadioFieldset.baseConfig
+        { itemToString = AudioSettings.audioModeToString
+        , legendText = "Audio Mode"
+        , onSelect = Update.SetAudioMode
+        , options = AudioSettings.modes
+        }
 
 
 playbackRegisterRadioConfig : RadioFieldset.Config Register Msg
 playbackRegisterRadioConfig =
-    { itemToString = Register.toString
-    , legendText = "Set Playback Register"
-    , onSelect = Update.SetPlaybackRegister
-    , options = [ Register.Treble, Register.Bass ]
-    , viewItem = Nothing
-    }
+    RadioFieldset.baseConfig
+        { itemToString = Register.toString
+        , legendText = "Set Playback Register"
+        , onSelect = Update.SetPlaybackRegister
+        , options = [ Register.Treble, Register.Bass ]
+        }
 
 
 listenRegisterRadioConfig : AudioSettings -> RadioFieldset.Config ListenRegister Msg
 listenRegisterRadioConfig audioSettings =
-    { itemToString = AudioSettings.listenRegisterToString
-    , legendText = "Listen Register"
-    , onSelect = Update.SetListenRegister
-    , options =
-        [ AudioSettings.Auto (AudioSettings.listenRegister audioSettings)
-        , AudioSettings.Manual Register.Treble
-        , AudioSettings.Manual Register.Bass
-        ]
-    , viewItem = Nothing
-    }
+    RadioFieldset.baseConfig
+        { itemToString = AudioSettings.listenRegisterToString
+        , legendText = "Listen Register"
+        , onSelect = Update.SetListenRegister
+        , options =
+            [ AudioSettings.Auto (AudioSettings.listenRegister audioSettings)
+            , AudioSettings.Manual Register.Treble
+            , AudioSettings.Manual Register.Bass
+            ]
+        }
 
 
 responsivenessRadioConfig : RadioFieldset.Config AudioSettings.Responsiveness Msg
 responsivenessRadioConfig =
-    { itemToString = AudioSettings.responsivenessToString
-    , legendText = "Listening Sensitivity"
-    , onSelect = Update.SetResponsiveness
-    , options = [ AudioSettings.Sensitive, AudioSettings.Smooth ]
-    , viewItem = Nothing
-    }
+    RadioFieldset.baseConfig
+        { itemToString = AudioSettings.responsivenessToString
+        , legendText = "Listening Sensitivity"
+        , onSelect = Update.SetResponsiveness
+        , options = [ AudioSettings.Sensitive, AudioSettings.Smooth ]
+        }
 
 
 pitchFeedbackRadioConfig : RadioFieldset.Config AudioSettings.PitchFeedbackUnit Msg
 pitchFeedbackRadioConfig =
-    { itemToString = AudioSettings.pitchFeedbackUnitToString
-    , legendText = "Pitch Feedback"
-    , onSelect = Update.SetPitchFeedback
-    , options = [ AudioSettings.Cents, AudioSettings.Hz, AudioSettings.Moria ]
-    , viewItem = Nothing
-    }
+    RadioFieldset.baseConfig
+        { itemToString = AudioSettings.pitchFeedbackUnitToString
+        , legendText = "Pitch Feedback"
+        , onSelect = Update.SetPitchFeedback
+        , options = [ AudioSettings.Cents, AudioSettings.Hz, AudioSettings.Moria ]
+        }
 
 
 isonButton : IsonStatus -> Html Msg
@@ -335,12 +335,12 @@ clearIsonButton =
 
 scaleRadioConfig : RadioFieldset.Config Scale Msg
 scaleRadioConfig =
-    { itemToString = Scale.name
-    , legendText = "Select Scale"
-    , onSelect = Update.SetScale
-    , options = Scale.all
-    , viewItem = Nothing
-    }
+    RadioFieldset.baseConfig
+        { itemToString = Scale.name
+        , legendText = "Select Scale"
+        , onSelect = Update.SetScale
+        , options = Scale.all
+        }
 
 
 gainInput : AudioSettings -> Html Msg
