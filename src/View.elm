@@ -45,10 +45,10 @@ view model =
                     (PitchState.ison model.pitchState.ison)
             )
         , lazy2 backdrop model.menuOpen model.modal
-        , header
+        , lazy header model.headerCollapsed
         , lazy4 viewModal model.audioSettings model.layoutData model.modeSettings model.modal
 
-        -- , viewIf model.layoutData.showSpacing (div [ class "text-center" ] [ text "|" ])
+        -- , viewIf LayoutData.showSpacing (div [ class "text-center" ] [ text "|" ])
         , viewIf model.menuOpen menu
         , main_
             [ class "lg:container lg:mx-auto font-serif"
@@ -120,17 +120,51 @@ chantEngineNode audioSettings scale currentPitch currentIson =
         []
 
 
-header : Html Msg
-header =
-    Html.header [ Styles.flexRowCentered, class "p-4" ]
-        [ div [ class "w-7" ] []
-        , div [ Styles.flexCol, class "flex-1 mb-4 mx-4" ]
-            [ h1 [ class "font-heading text-4xl text-center" ]
-                [ text "ByzanTone" ]
-            , p [ class "font-serif text-center" ]
-                [ text "A tool for learning the pitches and intervals of Byzantine chant." ]
+{-| Collapsible header with animated caret button.
 
-            -- , viewIf model.layoutData.showSpacing (p [ class "text-center" ] [ text "|" ])
+Caret points down when expanded, rotates 180° when collapsed.
+
+-}
+header : Bool -> Html Msg
+header headerCollapsed =
+    Html.header
+        [ Styles.flexRowCentered
+        , Styles.transition
+        , class "px-2 md:px-4"
+        , classList
+            [ ( "py-1", headerCollapsed )
+            , ( "py-4", not headerCollapsed )
+            ]
+        ]
+        [ div [ class "w-7" ]
+            [ button
+                [ class "w-full lg:hidden"
+                , Styles.transition
+                , classList [ ( "-rotate-90", headerCollapsed ) ]
+                , onClick ToggleHeaderCollapsed
+                ]
+                [ Icons.caretDown [ Svg.Attributes.class "w-6 h-6" ]
+                ]
+            ]
+        , div
+            [ class "grid transition-[grid-template-rows] duration-300 ease-in-out flex-1 mx-4"
+            , classList
+                [ ( "grid-rows-[0fr]", headerCollapsed )
+                , ( "grid-rows-[1fr]", not headerCollapsed )
+                ]
+            ]
+            [ div
+                [ class "overflow-hidden"
+                , Styles.flexCol
+                , class "mb-4"
+                ]
+                [ h1 [ class "font-heading text-4xl text-center" ]
+                    [ text "ByzanTone" ]
+                , p [ class "font-serif text-center" ]
+                    [ text "A tool for learning the pitches and intervals of Byzantine chant." ]
+
+                -- , viewIf model.layoutData.showSpacing (p [ class "text-center" ] [ text "|" ])
+                ]
             ]
         , button
             [ class "w-7 mt-2 self-start"
