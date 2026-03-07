@@ -147,7 +147,8 @@ header headerCollapsed =
                 ]
             ]
         , div
-            [ class "grid transition-[grid-template-rows] duration-300 ease-in-out flex-1 mx-4"
+            [ class "grid ease-in-out flex-1 mx-4"
+            , Styles.transition
             , classList
                 [ ( "grid-rows-[0fr]", headerCollapsed )
                 , ( "grid-rows-[1fr]", not headerCollapsed )
