@@ -1,12 +1,63 @@
 const express = require("express");
 const app = express();
 const os = require("os");
+const fs = require("fs");
+const path = require("path");
 const port = 3002;
 // TODO: should get better environment configuration here
 const LOCAL_DEV = false;
 
+// Import the changelog parser (using dynamic import for ES modules)
+let parseChangelog;
+import("./scripts/parseChangelog.mjs").then((module) => {
+    parseChangelog = module.parseChangelog;
+    // Generate initial changelog
+    generateChangelog();
+});
+
+function generateChangelog() {
+    if (parseChangelog) {
+        try {
+            const changelogPath = "CHANGELOG.md";
+            const outputPath = "public/dist/changelog.json";
+
+            // Ensure directory exists
+            fs.mkdirSync(path.dirname(outputPath), { recursive: true });
+
+            parseChangelog(changelogPath, outputPath);
+        } catch (error) {
+            console.error("Error generating changelog:", error);
+        }
+    }
+}
+
+// Watch for changes to CHANGELOG.md in development
+if (fs.existsSync("CHANGELOG.md")) {
+    fs.watchFile("CHANGELOG.md", (curr, prev) => {
+        console.log("CHANGELOG.md changed, regenerating...");
+        generateChangelog();
+    });
+}
+
 // Serve static files from the 'public' directory
 app.use(express.static("public"));
+
+// API endpoint for changelog (fallback if file doesn't exist)
+app.get("/dist/changelog.json", (req, res) => {
+    const changelogPath = "public/dist/changelog.json";
+
+    if (fs.existsSync(changelogPath)) {
+        res.sendFile(path.resolve(changelogPath));
+    } else {
+        // Generate on-demand if file doesn't exist
+        generateChangelog();
+        if (fs.existsSync(changelogPath)) {
+            res.sendFile(path.resolve(changelogPath));
+        } else {
+            res.status(500).json({ error: "Could not generate changelog" });
+        }
+    }
+});
 
 function getLocalIP() {
     const interfaces = os.networkInterfaces();

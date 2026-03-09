@@ -25,6 +25,7 @@ import RadioFieldset
 import Styles
 import Svg.Attributes
 import Update exposing (Msg(..))
+import View.Changelog
 import View.Controls
 import View.PitchSpace as PitchSpace
 
@@ -46,7 +47,7 @@ view model =
             )
         , lazy2 backdrop model.menuOpen model.modal
         , lazy header model.headerCollapsed
-        , lazy4 viewModal model.audioSettings model.layoutData model.modeSettings model.modal
+        , lazy5 viewModal model.audioSettings model.layoutData model.modeSettings model.modal model
 
         -- , viewIf LayoutData.showSpacing (div [ class "text-center" ] [ text "|" ])
         , viewIf model.menuOpen menu
@@ -199,11 +200,12 @@ menu =
         ]
         [ menuItem AboutModal
         , menuItem SettingsModal
+        , menuItem ReleasesModal
         ]
 
 
-viewModal : AudioSettings -> LayoutData -> ModeSettings -> Modal -> Html Msg
-viewModal audioSettings layoutData modeSettings modal =
+viewModal : AudioSettings -> LayoutData -> ModeSettings -> Modal -> Model -> Html Msg
+viewModal audioSettings layoutData modeSettings modal model =
     case modal of
         NoModal ->
             Html.Extra.nothing
@@ -235,12 +237,12 @@ viewModal audioSettings layoutData modeSettings modal =
                         ]
                         [ Icons.xmark [ Svg.Attributes.fill "currentColor", Svg.Attributes.class "w-6 h-6" ] ]
                     ]
-                , modalContent audioSettings layoutData modeSettings modal
+                , modalContent audioSettings layoutData modeSettings modal model
                 ]
 
 
-modalContent : AudioSettings -> LayoutData -> ModeSettings -> Modal -> Html Msg
-modalContent audioSettings layoutData modeSettings modal =
+modalContent : AudioSettings -> LayoutData -> ModeSettings -> Modal -> Model -> Html Msg
+modalContent audioSettings layoutData modeSettings modal model =
     case modal of
         NoModal ->
             Html.Extra.nothing
@@ -250,6 +252,9 @@ modalContent audioSettings layoutData modeSettings modal =
 
         SettingsModal ->
             lazy3 settings audioSettings layoutData modeSettings
+
+        ReleasesModal ->
+            View.Changelog.view model.changelog
 
 
 settings : AudioSettings -> LayoutData -> ModeSettings -> Html Msg

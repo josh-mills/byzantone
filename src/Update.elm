@@ -10,9 +10,11 @@ import Byzantine.Pitch as Pitch exposing (Pitch)
 import Byzantine.PitchPosition as PitchPosition
 import Byzantine.Register exposing (Register)
 import Byzantine.Scale exposing (Scale)
+import Http
 import Maybe.Extra as Maybe
 import Model exposing (Modal, Model)
 import Model.AudioSettings as AudioSettings exposing (AudioSettings, ListenRegister, Responsiveness(..))
+import Model.Changelog exposing (Changelog)
 import Model.ControlsMenu as ControlsMenu
 import Model.DegreeDataDict as DegreeDataDict exposing (DegreeDataDict)
 import Model.LayoutData exposing (LayoutData, LayoutSelection)
@@ -20,12 +22,14 @@ import Model.ModeSettings exposing (ModeSettings)
 import Model.PitchSpaceData as PitchSpaceData exposing (PitchSpaceData)
 import Model.PitchState as PitchState exposing (IsonStatus(..), PitchState, ProposedAccidental(..))
 import Movement exposing (Movement)
+import RemoteData
 import Task
 import Time
 
 
 type Msg
-    = CloseControlMenus
+    = ChangelogReceived (Result Http.Error Changelog)
+    | CloseControlMenus
     | DomResult (Result Dom.Error ())
     | GotPitchSpaceElement (Result Dom.Error Dom.Element)
     | GotViewport Dom.Viewport
@@ -33,6 +37,7 @@ type Msg
     | Keydown String
     | NoOp
     | PitchButtonClicked Degree
+    | RefreshChangelog
     | SelectModal Modal
     | SelectPitch (Maybe Pitch) (Maybe Movement)
     | SelectProposedAccidental ProposedAccidental
@@ -60,6 +65,9 @@ update msg model =
     case msg of
         NoOp ->
             ( model, Task.perform GotViewport Dom.getViewport )
+
+        ChangelogReceived result ->
+            handleChangelogReceived result model
 
         CloseControlMenus ->
             ( { model | openControlMenus = ControlsMenu.init }
@@ -104,14 +112,11 @@ update msg model =
             , Cmd.none
             )
 
-        SelectModal modal ->
-            ( { model | modal = modal, menuOpen = False }
-            , if Model.modalOpen modal then
-                focus "modal"
+        RefreshChangelog ->
+            ( { model | changelog = RemoteData.Loading }, Model.Changelog.fetch ChangelogReceived )
 
-              else
-                Cmd.none
-            )
+        SelectModal modal ->
+            handleModalSelection modal model
 
         SelectPitch maybePitch maybeMovement ->
             ( handleSelectPitch maybePitch maybeMovement model
@@ -862,6 +867,42 @@ setAndFocus model degree =
 
 
 -- CMD HELPERS
+
+
+handleChangelogReceived : Result Http.Error Changelog -> Model -> ( Model, Cmd Msg )
+handleChangelogReceived result model =
+    ( { model | changelog = RemoteData.fromResult result }, Cmd.none )
+
+
+handleModalSelection : Modal -> Model -> ( Model, Cmd Msg )
+handleModalSelection modal model =
+    let
+        cmd =
+            if Model.modalOpen modal then
+                focus "modal"
+
+            else
+                Cmd.none
+
+        changelogCmd =
+            case modal of
+                Model.ReleasesModal ->
+                    case model.changelog of
+                        RemoteData.NotAsked ->
+                            Model.Changelog.fetch ChangelogReceived
+
+                        RemoteData.Loading ->
+                            Cmd.none
+
+                        _ ->
+                            Cmd.none
+
+                _ ->
+                    Cmd.none
+    in
+    ( { model | modal = modal, menuOpen = False }
+    , Cmd.batch [ cmd, changelogCmd ]
+    )
 
 
 focus : String -> Cmd Msg
