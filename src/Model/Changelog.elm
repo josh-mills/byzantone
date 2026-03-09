@@ -12,7 +12,7 @@ type alias Changelog =
 
 type alias Entry =
     { version : String
-    , date : Maybe String
+    , date : String
     , changes : Changes
     }
 
@@ -38,7 +38,7 @@ entryDecoder : Decoder Entry
 entryDecoder =
     Decode.map3 Entry
         (Decode.field "version" Decode.string)
-        (Decode.maybe (Decode.field "date" Decode.string))
+        (Decode.field "date" Decode.string)
         (Decode.field "changes" changesDecoder)
 
 

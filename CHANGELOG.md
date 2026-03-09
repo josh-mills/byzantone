@@ -1,16 +1,16 @@
 # Changelog
 
-## Unreleased
+## v?.?.0 (2026-03-12)
 ### Added
  - A changelog!
  - In-app releases view accessible from the menu
 
- 
- ## [?.?.1] – 2026-03-09
+
+## v?.?.1 (2026-03-09)
  ### Fixed
  - audio session type was preventing audio capture
   
- ## [?.?.0] – 2026-03-08
+## v?.?.0 (2026-03-08)
  ### Added
  - collapsible header for space optimization on mobile
  ### Changed
@@ -18,10 +18,10 @@
  - set audio session type to prevent device muting from preventing playback
 
  
- ## ...
+## ...
  
- ## [0.1.0] – 2025-01-16
- ### Added
+## v0.1.0 (2025-01-16)
+### Added
  - GitHub actions for deployment via GitHub Pages (effective initial release)
 
 ---
@@ -33,7 +33,7 @@ This changelog follows the [Keep a Changelog](https://keepachangelog.com/) forma
 ## Format Structure
 
 ```markdown
-## [Version] – YYYY-MM-DD
+## vM.m.p (yyyy-mm-dd)
 ### Added
 - New features
 
@@ -64,8 +64,7 @@ This changelog follows the [Keep a Changelog](https://keepachangelog.com/) forma
 
 ## Notes
 
-- Use "Unreleased" for changes not yet released
-- Include date in YYYY-MM-DD format for released versions
+- Include date in YYYY-MM-DD format for all releases
 - Use clear, concise descriptions
 - Group related changes under appropriate categories
 - This section is not parsed by the changelog system

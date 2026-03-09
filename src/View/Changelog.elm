@@ -1,6 +1,6 @@
 module View.Changelog exposing (view)
 
-import Html exposing (Html, button, div, h3, h4, li, span, text, ul)
+import Html exposing (Html, button, div, h3, h4, li, text, ul)
 import Html.Attributes exposing (class)
 import Html.Events exposing (onClick)
 import Http
@@ -35,7 +35,7 @@ view remoteChangelog =
                     ]
 
             RemoteData.Success changelog ->
-                div [ class "space-y-8" ]
+                div [ class "space-y-4" ]
                     (List.map viewEntry changelog.entries)
         ]
 
@@ -59,38 +59,36 @@ httpErrorToString error =
             "Bad response body: " ++ body
 
 
+formatVersionHeader : String -> String -> String
+formatVersionHeader version date =
+    "v" ++ version ++ " (" ++ date ++ ")"
+
+
 viewEntry : Model.Changelog.Entry -> Html Msg
 viewEntry entry =
-    div [ class "border-l-4 border-gray-200 pl-4 first:border-l-green-500" ]
-        [ h3 [ class "text-xl font-semibold mb-3" ]
-            [ text entry.version
-            , case entry.date of
-                Just date ->
-                    span [ class "text-gray-500 font-normal ml-2" ] [ text ("– " ++ date) ]
-
-                Nothing ->
-                    text ""
-            ]
-        , div [ class "space-y-4" ]
-            [ viewChangeSection "Added" "text-green-700 border-l-green-500" entry.changes.added
-            , viewChangeSection "Changed" "text-blue-700 border-l-blue-500" entry.changes.changed
-            , viewChangeSection "Fixed" "text-red-700 border-l-red-500" entry.changes.fixed
-            , viewChangeSection "Deprecated" "text-orange-700 border-l-orange-500" entry.changes.deprecated
-            , viewChangeSection "Removed" "text-gray-700 border-l-gray-500" entry.changes.removed
-            , viewChangeSection "Security" "text-purple-700 border-l-purple-500" entry.changes.security
+    div [ class "border-l-4 border-l-gray-300 pl-4" ]
+        [ h3 [ class "text-lg font-semibold mb-2 text-gray-900" ]
+            [ text (formatVersionHeader entry.version entry.date) ]
+        , div [ class "space-y-2" ]
+            [ viewChangeSection "Added" entry.changes.added
+            , viewChangeSection "Changed" entry.changes.changed
+            , viewChangeSection "Fixed" entry.changes.fixed
+            , viewChangeSection "Deprecated" entry.changes.deprecated
+            , viewChangeSection "Removed" entry.changes.removed
+            , viewChangeSection "Security" entry.changes.security
             ]
         ]
 
 
-viewChangeSection : String -> String -> List String -> Html Msg
-viewChangeSection sectionName colorClasses changes =
+viewChangeSection : String -> List String -> Html Msg
+viewChangeSection sectionName changes =
     if List.isEmpty changes then
         text ""
 
     else
-        div [ class "space-y-2" ]
-            [ h4 [ class ("text-sm font-semibold uppercase tracking-wide " ++ colorClasses) ]
+        div [ class "space-y-1" ]
+            [ h4 [ class "text-sm font-semibold uppercase tracking-wide text-gray-700" ]
                 [ text sectionName ]
-            , ul [ class ("list-disc list-inside space-y-1 border-l-2 pl-3 " ++ colorClasses) ]
+            , ul [ class "list-disc list-inside space-y-0.5 border-l-2 border-l-gray-300 pl-3" ]
                 (List.map (\change -> li [ class "text-gray-700" ] [ text change ]) changes)
             ]

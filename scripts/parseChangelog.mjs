@@ -40,15 +40,21 @@ export function parseChangelog(changelogPath, outputPath) {
                 }
 
                 const versionMatch = headerText.match(
-                    /\[([^\]]+)\]|\b(\d+\.\d+\.\d+)\b|Unreleased/i,
+                    /v?(\d+\.\d+\.\d+|\?\.\?\.\d+|\?\.\?\.0)/i,
                 );
                 const dateMatch = headerText.match(/(\d{4}-\d{2}-\d{2})/);
 
+                // Require date for all entries
+                if (!dateMatch) {
+                    console.error(
+                        `Error: No date found for version "${headerText}". All releases must have dates in YYYY-MM-DD format.`,
+                    );
+                    process.exit(1);
+                }
+
                 currentEntry = {
-                    version: versionMatch
-                        ? versionMatch[1] || versionMatch[2] || "Unreleased"
-                        : headerText,
-                    date: dateMatch ? dateMatch[1] : null,
+                    version: versionMatch ? versionMatch[1] : headerText,
+                    date: dateMatch[1],
                     changes: {
                         added: [],
                         changed: [],
