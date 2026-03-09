@@ -32,6 +32,7 @@ type alias Model =
     { audioSettings : AudioSettings
     , detectedPitch : Maybe { detectedPitch : DetectedPitch, timestamp : Time.Posix }
     , deviceInfo : DeviceInfo
+    , headerCollapsed : Bool
     , layoutData : LayoutData
     , menuOpen : Bool
     , modal : Modal
@@ -51,6 +52,7 @@ init deviceInfo viewportDimensions =
     { audioSettings = AudioSettings.defaultAudioSettings
     , detectedPitch = Nothing
     , deviceInfo = deviceInfo
+    , headerCollapsed = False
     , layoutData = layoutData
     , menuOpen = False
     , modal = NoModal

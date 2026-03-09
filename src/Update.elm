@@ -51,6 +51,7 @@ type Msg
     | SetPitchFeedback AudioSettings.PitchFeedbackUnit
     | SetScale Scale
     | ToggleControlMenu ControlsMenu.MenuOption
+    | ToggleHeaderCollapsed
     | ToggleMenu
 
 
@@ -232,6 +233,11 @@ update msg model =
                 | openControlMenus =
                     ControlsMenu.toggle menuOption model.openControlMenus
               }
+            , Cmd.none
+            )
+
+        ToggleHeaderCollapsed ->
+            ( { model | headerCollapsed = not model.headerCollapsed }
             , Cmd.none
             )
 

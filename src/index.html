@@ -21,6 +21,7 @@
         <script src="https://cdn.jsdelivr.net/gh/danielgarthur/byzhtml@1.0.16/dist/byzhtml.min.js"></script>
         <link rel="stylesheet" type="text/css" href="dist/main.css" />
     </head>
+
     <body>
         <script src="dist/elm.js"></script>
         <div id="elm-app"></div>
@@ -51,6 +52,16 @@
                     height: window.innerHeight,
                 };
             }
+
+            try {
+                /* Experimental feature to set set audio session type. This is
+                mostly for iOS devices, in the hope that this will prevent the
+                device mute setting from preventing playback without useful
+                indication to the user that this is what's going on.
+                https://developer.mozilla.org/en-US/docs/Web/API/AudioSession/type#browser_compatibility
+                 */
+                navigator.audioSession.type = "playback";
+            } catch (e) {}
 
             const elm = Elm.Main.init({
                 node: document.getElementById("elm-app"),

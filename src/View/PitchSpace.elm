@@ -841,7 +841,8 @@ viewAccidentalButton currentProposedAccidental buttonProposedAccidental =
     in
     button
         [ Styles.buttonClass
-        , class "text-3xl min-w-12 max-w-14 m-1"
+        , Styles.transition
+        , class "text-2xl sm:text-3xl min-w-8 sm:min-w-12 max-w-14 m-1"
         , classList
             [ ( "text-blue-700 border-2 border-blue-700", isCurrent )
             , ( "border-2 border-transparent", not isCurrent )
