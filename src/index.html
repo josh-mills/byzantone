@@ -60,7 +60,7 @@
                 indication to the user that this is what's going on.
                 https://developer.mozilla.org/en-US/docs/Web/API/AudioSession/type#browser_compatibility
                  */
-                navigator.audioSession.type = "playback";
+                navigator.audioSession.type = "play-and-record";
             } catch (e) {}
 
             const elm = Elm.Main.init({
