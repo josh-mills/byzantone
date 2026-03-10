@@ -37,7 +37,6 @@ type Msg
     | Keydown String
     | NoOp
     | PitchButtonClicked Degree
-    | RefreshChangelog
     | SelectModal Modal
     | SelectPitch (Maybe Pitch) (Maybe Movement)
     | SelectProposedAccidental ProposedAccidental
@@ -111,9 +110,6 @@ update msg model =
             ( processPitchButtonClick model degree
             , Cmd.none
             )
-
-        RefreshChangelog ->
-            ( { model | changelog = RemoteData.Loading }, Model.Changelog.fetch ChangelogReceived )
 
         SelectModal modal ->
             handleModalSelection modal model

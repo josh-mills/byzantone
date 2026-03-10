@@ -1,13 +1,12 @@
 module View.Changelog exposing (view)
 
-import Html exposing (Html, button, div, h3, h4, li, span, text, ul)
+import Html exposing (Html, div, h3, h4, li, span, text, ul)
 import Html.Attributes exposing (class)
-import Html.Events exposing (onClick)
 import Html.Extra
 import Http
 import Model.Changelog exposing (Changelog, Entry)
 import RemoteData exposing (RemoteData)
-import Update exposing (Msg(..))
+import Update exposing (Msg)
 
 
 view : RemoteData Http.Error Changelog -> Html Msg
@@ -26,15 +25,6 @@ view remoteChangelog =
                 div [ class "bg-red-50 border border-red-200 rounded p-4 text-red-800" ]
                     [ text "Failed to load changelog: "
                     , text (httpErrorToString error)
-                    , div [ class "mt-2" ]
-                        [ button
-                            [ class "bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm"
-                            , onClick RefreshChangelog
-
-                            -- probably useless
-                            ]
-                            [ text "Retry" ]
-                        ]
                     ]
 
             RemoteData.Success changelog ->
