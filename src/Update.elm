@@ -884,23 +884,20 @@ handleModalSelection modal model =
             else
                 Cmd.none
 
-        changelogCmd =
-            case modal of
-                Model.ReleasesModal ->
-                    case model.changelog of
-                        RemoteData.NotAsked ->
-                            Model.Changelog.fetch ChangelogReceived
-
-                        RemoteData.Loading ->
-                            Cmd.none
-
-                        _ ->
-                            Cmd.none
+        ( changelogCmd, maybeSetLoading ) =
+            case ( modal, model.changelog ) of
+                ( Model.ReleasesModal, RemoteData.NotAsked ) ->
+                    ( Model.Changelog.fetch ChangelogReceived
+                    , \model_ -> { model_ | changelog = RemoteData.Loading }
+                    )
 
                 _ ->
-                    Cmd.none
+                    ( Cmd.none, identity )
+
+        updatedModel =
+            { model | modal = modal, menuOpen = False }
     in
-    ( { model | modal = modal, menuOpen = False }
+    ( maybeSetLoading updatedModel
     , Cmd.batch [ cmd, changelogCmd ]
     )
 

@@ -54,7 +54,7 @@ init deviceInfo viewportDimensions =
             LayoutData.init viewportDimensions
     in
     { audioSettings = AudioSettings.defaultAudioSettings
-    , changelog = RemoteData.Loading
+    , changelog = RemoteData.NotAsked
     , detectedPitch = Nothing
     , deviceInfo = deviceInfo
     , headerCollapsed = False

@@ -1,17 +1,18 @@
 module View.Changelog exposing (view)
 
-import Html exposing (Html, button, div, h3, h4, li, text, ul)
+import Html exposing (Html, button, div, h3, h4, li, span, text, ul)
 import Html.Attributes exposing (class)
 import Html.Events exposing (onClick)
+import Html.Extra
 import Http
-import Model.Changelog exposing (Changelog)
+import Model.Changelog exposing (Changelog, Entry)
 import RemoteData exposing (RemoteData)
 import Update exposing (Msg(..))
 
 
 view : RemoteData Http.Error Changelog -> Html Msg
 view remoteChangelog =
-    div [ class "p-4 max-w-4xl" ]
+    div [ class "p-4" ]
         [ case remoteChangelog of
             RemoteData.NotAsked ->
                 div [ class "text-center py-8 text-gray-600" ]
@@ -29,6 +30,8 @@ view remoteChangelog =
                         [ button
                             [ class "bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm"
                             , onClick RefreshChangelog
+
+                            -- probably useless
                             ]
                             [ text "Retry" ]
                         ]
@@ -59,16 +62,20 @@ httpErrorToString error =
             "Bad response body: " ++ body
 
 
-formatVersionHeader : String -> String -> String
-formatVersionHeader version date =
-    "v" ++ version ++ " (" ++ date ++ ")"
+formatVersionHeader : Entry -> Html msg
+formatVersionHeader { version, date } =
+    h3 [ class "text-lg font-semibold mb-2" ]
+        [ span [ class "text-gray-900" ]
+            [ text ("v" ++ version) ]
+        , span [ class "text-gray-500" ]
+            [ text (" (" ++ date ++ ")") ]
+        ]
 
 
-viewEntry : Model.Changelog.Entry -> Html Msg
+viewEntry : Entry -> Html Msg
 viewEntry entry =
     div [ class "border-l-4 border-l-gray-300 pl-4" ]
-        [ h3 [ class "text-lg font-semibold mb-2 text-gray-900" ]
-            [ text (formatVersionHeader entry.version entry.date) ]
+        [ formatVersionHeader entry
         , div [ class "space-y-2" ]
             [ viewChangeSection "Added" entry.changes.added
             , viewChangeSection "Changed" entry.changes.changed
@@ -83,12 +90,18 @@ viewEntry entry =
 viewChangeSection : String -> List String -> Html Msg
 viewChangeSection sectionName changes =
     if List.isEmpty changes then
-        text ""
+        Html.Extra.nothing
 
     else
         div [ class "space-y-1" ]
             [ h4 [ class "text-sm font-semibold uppercase tracking-wide text-gray-700" ]
                 [ text sectionName ]
             , ul [ class "list-disc list-inside space-y-0.5 border-l-2 border-l-gray-300 pl-3" ]
-                (List.map (\change -> li [ class "text-gray-700" ] [ text change ]) changes)
+                (List.map
+                    (\change ->
+                        li [ class "text-gray-700 text-sm" ]
+                            [ text change ]
+                    )
+                    changes
+                )
             ]

@@ -6,7 +6,6 @@ import Browser.Events
 import Byzantine.Frequency exposing (Frequency(..))
 import Json.Decode as Decode exposing (Decoder, Value)
 import Model exposing (Model)
-import Model.Changelog
 import Model.DeviceInfo as DeviceInfo exposing (DeviceInfo)
 import Ports
 import Task
@@ -37,10 +36,7 @@ init flags =
                 |> Result.withDefault defaultFlags
     in
     ( Model.init deviceInfo viewport
-    , Cmd.batch
-        [ Task.perform GotViewport Dom.getViewport
-        , Model.Changelog.fetch ChangelogReceived
-        ]
+    , Task.perform GotViewport Dom.getViewport
     )
 
 
