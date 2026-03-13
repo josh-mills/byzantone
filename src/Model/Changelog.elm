@@ -1,5 +1,6 @@
-module Model.Changelog exposing (Changelog, Changes, Entry, decoder, fetch)
+module Model.Changelog exposing (Changelog, Changes, Entry, Version, decoder, fetch)
 
+import Date exposing (Date)
 import Http
 import Json.Decode as Decode exposing (Decoder)
 
@@ -11,9 +12,16 @@ type alias Changelog =
 
 
 type alias Entry =
-    { version : String
-    , date : String
+    { version : Version
+    , date : Date
     , changes : Changes
+    }
+
+
+type alias Version =
+    { major : Int
+    , minor : Int
+    , patch : Int
     }
 
 
@@ -34,11 +42,39 @@ decoder =
         (Decode.field "lastUpdated" Decode.string)
 
 
+versionDecoder : Decoder Version
+versionDecoder =
+    Decode.string
+        |> Decode.andThen
+            (\str ->
+                case str |> String.split "." |> List.map String.toInt of
+                    [ Just major, Just minor, Just patch ] ->
+                        Decode.succeed { major = major, minor = minor, patch = patch }
+
+                    _ ->
+                        Decode.fail ("Invalid version format: " ++ str)
+            )
+
+
+dateDecoder : Decoder Date
+dateDecoder =
+    Decode.string
+        |> Decode.andThen
+            (\str ->
+                case Date.fromIsoString str of
+                    Ok date ->
+                        Decode.succeed date
+
+                    Err err ->
+                        Decode.fail ("Invalid ISO-8601 date: " ++ err)
+            )
+
+
 entryDecoder : Decoder Entry
 entryDecoder =
     Decode.map3 Entry
-        (Decode.field "version" Decode.string)
-        (Decode.field "date" Decode.string)
+        (Decode.field "version" versionDecoder)
+        (Decode.field "date" dateDecoder)
         (Decode.field "changes" changesDecoder)
 
 

@@ -1,10 +1,11 @@
 module View.Changelog exposing (view)
 
+import Date
 import Html exposing (Html, div, h3, h4, li, span, text, ul)
 import Html.Attributes exposing (class)
 import Html.Extra
 import Http
-import Model.Changelog exposing (Changelog, Entry)
+import Model.Changelog exposing (Changelog, Entry, Version)
 import RemoteData exposing (RemoteData)
 import Update exposing (Msg)
 
@@ -52,13 +53,23 @@ httpErrorToString error =
             "Bad response body: " ++ body
 
 
+versionToString : Version -> String
+versionToString { major, minor, patch } =
+    "v"
+        ++ String.fromInt major
+        ++ "."
+        ++ String.fromInt minor
+        ++ "."
+        ++ String.fromInt patch
+
+
 formatVersionHeader : Entry -> Html msg
 formatVersionHeader { version, date } =
     h3 [ class "text-lg font-semibold mb-2" ]
         [ span [ class "text-gray-900" ]
-            [ text ("v" ++ version) ]
+            [ text (versionToString version) ]
         , span [ class "text-gray-500" ]
-            [ text (" (" ++ date ++ ")") ]
+            [ text (" (" ++ Date.format "MMMM d, y" date ++ ")") ]
         ]
 
 
