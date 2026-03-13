@@ -33,9 +33,9 @@
  
 ## v1.0.5 (2026-01-27)
 ### Added
- - Introduces elm-review to improve code quality
+ - Introduces `elm-review` to improve code quality
 ### Changed
- - Refactors in response to elm-review
+ - Refactors in response to `elm-review`
  
 ## v1.0.4 (2026-01-18)
 ### Changed

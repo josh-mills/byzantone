@@ -13,6 +13,7 @@
       "elm/svg": "1.0.1",
       "elm/time": "1.0.0",
       "elm-community/html-extra": "3.4.0",
+      "elm-explorations/markdown": "1.0.0",
       "elmcraft/core-extra": "2.2.0",
       "justinmimbs/date": "4.1.0",
       "krisajenkins/remotedata": "6.1.0",

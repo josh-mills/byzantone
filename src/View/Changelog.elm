@@ -5,6 +5,7 @@ import Html exposing (Html, div, h3, h4, li, span, text, ul)
 import Html.Attributes exposing (class)
 import Html.Extra
 import Http
+import Markdown
 import Model.Changelog exposing (Changelog)
 import Model.Changelog.Entry exposing (Entry)
 import Model.Changelog.Version exposing (Version)
@@ -99,11 +100,14 @@ viewChangeSection sectionName changes =
         div [ class "space-y-1" ]
             [ h4 [ class "text-sm font-semibold uppercase tracking-wide text-gray-700" ]
                 [ text sectionName ]
-            , ul [ class "list-disc list-inside space-y-0.5 border-l-2 border-l-gray-300 pl-3" ]
+            , ul [ class "list-disc list-outside space-y-0.5 border-l-2 border-l-gray-300 pl-5" ]
                 (List.map
                     (\change ->
-                        li [ class "text-gray-700 text-sm" ]
-                            [ text change ]
+                        li [ class "text-gray-700 text-sm [&_p]:m-0" ]
+                            [ Markdown.toHtml
+                                [ class "[&_a]:text-blue-600 [&_a]:underline [&_a:hover]:text-blue-800" ]
+                                change
+                            ]
                     )
                     changes
                 )

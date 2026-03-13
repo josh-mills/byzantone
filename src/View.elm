@@ -254,7 +254,7 @@ modalContent audioSettings layoutData modeSettings modal model =
             lazy3 settings audioSettings layoutData modeSettings
 
         ReleasesModal ->
-            View.Changelog.view model.changelog
+            lazy View.Changelog.view model.changelog
 
 
 settings : AudioSettings -> LayoutData -> ModeSettings -> Html Msg
