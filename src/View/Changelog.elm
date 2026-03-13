@@ -5,7 +5,9 @@ import Html exposing (Html, div, h3, h4, li, span, text, ul)
 import Html.Attributes exposing (class)
 import Html.Extra
 import Http
-import Model.Changelog exposing (Changelog, Entry, Version)
+import Model.Changelog exposing (Changelog)
+import Model.Changelog.Entry exposing (Entry)
+import Model.Changelog.Version exposing (Version)
 import RemoteData exposing (RemoteData)
 import Update exposing (Msg)
 
