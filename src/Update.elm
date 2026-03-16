@@ -882,7 +882,7 @@ handleModalSelection modal model =
 
         ( changelogCmd, maybeSetLoading ) =
             case ( modal, model.changelog ) of
-                ( Model.ReleasesModal, RemoteData.NotAsked ) ->
+                ( Model.ReleasesModal _, RemoteData.NotAsked ) ->
                     ( Model.Changelog.fetch ChangelogReceived
                     , \model_ -> { model_ | changelog = RemoteData.Loading }
                     )

@@ -200,7 +200,7 @@ menu =
         ]
         [ menuItem AboutModal
         , menuItem SettingsModal
-        , menuItem ReleasesModal
+        , menuItem (ReleasesModal False)
         ]
 
 
@@ -253,8 +253,8 @@ modalContent audioSettings layoutData modeSettings modal model =
         SettingsModal ->
             lazy3 settings audioSettings layoutData modeSettings
 
-        ReleasesModal ->
-            lazy View.Changelog.view model.changelog
+        ReleasesModal viewAll ->
+            lazy2 View.Changelog.view viewAll model.changelog
 
 
 settings : AudioSettings -> LayoutData -> ModeSettings -> Html Msg

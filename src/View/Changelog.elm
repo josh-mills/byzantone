@@ -1,20 +1,23 @@
 module View.Changelog exposing (view)
 
 import Date
-import Html exposing (Html, div, h3, h4, li, span, text, ul)
+import Html exposing (Html, button, div, h3, h4, li, span, text, ul)
 import Html.Attributes exposing (class)
+import Html.Events exposing (onClick)
 import Html.Extra
 import Http
 import Markdown
+import Model exposing (Modal(..))
 import Model.Changelog exposing (Changelog)
 import Model.Changelog.Entry exposing (Entry)
 import Model.Changelog.Version exposing (Version)
 import RemoteData exposing (RemoteData)
-import Update exposing (Msg)
+import Styles
+import Update exposing (Msg(..))
 
 
-view : RemoteData Http.Error Changelog -> Html Msg
-view remoteChangelog =
+view : Bool -> RemoteData Http.Error Changelog -> Html Msg
+view viewAll remoteChangelog =
     div [ class "p-4" ]
         [ case remoteChangelog of
             RemoteData.NotAsked ->
@@ -32,8 +35,37 @@ view remoteChangelog =
                     ]
 
             RemoteData.Success changelog ->
+                let
+                    entries =
+                        if viewAll then
+                            changelog.entries
+
+                        else
+                            List.take 5 changelog.entries
+
+                    showViewAll =
+                        not viewAll && List.length changelog.entries > 5
+                in
                 div [ class "space-y-4" ]
-                    (List.map viewEntry changelog.entries)
+                    (List.map viewEntry entries
+                        ++ (if showViewAll then
+                                [ viewAllButton ]
+
+                            else
+                                []
+                           )
+                    )
+        ]
+
+
+viewAllButton : Html Msg
+viewAllButton =
+    div [ class "pt-2 text-center" ]
+        [ button
+            [ Styles.buttonClass
+            , onClick (SelectModal (ReleasesModal True))
+            ]
+            [ text "View All" ]
         ]
 
 
@@ -103,11 +135,8 @@ viewChangeSection sectionName changes =
             , ul [ class "list-disc list-outside space-y-0.5 border-l-2 border-l-gray-300 pl-5" ]
                 (List.map
                     (\change ->
-                        li [ class "text-gray-700 text-sm [&_p]:m-0" ]
-                            [ Markdown.toHtml
-                                [ class "[&_a]:text-blue-600 [&_a]:underline [&_a:hover]:text-blue-800" ]
-                                change
-                            ]
+                        li [ class "text-gray-700 text-sm [&_p]:m-0 [&_a]:text-blue-600 [&_a]:underline [&_a:hover]:text-blue-800" ]
+                            [ Markdown.toHtml [] change ]
                     )
                     changes
                 )

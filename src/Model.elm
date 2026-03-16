@@ -80,7 +80,7 @@ type Modal
     = NoModal
     | AboutModal
     | SettingsModal
-    | ReleasesModal
+    | ReleasesModal Bool
 
 
 modalToString : Modal -> String
@@ -95,7 +95,7 @@ modalToString modal =
         SettingsModal ->
             "Settings"
 
-        ReleasesModal ->
+        ReleasesModal _ ->
             "Release Notes"
 
 
