@@ -21,8 +21,7 @@ view viewAll remoteChangelog =
     div [ class "p-4" ]
         [ case remoteChangelog of
             RemoteData.NotAsked ->
-                div [ class "text-center py-8 text-gray-600" ]
-                    [ text "Loading changelog..." ]
+                Html.Extra.nothing
 
             RemoteData.Loading ->
                 div [ class "text-center py-8 text-gray-600" ]
