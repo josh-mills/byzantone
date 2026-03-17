@@ -31,6 +31,6 @@ decoder =
 fetch : (Result Http.Error Changelog -> msg) -> Cmd msg
 fetch toMsg =
     Http.get
-        { url = "/dist/changelog.json"
+        { url = "dist/changelog.json"
         , expect = Http.expectJson toMsg decoder
         }
