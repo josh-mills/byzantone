@@ -1,6 +1,6 @@
 # Changelog
 
-## v1.4.0 (2026-03-16)
+## v1.4.0 (2026-03-17)
 ### Added
  - Change log with release notes view accessible from the application menu
 

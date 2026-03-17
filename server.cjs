@@ -4,7 +4,7 @@ const os = require("os");
 const fs = require("fs");
 const path = require("path");
 const port = 3002;
-// TODO: should get better environment configuration here
+// TODO: should get proper environment configuration here
 const LOCAL_DEV = false;
 
 // Import the changelog parser (using dynamic import for ES modules)
