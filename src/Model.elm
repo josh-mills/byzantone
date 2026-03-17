@@ -18,18 +18,22 @@ module Model exposing
 -}
 
 import Byzantine.DetectedPitch exposing (DetectedPitch)
+import Http
 import Model.AudioSettings as AudioSettings exposing (AudioSettings)
+import Model.Changelog exposing (Changelog)
 import Model.ControlsMenu as ControlsMenu exposing (OpenControlMenus)
 import Model.DeviceInfo exposing (DeviceInfo)
 import Model.LayoutData as LayoutData exposing (LayoutData)
 import Model.ModeSettings as ModeSettings exposing (ModeSettings)
 import Model.PitchSpaceData as PitchSpaceData exposing (PitchSpaceData)
 import Model.PitchState as PitchState exposing (PitchState)
+import RemoteData exposing (RemoteData)
 import Time
 
 
 type alias Model =
     { audioSettings : AudioSettings
+    , changelog : RemoteData Http.Error Changelog
     , detectedPitch : Maybe { detectedPitch : DetectedPitch, timestamp : Time.Posix }
     , deviceInfo : DeviceInfo
     , headerCollapsed : Bool
@@ -50,6 +54,7 @@ init deviceInfo viewportDimensions =
             LayoutData.init viewportDimensions
     in
     { audioSettings = AudioSettings.defaultAudioSettings
+    , changelog = RemoteData.NotAsked
     , detectedPitch = Nothing
     , deviceInfo = deviceInfo
     , headerCollapsed = False
@@ -75,6 +80,7 @@ type Modal
     = NoModal
     | AboutModal
     | SettingsModal
+    | ReleasesModal Bool
 
 
 modalToString : Modal -> String
@@ -88,6 +94,9 @@ modalToString modal =
 
         SettingsModal ->
             "Settings"
+
+        ReleasesModal _ ->
+            "Release Notes"
 
 
 modalOpen : Modal -> Bool

@@ -12,6 +12,8 @@ const filePaths = [
     ["dist", "src", "pitch_tracker.js"],
 ];
 
+const preservedFiles = [["dist", "changelog.json"]];
+
 async function applyHash() {
     try {
         await copyFile(path.join("src", "index.html"), publicIndexPath);
@@ -43,6 +45,14 @@ async function applyHash() {
     }
 
     filePaths.forEach(rename);
+
+    // Ensure preserved files exist (but don't rename them)
+    preservedFiles.forEach((file) => {
+        const fullPath = path.join("public", ...file);
+        if (fs.existsSync(fullPath)) {
+            console.log(`preserved ${fullPath}`);
+        }
+    });
 }
 
 applyHash().catch(console.error);
