@@ -18,12 +18,12 @@ import Json.Decode exposing (Decoder)
 import Maybe.Extra as Maybe
 import Model exposing (Modal(..), Model)
 import Model.AudioSettings as AudioSettings exposing (AudioSettings)
-import Model.Changelog exposing (Changelog)
-import Model.Copy exposing (Copy)
 import Model.LayoutData as LayoutData exposing (Layout(..), LayoutData, LayoutSelection(..), layoutFor)
 import Model.ModeSettings exposing (ModeSettings)
 import Model.PitchState as PitchState
 import RadioFieldset
+import Remote.AboutCopy exposing (AboutCopy)
+import Remote.Changelog exposing (Changelog)
 import RemoteData exposing (RemoteData)
 import Styles
 import Svg.Attributes
@@ -51,7 +51,7 @@ view model =
             )
         , lazy2 backdrop model.menuOpen model.modal
         , lazy header model.headerCollapsed
-        , lazy6 viewModal model.audioSettings model.layoutData model.modeSettings model.changelog model.copy model.modal
+        , lazy6 viewModal model.audioSettings model.layoutData model.modeSettings model.remote.changelog model.remote.aboutCopy model.modal
 
         -- , viewIf LayoutData.showSpacing (div [ class "text-center" ] [ text "|" ])
         , viewIf model.menuOpen menu
@@ -208,7 +208,7 @@ menu =
         ]
 
 
-viewModal : AudioSettings -> LayoutData -> ModeSettings -> RemoteData Http.Error Changelog -> RemoteData Http.Error Copy -> Modal -> Html Msg
+viewModal : AudioSettings -> LayoutData -> ModeSettings -> RemoteData Http.Error Changelog -> RemoteData Http.Error AboutCopy -> Modal -> Html Msg
 viewModal audioSettings layoutData modeSettings changelog copy modal =
     case modal of
         NoModal ->
@@ -245,7 +245,7 @@ viewModal audioSettings layoutData modeSettings changelog copy modal =
                 ]
 
 
-modalContent : AudioSettings -> LayoutData -> ModeSettings -> RemoteData Http.Error Changelog -> RemoteData Http.Error Copy -> Modal -> Html Msg
+modalContent : AudioSettings -> LayoutData -> ModeSettings -> RemoteData Http.Error Changelog -> RemoteData Http.Error AboutCopy -> Modal -> Html Msg
 modalContent audioSettings layoutData modeSettings changelog copy modal =
     case modal of
         NoModal ->

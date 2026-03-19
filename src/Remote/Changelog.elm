@@ -1,8 +1,8 @@
-module Model.Changelog exposing (Changelog, decoder, fetch)
+module Remote.Changelog exposing (Changelog, decoder, fetch)
 
 import Http
 import Json.Decode as Decode exposing (Decoder)
-import Model.Changelog.Entry as Entry exposing (Entry)
+import Remote.Changelog.Entry as Entry exposing (Entry)
 
 
 type alias Changelog =

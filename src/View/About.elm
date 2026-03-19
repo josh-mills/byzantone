@@ -5,11 +5,11 @@ import Html.Attributes exposing (class)
 import Html.Extra
 import Http
 import Markdown
-import Model.Copy exposing (Copy)
+import Remote.AboutCopy exposing (AboutCopy)
 import RemoteData exposing (RemoteData)
 
 
-view : RemoteData Http.Error Copy -> Html msg
+view : RemoteData Http.Error AboutCopy -> Html msg
 view remoteCopy =
     div []
         [ case remoteCopy of
