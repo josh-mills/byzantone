@@ -4,13 +4,17 @@ import Array
 import Browser.Dom as Dom
 import Byzantine.Accidental as Accidental exposing (Accidental)
 import Byzantine.Degree as Degree exposing (Degree(..))
-import Byzantine.Frequency exposing (Frequency(..), PitchStandard)
+import Byzantine.DetectedPitch as DetectedPitch
+import Byzantine.Frequency exposing (Frequency, PitchStandard)
 import Byzantine.Pitch as Pitch exposing (Pitch)
+import Byzantine.PitchPosition as PitchPosition
 import Byzantine.Register exposing (Register)
 import Byzantine.Scale exposing (Scale)
+import Http
 import Maybe.Extra as Maybe
 import Model exposing (Modal, Model)
-import Model.AudioSettings as AudioSettings exposing (AudioSettings)
+import Model.AudioSettings as AudioSettings exposing (AudioSettings, ListenRegister, Responsiveness(..))
+import Model.Changelog exposing (Changelog)
 import Model.ControlsMenu as ControlsMenu
 import Model.DegreeDataDict as DegreeDataDict exposing (DegreeDataDict)
 import Model.LayoutData exposing (LayoutData, LayoutSelection)
@@ -18,12 +22,14 @@ import Model.ModeSettings exposing (ModeSettings)
 import Model.PitchSpaceData as PitchSpaceData exposing (PitchSpaceData)
 import Model.PitchState as PitchState exposing (IsonStatus(..), PitchState, ProposedAccidental(..))
 import Movement exposing (Movement)
-import Platform.Cmd as Cmd
+import RemoteData
 import Task
+import Time
 
 
 type Msg
-    = CloseControlMenus
+    = ChangelogReceived (Result Http.Error Changelog)
+    | CloseControlMenus
     | DomResult (Result Dom.Error ())
     | GotPitchSpaceElement (Result Dom.Error Dom.Element)
     | GotViewport Dom.Viewport
@@ -36,7 +42,7 @@ type Msg
     | SelectProposedAccidental ProposedAccidental
     | SelectProposedMovement Movement
     | SetAudioMode AudioSettings.AudioMode
-    | SetDetectedPitch (Maybe Frequency)
+    | SetDetectedPitch { maybeFrequency : Maybe Frequency, timestamp : Time.Posix }
     | SetGain Float
     | SetIson IsonStatus
     | SetLayout LayoutSelection
@@ -44,10 +50,12 @@ type Msg
     | SetRangeStart String
     | SetRangeEnd String
     | SetPlaybackRegister Register
-    | SetListenRegister Register
+    | SetListenRegister ListenRegister
     | SetResponsiveness AudioSettings.Responsiveness
+    | SetPitchFeedback AudioSettings.PitchFeedbackUnit
     | SetScale Scale
     | ToggleControlMenu ControlsMenu.MenuOption
+    | ToggleHeaderCollapsed
     | ToggleMenu
 
 
@@ -56,6 +64,9 @@ update msg model =
     case msg of
         NoOp ->
             ( model, Task.perform GotViewport Dom.getViewport )
+
+        ChangelogReceived result ->
+            handleChangelogReceived result model
 
         CloseControlMenus ->
             ( { model | openControlMenus = ControlsMenu.init }
@@ -101,38 +112,10 @@ update msg model =
             )
 
         SelectModal modal ->
-            ( { model | modal = modal, menuOpen = False }
-            , if Model.modalOpen modal then
-                focus "modal"
-
-              else
-                Cmd.none
-            )
+            handleModalSelection modal model
 
         SelectPitch maybePitch maybeMovement ->
-            ( updatePitchState
-                (\pitchState ->
-                    { pitchState
-                        | currentDegree = Maybe.map Pitch.unwrapDegree maybePitch
-                        , appliedAccidentals =
-                            Maybe.unwrap pitchState.appliedAccidentals
-                                (\newPitch ->
-                                    DegreeDataDict.set (Pitch.unwrapDegree newPitch)
-                                        (Pitch.unwrapAccidental newPitch)
-                                        pitchState.appliedAccidentals
-                                )
-                                maybePitch
-                        , proposedAccidental = NoProposedAccidental
-                        , proposedMovement =
-                            if Maybe.isJust maybePitch then
-                                Maybe.withDefault model.pitchState.proposedMovement maybeMovement
-
-                            else
-                                Movement.None
-                    }
-                )
-                model
-                |> resetPitchSpaceData
+            ( handleSelectPitch maybePitch maybeMovement model
             , Cmd.none
             )
 
@@ -145,42 +128,18 @@ update msg model =
             )
 
         SelectProposedMovement movement ->
-            let
-                movementWithProposedAccidental =
-                    Movement.applyAccidental
-                        model.modeSettings.scale
-                        (PitchState.unwrapProposedAccidental model.pitchState.proposedAccidental)
-                        movement
-            in
-            ( updatePitchState
-                (\pitchState ->
-                    { pitchState
-                        | proposedMovement =
-                            Maybe.unwrap Movement.None
-                                (\currentPitch ->
-                                    if
-                                        Movement.isValid model.modeSettings.scale
-                                            currentPitch
-                                            movementWithProposedAccidental
-                                    then
-                                        movementWithProposedAccidental
-
-                                    else
-                                        movement
-                                )
-                                (PitchState.currentPitch model.modeSettings.scale pitchState)
-                    }
-                )
-                model
-                |> resetPitchSpaceData
+            ( handleSelectProposedMovement movement model
             , Cmd.none
             )
 
         SetAudioMode mode ->
-            ( { model | pitchState = PitchState.initialPitchState }
+            ( { model
+                | detectedPitch = Nothing
+                , pitchState = PitchState.initialPitchState
+              }
                 |> updateAudioSettings (\audioSettings -> { audioSettings | audioMode = mode })
                 |> resetPitchSpaceData
-            , Cmd.none
+            , Task.perform GotViewport Dom.getViewport
             )
 
         SetGain gain ->
@@ -220,46 +179,33 @@ update msg model =
             , Cmd.none
             )
 
-        SetListenRegister register ->
+        SetListenRegister listenRegister ->
             ( updateAudioSettings
-                (\audioSettings -> { audioSettings | listenRegister = register })
+                (\audioSettings -> { audioSettings | listenRegister = listenRegister })
                 model
             , Cmd.none
             )
 
         SetRangeStart start ->
-            ( updateModeSettings
-                (\modeSettings ->
-                    { modeSettings
-                        | rangeStart =
-                            String.toInt start
-                                |> Maybe.andThen (\i -> Array.get i Degree.gamut)
-                                |> Maybe.withDefault modeSettings.rangeStart
-                    }
-                )
-                model
-                |> resetPitchSpaceData
+            ( handleRangeUpdate RangeStart start model
             , Cmd.none
             )
 
         SetRangeEnd end ->
-            ( updateModeSettings
-                (\modeSettings ->
-                    { modeSettings
-                        | rangeEnd =
-                            String.toInt end
-                                |> Maybe.andThen (\i -> Array.get i Degree.gamut)
-                                |> Maybe.withDefault modeSettings.rangeEnd
-                    }
-                )
-                model
-                |> resetPitchSpaceData
+            ( handleRangeUpdate RangeEnd end model
             , Cmd.none
             )
 
         SetResponsiveness responsiveness ->
             ( updateAudioSettings
                 (\audioSettings -> { audioSettings | responsiveness = responsiveness })
+                model
+            , Cmd.none
+            )
+
+        SetPitchFeedback pitchFeedback ->
+            ( updateAudioSettings
+                (\audioSettings -> { audioSettings | pitchFeedback = pitchFeedback })
                 model
             , Cmd.none
             )
@@ -273,8 +219,13 @@ update msg model =
             , Cmd.none
             )
 
-        SetDetectedPitch pitchFrequency ->
-            ( { model | detectedPitch = pitchFrequency }
+        SetDetectedPitch { maybeFrequency, timestamp } ->
+            ( case model.audioSettings.audioMode of
+                AudioSettings.Listen ->
+                    updateDetectedPitch model maybeFrequency timestamp
+
+                AudioSettings.Play ->
+                    model
             , Cmd.none
             )
 
@@ -283,6 +234,11 @@ update msg model =
                 | openControlMenus =
                     ControlsMenu.toggle menuOption model.openControlMenus
               }
+            , Cmd.none
+            )
+
+        ToggleHeaderCollapsed ->
+            ( { model | headerCollapsed = not model.headerCollapsed }
             , Cmd.none
             )
 
@@ -296,183 +252,149 @@ update msg model =
             )
 
         Keydown key ->
-            case key of
-                "ArrowUp" ->
-                    moveAndFocus model 1
+            handleKeydown key model
 
-                "ArrowDown" ->
-                    moveAndFocus model -1
 
-                "Escape" ->
-                    if model.menuOpen then
-                        ( { model | menuOpen = False }
-                        , Task.attempt DomResult (Dom.blur "menu")
-                        )
+{-| Applies accidental transformations (flat/sharp). Uses defaultAccidental if none
+applied, or transforms existing accidental, cancelling if transformation fails.
+-}
+handleAccidentalKey : (Accidental -> Maybe Accidental) -> Accidental -> Model -> Model
+handleAccidentalKey transformAccidental defaultAccidental model =
+    updatePitchState
+        (\pitchState ->
+            { pitchState
+                | proposedAccidental =
+                    case pitchState.proposedAccidental of
+                        Apply accidental ->
+                            case transformAccidental accidental of
+                                Just transformedAccidental ->
+                                    Apply transformedAccidental
 
-                    else
-                        ( setPitchState PitchState.initialPitchState model
-                            |> resetPitchSpaceData
-                        , Cmd.none
-                        )
+                                Nothing ->
+                                    CancelAccidental
 
-                "1" ->
-                    moveAndFocus model 1
+                        _ ->
+                            Apply defaultAccidental
+            }
+        )
+        model
 
-                "2" ->
-                    moveAndFocus model 2
 
-                "3" ->
-                    moveAndFocus model 3
+handleSelectPitch : Maybe Pitch -> Maybe Movement -> Model -> Model
+handleSelectPitch maybePitch maybeMovement model =
+    updatePitchState
+        (\pitchState ->
+            { pitchState
+                | currentDegree = Maybe.map Pitch.unwrapDegree maybePitch
+                , appliedAccidentals = updateAppliedAccidentals maybePitch pitchState
+                , proposedAccidental = NoProposedAccidental
+                , proposedMovement = determineProposedMovement maybePitch maybeMovement model
+            }
+        )
+        model
+        |> resetPitchSpaceData
 
-                "4" ->
-                    moveAndFocus model 4
 
-                "5" ->
-                    moveAndFocus model 5
+{-| Updates accidental dictionary when pitch selection changes.
+Clears old pitch accidental and sets new one if provided.
+-}
+updateAppliedAccidentals : Maybe Pitch -> PitchState -> DegreeDataDict (Maybe Accidental)
+updateAppliedAccidentals maybePitch pitchState =
+    case ( maybePitch, pitchState.currentDegree ) of
+        ( Just newPitch, Just currentDegree ) ->
+            pitchState.appliedAccidentals
+                |> DegreeDataDict.set (Pitch.unwrapDegree newPitch)
+                    (Pitch.unwrapAccidental newPitch)
+                |> DegreeDataDict.set currentDegree Nothing
 
-                "6" ->
-                    moveAndFocus model 6
+        ( Just newPitch, Nothing ) ->
+            DegreeDataDict.set (Pitch.unwrapDegree newPitch)
+                (Pitch.unwrapAccidental newPitch)
+                pitchState.appliedAccidentals
 
-                "7" ->
-                    moveAndFocus model 7
+        ( Nothing, _ ) ->
+            pitchState.appliedAccidentals
 
-                "8" ->
-                    moveAndFocus model 8
 
-                "9" ->
-                    moveAndFocus model 9
+determineProposedMovement : Maybe Pitch -> Maybe Movement -> Model -> Movement
+determineProposedMovement maybePitch maybeMovement model =
+    if Maybe.isJust maybePitch then
+        Maybe.withDefault model.pitchState.proposedMovement maybeMovement
 
-                "!" ->
-                    moveAndFocus model -1
+    else
+        Movement.None
 
-                "@" ->
-                    moveAndFocus model -2
 
-                "#" ->
-                    moveAndFocus model -3
+handleSelectProposedMovement : Movement -> Model -> Model
+handleSelectProposedMovement movement model =
+    let
+        movementWithAccidental =
+            computeMovementWithAccidental model movement
 
-                "$" ->
-                    moveAndFocus model -4
+        validatedMovement =
+            validateMovement model movementWithAccidental movement
+    in
+    updatePitchState
+        (\pitchState -> { pitchState | proposedMovement = validatedMovement })
+        model
+        |> resetPitchSpaceData
 
-                "%" ->
-                    moveAndFocus model -5
 
-                "^" ->
-                    moveAndFocus model -6
+computeMovementWithAccidental : Model -> Movement -> Movement
+computeMovementWithAccidental model movement =
+    Movement.applyAccidental
+        model.modeSettings.scale
+        (PitchState.unwrapProposedAccidental model.pitchState.proposedAccidental)
+        movement
 
-                "&" ->
-                    moveAndFocus model -7
 
-                "*" ->
-                    moveAndFocus model -8
+{-| Validates movement against scale rules. Returns movementWithAccidental if
+valid, otherwise returns fallbackMovement.
+-}
+validateMovement : Model -> Movement -> Movement -> Movement
+validateMovement model movementWithAccidental fallbackMovement =
+    Maybe.unwrap Movement.None
+        (\currentPitch ->
+            if
+                Movement.isValid model.modeSettings.scale
+                    currentPitch
+                    movementWithAccidental
+            then
+                movementWithAccidental
 
-                "(" ->
-                    moveAndFocus model -9
+            else
+                fallbackMovement
+        )
+        (PitchState.currentPitch model.modeSettings.scale model.pitchState)
 
-                "n" ->
-                    setAndFocus model Ni
 
-                "p" ->
-                    setAndFocus model Pa
+type RangePointToUpdate
+    = RangeStart
+    | RangeEnd
 
-                "b" ->
-                    setAndFocus model Bou
 
-                "v" ->
-                    setAndFocus model Bou
+{-| Updates range start/end by parsing string index into degree from gamut
+array.
+-}
+handleRangeUpdate : RangePointToUpdate -> String -> Model -> Model
+handleRangeUpdate rangePoint rangeValue model =
+    updateModeSettings
+        (\modeSettings ->
+            String.toInt rangeValue
+                |> Maybe.andThen (\i -> Array.get i Degree.gamut)
+                |> Maybe.map
+                    (\degree ->
+                        case rangePoint of
+                            RangeStart ->
+                                { modeSettings | rangeStart = degree }
 
-                "g" ->
-                    setAndFocus model Ga
-
-                "d" ->
-                    setAndFocus model Di
-
-                "k" ->
-                    setAndFocus model Ke
-
-                "z" ->
-                    setAndFocus model Zo_
-
-                "i" ->
-                    case model.pitchState.ison of
-                        PitchState.NoIson ->
-                            ( updatePitchState
-                                (\pitchState ->
-                                    { pitchState | ison = PitchState.SelectingIson Nothing }
-                                )
-                                model
-                            , Task.attempt DomResult (Dom.focus "select-ison-button")
-                            )
-
-                        PitchState.SelectingIson (Just ison) ->
-                            ( updatePitchState
-                                (\pitchState ->
-                                    { pitchState
-                                        | ison = PitchState.Selected ison
-                                    }
-                                )
-                                model
-                            , Cmd.none
-                            )
-
-                        PitchState.SelectingIson Nothing ->
-                            ( updatePitchState
-                                (\pitchState ->
-                                    { pitchState | ison = PitchState.NoIson }
-                                )
-                                model
-                            , Task.attempt DomResult (Dom.focus "select-ison-button")
-                            )
-
-                        PitchState.Selected _ ->
-                            ( model, Cmd.none )
-
-                "f" ->
-                    ( updatePitchState
-                        (\pitchState ->
-                            { pitchState
-                                | proposedAccidental =
-                                    case pitchState.proposedAccidental of
-                                        Apply accidental ->
-                                            case Accidental.lower accidental of
-                                                Just lowerAccidental ->
-                                                    Apply lowerAccidental
-
-                                                Nothing ->
-                                                    CancelAccidental
-
-                                        _ ->
-                                            Apply Accidental.Flat2
-                            }
-                        )
-                        model
-                    , Cmd.none
+                            RangeEnd ->
+                                { modeSettings | rangeEnd = degree }
                     )
-
-                "s" ->
-                    ( updatePitchState
-                        (\pitchState ->
-                            { pitchState
-                                | proposedAccidental =
-                                    case pitchState.proposedAccidental of
-                                        Apply accidental ->
-                                            case Accidental.raise accidental of
-                                                Just raisedAccidental ->
-                                                    Apply raisedAccidental
-
-                                                Nothing ->
-                                                    CancelAccidental
-
-                                        _ ->
-                                            Apply Accidental.Sharp2
-                            }
-                        )
-                        model
-                    , Cmd.none
-                    )
-
-                _ ->
-                    ( model, Cmd.none )
+                |> Maybe.withDefault modeSettings
+        )
+        model
+        |> resetPitchSpaceData
 
 
 resetPitchSpaceData : Model -> Model
@@ -484,6 +406,48 @@ resetPitchSpaceData model =
                 model.modeSettings
                 model.pitchState
     }
+
+
+updateDetectedPitch : Model -> Maybe Frequency -> Time.Posix -> Model
+updateDetectedPitch model maybeFrequency timestamp =
+    case maybeFrequency of
+        Just frequency ->
+            let
+                audioSettings =
+                    AudioSettings.setAutoListenRegister model.modeSettings model.audioSettings frequency
+            in
+            { model
+                | audioSettings = audioSettings
+                , detectedPitch =
+                    Just
+                        { detectedPitch = DetectedPitch.fromFrequency audioSettings model.pitchSpaceData frequency
+                        , timestamp = timestamp
+                        }
+            }
+
+        Nothing ->
+            case model.detectedPitch of
+                Just timestampedDetectedPitch ->
+                    let
+                        timeoutMillis =
+                            case model.audioSettings.responsiveness of
+                                Sensitive ->
+                                    450
+
+                                Smooth ->
+                                    900
+
+                        timeDiff =
+                            Time.posixToMillis timestamp - Time.posixToMillis timestampedDetectedPitch.timestamp
+                    in
+                    if timeDiff > timeoutMillis then
+                        { model | detectedPitch = Nothing }
+
+                    else
+                        model
+
+                Nothing ->
+                    model
 
 
 updateAudioSettings : (AudioSettings -> AudioSettings) -> Model -> Model
@@ -569,7 +533,7 @@ processPitchButtonClick model degree =
                                 model.pitchState.appliedAccidentals
                             )
 
-                        ( ison, Apply accidental, True ) ->
+                        ( ison, Apply _, True ) ->
                             ( ison
                             , model.pitchState.currentDegree
                             , applyAccidentalWithValidation model.modeSettings.scale
@@ -586,7 +550,7 @@ processPitchButtonClick model degree =
                                 model.pitchState.appliedAccidentals
                             )
 
-                        ( ison, Apply accidental, False ) ->
+                        ( ison, Apply _, False ) ->
                             ( ison
                             , Just degree
                             , applyAccidentalWithValidation model.modeSettings.scale
@@ -627,26 +591,29 @@ applyAccidentalWithValidation scale { pitchPositions } pitchState degree =
         Apply accidental ->
             let
                 isValidInflection =
-                    Pitch.isValidInflection scale accidental degree
-
-                inflection =
-                    Accidental.moriaAdjustment accidental
+                    PitchPosition.isValidInflection scale accidental degree
 
                 positonWithInflection =
-                    DegreeDataDict.get degree pitchPositions + inflection
+                    PitchPosition.inflect (DegreeDataDict.get degree pitchPositions) accidental
 
                 wouldNotBeInversion =
-                    if inflection > 0 then
+                    if Accidental.moriaAdjustment accidental > 0 then
                         Maybe.unwrap False
                             (\degreeHigher ->
-                                DegreeDataDict.get degreeHigher pitchPositions > positonWithInflection
+                                PitchPosition.compare
+                                    (DegreeDataDict.get degreeHigher pitchPositions)
+                                    positonWithInflection
+                                    == GT
                             )
                             (Degree.step degree 1)
 
                     else
                         Maybe.unwrap False
                             (\degreeLower ->
-                                DegreeDataDict.get degreeLower pitchPositions < positonWithInflection
+                                PitchPosition.compare
+                                    (DegreeDataDict.get degreeLower pitchPositions)
+                                    positonWithInflection
+                                    == LT
                             )
                             (Degree.step degree -1)
             in
@@ -681,6 +648,159 @@ clearCurrentDegreeAccidental currentDegree appliedAccidentals =
 
 
 -- KEYBOARD SHORTCUT HELPERS
+
+
+handleKeydown : String -> Model -> ( Model, Cmd Msg )
+handleKeydown key model =
+    case key of
+        "ArrowUp" ->
+            moveAndFocus model 1
+
+        "ArrowDown" ->
+            moveAndFocus model -1
+
+        "Escape" ->
+            handleEscapeKey model
+
+        "1" ->
+            moveAndFocus model 1
+
+        "2" ->
+            moveAndFocus model 2
+
+        "3" ->
+            moveAndFocus model 3
+
+        "4" ->
+            moveAndFocus model 4
+
+        "5" ->
+            moveAndFocus model 5
+
+        "6" ->
+            moveAndFocus model 6
+
+        "7" ->
+            moveAndFocus model 7
+
+        "8" ->
+            moveAndFocus model 8
+
+        "9" ->
+            moveAndFocus model 9
+
+        "!" ->
+            moveAndFocus model -1
+
+        "@" ->
+            moveAndFocus model -2
+
+        "#" ->
+            moveAndFocus model -3
+
+        "$" ->
+            moveAndFocus model -4
+
+        "%" ->
+            moveAndFocus model -5
+
+        "^" ->
+            moveAndFocus model -6
+
+        "&" ->
+            moveAndFocus model -7
+
+        "*" ->
+            moveAndFocus model -8
+
+        "(" ->
+            moveAndFocus model -9
+
+        "n" ->
+            setAndFocus model Ni
+
+        "p" ->
+            setAndFocus model Pa
+
+        "b" ->
+            setAndFocus model Bou
+
+        "v" ->
+            setAndFocus model Bou
+
+        "g" ->
+            setAndFocus model Ga
+
+        "d" ->
+            setAndFocus model Di
+
+        "k" ->
+            setAndFocus model Ke
+
+        "z" ->
+            setAndFocus model Zo_
+
+        "i" ->
+            handleIsonToggle model
+
+        "f" ->
+            ( handleAccidentalKey Accidental.lower Accidental.Flat2 model, Cmd.none )
+
+        "s" ->
+            ( handleAccidentalKey Accidental.raise Accidental.Sharp2 model, Cmd.none )
+
+        _ ->
+            ( model, Cmd.none )
+
+
+handleEscapeKey : Model -> ( Model, Cmd Msg )
+handleEscapeKey model =
+    if model.menuOpen then
+        ( { model | menuOpen = False }
+        , Task.attempt DomResult (Dom.blur "menu")
+        )
+
+    else
+        ( setPitchState PitchState.initialPitchState model
+            |> resetPitchSpaceData
+        , Cmd.none
+        )
+
+
+handleIsonToggle : Model -> ( Model, Cmd Msg )
+handleIsonToggle model =
+    case model.pitchState.ison of
+        PitchState.NoIson ->
+            ( updatePitchState
+                (\pitchState ->
+                    { pitchState | ison = PitchState.SelectingIson Nothing }
+                )
+                model
+            , Task.attempt DomResult (Dom.focus "select-ison-button")
+            )
+
+        PitchState.SelectingIson (Just ison) ->
+            ( updatePitchState
+                (\pitchState ->
+                    { pitchState
+                        | ison = PitchState.Selected ison
+                    }
+                )
+                model
+            , Cmd.none
+            )
+
+        PitchState.SelectingIson Nothing ->
+            ( updatePitchState
+                (\pitchState ->
+                    { pitchState | ison = PitchState.NoIson }
+                )
+                model
+            , Task.attempt DomResult (Dom.focus "select-ison-button")
+            )
+
+        PitchState.Selected _ ->
+            ( model, Cmd.none )
 
 
 moveAndFocus : Model -> Int -> ( Model, Cmd Msg )
@@ -743,6 +863,39 @@ setAndFocus model degree =
 
 
 -- CMD HELPERS
+
+
+handleChangelogReceived : Result Http.Error Changelog -> Model -> ( Model, Cmd Msg )
+handleChangelogReceived result model =
+    ( { model | changelog = RemoteData.fromResult result }, Cmd.none )
+
+
+handleModalSelection : Modal -> Model -> ( Model, Cmd Msg )
+handleModalSelection modal model =
+    let
+        cmd =
+            if Model.modalOpen modal then
+                focus "modal"
+
+            else
+                Cmd.none
+
+        ( changelogCmd, maybeSetLoading ) =
+            case ( modal, model.changelog ) of
+                ( Model.ReleasesModal _, RemoteData.NotAsked ) ->
+                    ( Model.Changelog.fetch ChangelogReceived
+                    , \model_ -> { model_ | changelog = RemoteData.Loading }
+                    )
+
+                _ ->
+                    ( Cmd.none, identity )
+
+        updatedModel =
+            { model | modal = modal, menuOpen = False }
+    in
+    ( maybeSetLoading updatedModel
+    , Cmd.batch [ cmd, changelogCmd ]
+    )
 
 
 focus : String -> Cmd Msg

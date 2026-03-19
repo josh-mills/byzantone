@@ -9,19 +9,18 @@ class PitchTracker extends HTMLElement {
     private animationFrameId: number | null = null;
     private noteAnimationFrameId: number | null = null;
     private smoothing: string = "sensitive";
+    private renderVisualization: boolean = true;
 
     private shadow: ShadowRoot;
-    private resizeObserver: ResizeObserver | null = null;
 
     constructor() {
         super();
-        console.log("PitchTracker constructor called");
         this.shadow = this.attachShadow({ mode: "open" });
-        this.createUI();
+        this.createBaseUI();
     }
 
     static get observedAttributes(): string[] {
-        return ["smoothing"];
+        return ["smoothing", "render-visualization"];
     }
 
     attributeChangedCallback(
@@ -40,24 +39,65 @@ class PitchTracker extends HTMLElement {
                     this.init();
                 }
             }
+        } else if (name === "render-visualization") {
+            const newRenderVisualization = newValue === "true";
+            if (this.renderVisualization !== newRenderVisualization) {
+                this.renderVisualization = newRenderVisualization;
+
+                if (this.renderVisualization) {
+                    // Enabling visualization
+                    this.createVisualElements();
+                    if (this.canvas) {
+                        this.canvasContext = this.canvas.getContext("2d");
+                        // Start visual rendering if audio is already initialized
+                        if (this.analyser && this.audioContext) {
+                            // Add slight delay to ensure canvas is properly attached to DOM
+                            setTimeout(() => {
+                                this.startVisualRendering();
+                            }, 10);
+                        }
+                    }
+                } else {
+                    // Disabling visualization
+                    this.stopVisualRendering();
+                    this.createVisualElements(); // This will remove visual elements
+                }
+            }
         }
     }
 
+    get renderVisualizationEnabled(): boolean {
+        return this.renderVisualization;
+    }
+
     connectedCallback() {
+        // Process initial attributes before initializing
+        this.processInitialAttributes();
         this.init();
+    }
+
+    private processInitialAttributes() {
+        // Process renderVisualization attribute
+        const renderVizAttr = this.getAttribute("render-visualization");
+        if (renderVizAttr !== null) {
+            this.renderVisualization = renderVizAttr === "true";
+        }
+
+        // Process smoothing attribute
+        const smoothingAttr = this.getAttribute("smoothing");
+        if (
+            smoothingAttr &&
+            (smoothingAttr === "sensitive" || smoothingAttr === "smooth")
+        ) {
+            this.smoothing = smoothingAttr;
+        }
     }
 
     disconnectedCallback() {
         this.stopAudioProcessing();
-
-        // Disconnect the resize observer
-        if (this.resizeObserver) {
-            this.resizeObserver.disconnect();
-            this.resizeObserver = null;
-        }
     }
 
-    private createUI() {
+    private createBaseUI() {
         // Add styles
         const style = document.createElement("style");
         style.textContent = `
@@ -66,12 +106,6 @@ class PitchTracker extends HTMLElement {
                 max-width: 800px;
                 margin: 0 auto;
                 padding: 20px;
-            }
-            .controls {
-                margin: 0 0 20px 0;
-            }
-            .control-group {
-                margin-bottom: 15px;
             }
             canvas {
                 width: 100%;
@@ -86,25 +120,36 @@ class PitchTracker extends HTMLElement {
                 margin: 20px 0;
                 min-height: 36px;
             }
-            .controls {
-                margin-top: 0;
-            }
         `;
 
-        // Create note display
-        this.noteDisplay = document.createElement("div");
-        this.noteDisplay.id = "note";
-
-        // Create canvas
-        this.canvas = document.createElement("canvas");
-        this.canvas.className = "visualizer";
-        this.canvas.width = 800;
-        this.canvas.height = 200;
-
-        // Append everything to shadow DOM
         this.shadow.appendChild(style);
-        this.shadow.appendChild(this.noteDisplay);
-        this.shadow.appendChild(this.canvas);
+    }
+
+    private createVisualElements() {
+        // Remove existing visual elements
+        const existingNote = this.shadow.querySelector("#note");
+        const existingCanvas = this.shadow.querySelector("canvas");
+        if (existingNote) existingNote.remove();
+        if (existingCanvas) existingCanvas.remove();
+
+        if (this.renderVisualization) {
+            // Create note display
+            this.noteDisplay = document.createElement("div");
+            this.noteDisplay.id = "note";
+
+            // Create canvas
+            this.canvas = document.createElement("canvas");
+            this.canvas.width = 800;
+            this.canvas.height = 200;
+
+            // Append visual elements to shadow DOM
+            this.shadow.appendChild(this.noteDisplay);
+            this.shadow.appendChild(this.canvas);
+        } else {
+            this.noteDisplay = null;
+            this.canvas = null;
+            this.canvasContext = null;
+        }
     }
 
     private dispatchPitchDetected = (pitch: number | null) => {
@@ -112,7 +157,10 @@ class PitchTracker extends HTMLElement {
         const event = new CustomEvent("pitchDetected", {
             bubbles: true,
             composed: true, // Allows the event to cross the shadow DOM boundary
-            detail: { pitch: pitch },
+            detail: {
+                pitch: pitch,
+                timestamp: Date.now(),
+            },
         });
 
         this.dispatchEvent(event);
@@ -152,6 +200,9 @@ https://alexanderell.is/posts/tuner/
                 this.stopAudioProcessing();
             }
 
+            // Create visual elements based on current renderVisualization setting
+            this.createVisualElements();
+
             // Create audio context
             this.audioContext = new (window.AudioContext ||
                 (window as any).webkitAudioContext)();
@@ -181,23 +232,13 @@ https://alexanderell.is/posts/tuner/
                 // Connect the source node to the analyzer
                 this.source.connect(this.analyser);
 
-                // Initialize canvas context
-                if (this.canvas) {
+                // Initialize canvas context only if renderVisualization is true
+                if (this.canvas && this.renderVisualization) {
                     this.canvasContext = this.canvas.getContext("2d");
-
-                    // Set up resize observer for the canvas
-                    this.resizeObserver = new ResizeObserver(() => {
-                        if (this.canvas) {
-                            // Update canvas dimensions when container resizes
-                            const rect = this.canvas.getBoundingClientRect();
-                            this.canvas.width = rect.width;
-                            this.canvas.height = rect.height;
-                        }
-                    });
-                    this.resizeObserver.observe(this.canvas);
-
-                    this.visualize();
                 }
+
+                // Always start pitch detection, regardless of visualization
+                this.visualize();
             } catch (mediaError) {
                 if (this.noteDisplay) {
                     if ((mediaError as Error).name === "NotAllowedError") {
@@ -225,10 +266,7 @@ https://alexanderell.is/posts/tuner/
 
     private stopAudioProcessing() {
         // Cancel any ongoing animation frames
-        if (this.animationFrameId !== null) {
-            cancelAnimationFrame(this.animationFrameId);
-            this.animationFrameId = null;
-        }
+        this.stopVisualRendering();
 
         if (this.noteAnimationFrameId !== null) {
             cancelAnimationFrame(this.noteAnimationFrameId);
@@ -255,26 +293,27 @@ https://alexanderell.is/posts/tuner/
     }
 
     private visualize() {
-        if (
-            !this.canvas ||
-            !this.canvasContext ||
-            !this.analyser ||
-            !this.audioContext
-        ) {
+        if (!this.analyser || !this.audioContext) {
             return;
         }
 
-        // Get current canvas dimensions each time we draw
-        const WIDTH = this.canvas.width;
-        const HEIGHT = this.canvas.height;
+        // Start pitch detection (always runs)
+        this.startPitchDetection();
 
+        // Start visual rendering (only if renderVisualization is true)
+        if (this.renderVisualization && this.canvas && this.canvasContext) {
+            this.startVisualRendering();
+        }
+    }
+
+    private startPitchDetection() {
         let previousValueToDisplay: number | string = 0;
         let smoothingCount = 0;
         let smoothingThreshold = 5;
         let smoothingCountThreshold = 5;
 
-        const drawNote = () => {
-            this.noteAnimationFrameId = requestAnimationFrame(drawNote);
+        const detectPitch = () => {
+            this.noteAnimationFrameId = requestAnimationFrame(detectPitch);
 
             if (!this.analyser || !this.audioContext) return;
 
@@ -286,20 +325,18 @@ https://alexanderell.is/posts/tuner/
                 this.audioContext.sampleRate,
             );
 
-            // Use full precision
+            // Use full precision for processing
             let valueToDisplay: number | string = autoCorrelateValue;
-
             const smoothingValue = this.smoothing;
 
             if (autoCorrelateValue === -1) {
-                if (this.noteDisplay) {
-                    this.noteDisplay.innerText = "Too quiet...";
-                }
                 // Dispatch null when no pitch is detected (too quiet)
                 this.dispatchPitchDetected(null);
+                this.updateNoteDisplay("Too quiet...");
                 return;
             }
 
+            // Set smoothing parameters based on current setting
             if (smoothingValue === "sensitive") {
                 smoothingThreshold = 10;
                 smoothingCountThreshold = 5;
@@ -309,7 +346,6 @@ https://alexanderell.is/posts/tuner/
             }
 
             const noteIsSimilarEnough = () => {
-                // Check threshold for number, or just difference for notes.
                 if (
                     typeof valueToDisplay === "number" &&
                     typeof previousValueToDisplay === "number"
@@ -323,7 +359,7 @@ https://alexanderell.is/posts/tuner/
                 }
             };
 
-            // Check if this value has been within the given range for n iterations
+            // Apply smoothing logic
             if (noteIsSimilarEnough()) {
                 if (smoothingCount < smoothingCountThreshold) {
                     smoothingCount++;
@@ -338,23 +374,60 @@ https://alexanderell.is/posts/tuner/
                 return;
             }
 
+            // Process the final detected pitch
             if (typeof valueToDisplay === "number") {
-                // Format with 2 decimal places for better readability while keeping precision
-                valueToDisplay = valueToDisplay.toFixed(2) + " Hz";
-
                 // Dispatch pitch detected event when we have a valid frequency
                 this.dispatchPitchDetected(autoCorrelateValue);
+
+                // Update visual display
+                const formattedValue = valueToDisplay.toFixed(2) + " Hz";
+                this.updateNoteDisplay(formattedValue);
             } else {
                 // Dispatch null when no pitch is detected
                 this.dispatchPitchDetected(null);
-            }
-
-            if (this.noteDisplay) {
-                this.noteDisplay.innerText = valueToDisplay;
+                this.updateNoteDisplay(valueToDisplay);
             }
         };
 
-        // Draw frequency visualization
+        detectPitch();
+    }
+
+    private updateNoteDisplay(text: string | number) {
+        // Only update display if renderVisualization is enabled and noteDisplay exists
+        if (this.renderVisualization && this.noteDisplay) {
+            this.noteDisplay.innerText = String(text);
+        }
+    }
+
+    private stopVisualRendering() {
+        if (this.animationFrameId !== null) {
+            cancelAnimationFrame(this.animationFrameId);
+            this.animationFrameId = null;
+        }
+    }
+
+    private startVisualRendering() {
+        if (!this.canvas || !this.canvasContext) {
+            return;
+        }
+
+        // Check canvas dimensions
+        const rect = this.canvas.getBoundingClientRect();
+
+        if (rect.width === 0 || rect.height === 0) {
+            setTimeout(() => {
+                this.startVisualRendering();
+            }, 50);
+            return;
+        }
+
+        // Stop any existing visual rendering first
+        this.stopVisualRendering();
+
+        // Get current canvas dimensions
+        const WIDTH = this.canvas.width;
+        const HEIGHT = this.canvas.height;
+
         const drawFrequency = () => {
             if (!this.analyser || !this.canvasContext) return;
 
@@ -397,8 +470,6 @@ https://alexanderell.is/posts/tuner/
         };
 
         drawFrequency();
-
-        drawNote();
     }
 
     private autoCorrelate(buffer: Float32Array, sampleRate: number): number {

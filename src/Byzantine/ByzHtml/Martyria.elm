@@ -2,7 +2,6 @@ module Byzantine.ByzHtml.Martyria exposing (view, viewWithAttributes)
 
 import Byzantine.Degree exposing (Degree(..))
 import Byzantine.Martyria as Martyria exposing (Martyria, ModalSignature(..))
-import Byzantine.Scale exposing (Scale(..))
 import Html exposing (Html)
 
 
@@ -111,6 +110,11 @@ viewDegree degree =
     called _nenano_. This is altered with a crossbar on the upper diagonal in
     the soft chromatic. SBMuFL calls these "hardChromaticDi" and
     "softChromaticKe".
+
+Placement of bottom three is off out-of-the-box. e.g., nana-above looks better
+if style={position: relative; left: 12px; bottom: 6px;} It may be that I'm using
+it wrong, or it may be that this is an edge case that the library doesn't really
+support.
 
 -}
 viewSignature : Bool -> ModalSignature -> Html msg

@@ -1,13 +1,11 @@
 module View exposing (view)
 
-import Byzantine.ByzHtml.Martyria as Martyria
+import Byzantine.ByzHtml.Martyria as ByzHtmlMartyria
 import Byzantine.Degree as Degree exposing (Degree(..))
-import Byzantine.Frequency as Frequency exposing (Frequency, PitchStandard(..))
-import Byzantine.IntervalCharacter exposing (..)
+import Byzantine.Frequency as Frequency exposing (Frequency(..), PitchStandard(..))
 import Byzantine.Martyria as Martyria
 import Byzantine.Mode as Mode exposing (Mode)
 import Byzantine.Pitch as Pitch exposing (Pitch)
-import Byzantine.Register exposing (Register(..))
 import Byzantine.Scale exposing (Scale(..))
 import Copy
 import Html exposing (Html, button, datalist, div, h1, h2, main_, p, span, text)
@@ -16,20 +14,22 @@ import Html.Attributes.Extra as Attr
 import Html.Events exposing (onClick, onInput)
 import Html.Extra exposing (viewIf)
 import Html.Lazy exposing (lazy, lazy2, lazy3, lazy4, lazy5)
+import Http
 import Icons
 import Json.Decode exposing (Decoder)
-import List.Extra as List
 import Maybe.Extra as Maybe
 import Model exposing (Modal(..), Model)
 import Model.AudioSettings as AudioSettings exposing (AudioSettings)
+import Model.Changelog exposing (Changelog)
 import Model.LayoutData as LayoutData exposing (Layout(..), LayoutData, LayoutSelection(..), layoutFor)
 import Model.ModeSettings exposing (ModeSettings)
-import Model.PitchState as PitchState exposing (PitchState)
-import Movement exposing (Movement(..))
+import Model.PitchState as PitchState
 import RadioFieldset
+import RemoteData exposing (RemoteData)
 import Styles
 import Svg.Attributes
 import Update exposing (Msg(..))
+import View.Changelog
 import View.Controls
 import View.ModeData
 import View.PitchSpace as PitchSpace
@@ -51,10 +51,10 @@ view model =
                     (PitchState.ison model.pitchState.ison)
             )
         , lazy2 backdrop model.menuOpen model.modal
-        , header
-        , lazy4 viewModal model.audioSettings model.layoutData model.modeSettings model.modal
+        , lazy header model.headerCollapsed
+        , lazy5 viewModal model.audioSettings model.layoutData model.modeSettings model.changelog model.modal
 
-        -- , viewIf model.layoutData.showSpacing (div [ class "text-center" ] [ text "|" ])
+        -- , viewIf LayoutData.showSpacing (div [ class "text-center" ] [ text "|" ])
         , viewIf model.menuOpen menu
         , main_
             [ class "lg:container lg:mx-auto font-serif"
@@ -73,16 +73,13 @@ view model =
                 model.modeSettings
                 model.pitchState
                 model.detectedPitch
-
-            -- TODO: view detected pitch here?
             , View.Controls.view
                 model.audioSettings
                 model.modeSettings
                 model.pitchState
                 model.openControlMenus
-            , View.Controls.viewOverlay
-                model.openControlMenus
-            , lazy3 pitchTracker model.audioSettings model.pitchState model.detectedPitch
+            , lazy View.Controls.viewOverlay model.openControlMenus
+            , lazy2 pitchTracker model.audioSettings model.layoutData
             ]
         ]
 
@@ -110,10 +107,9 @@ chantEngineNode : AudioSettings -> Scale -> Maybe Pitch -> Maybe Pitch -> Html m
 chantEngineNode audioSettings scale currentPitch currentIson =
     let
         frequency pitch =
-            Pitch.getPitchFrequency audioSettings.pitchStandard
+            Frequency.frequency audioSettings.pitchStandard
                 audioSettings.playbackRegister
-                scale
-                pitch
+                (Pitch.position scale pitch)
                 |> Frequency.preciseString
     in
     Html.node "chant-engine"
@@ -130,17 +126,52 @@ chantEngineNode audioSettings scale currentPitch currentIson =
         []
 
 
-header : Html Msg
-header =
-    Html.header [ Styles.flexRowCentered, class "p-4" ]
-        [ div [ class "w-7" ] []
-        , div [ Styles.flexCol, class "flex-1 mb-4 mx-4" ]
-            [ h1 [ class "font-heading text-4xl text-center" ]
-                [ text "ByzanTone" ]
-            , p [ class "font-serif text-center" ]
-                [ text "A tool for learning the pitches and intervals of Byzantine chant." ]
+{-| Collapsible header with animated caret button.
 
-            -- , viewIf model.layoutData.showSpacing (p [ class "text-center" ] [ text "|" ])
+Caret points down when expanded, rotates 180° when collapsed.
+
+-}
+header : Bool -> Html Msg
+header headerCollapsed =
+    Html.header
+        [ Styles.flexRowCentered
+        , Styles.transition
+        , class "px-2 md:px-4"
+        , classList
+            [ ( "py-1", headerCollapsed )
+            , ( "py-4", not headerCollapsed )
+            ]
+        ]
+        [ div [ class "w-7" ]
+            [ button
+                [ class "w-full lg:hidden"
+                , Styles.transition
+                , classList [ ( "-rotate-90", headerCollapsed ) ]
+                , onClick ToggleHeaderCollapsed
+                ]
+                [ Icons.caretDown [ Svg.Attributes.class "w-6 h-6" ]
+                ]
+            ]
+        , div
+            [ class "grid ease-in-out flex-1 mx-4"
+            , Styles.transition
+            , classList
+                [ ( "grid-rows-[0fr]", headerCollapsed )
+                , ( "grid-rows-[1fr]", not headerCollapsed )
+                ]
+            ]
+            [ div
+                [ class "overflow-hidden"
+                , Styles.flexCol
+                , class "mb-4"
+                ]
+                [ h1 [ class "font-heading text-4xl text-center" ]
+                    [ text "ByzanTone" ]
+                , p [ class "font-serif text-center" ]
+                    [ text "A tool for learning the pitches and intervals of Byzantine chant." ]
+
+                -- , viewIf model.layoutData.showSpacing (p [ class "text-center" ] [ text "|" ])
+                ]
             ]
         , button
             [ class "w-7 mt-2 self-start"
@@ -175,11 +206,12 @@ menu =
         [ menuItem AboutModal
         , menuItem (ModeModal Nothing)
         , menuItem SettingsModal
+        , menuItem (ReleasesModal False)
         ]
 
 
-viewModal : AudioSettings -> LayoutData -> ModeSettings -> Modal -> Html Msg
-viewModal audioSettings layoutData modeSettings modal =
+viewModal : AudioSettings -> LayoutData -> ModeSettings -> RemoteData Http.Error Changelog -> Modal -> Html Msg
+viewModal audioSettings layoutData modeSettings changelog modal =
     case modal of
         NoModal ->
             Html.Extra.nothing
@@ -206,17 +238,17 @@ viewModal audioSettings layoutData modeSettings modal =
                     [ span [ class "font-heading text-2xl" ]
                         [ text (Model.modalToString modal) ]
                     , button
-                        [ class "w-8 p-2"
+                        [ class "w-8 p-2 cursor-pointer"
                         , onClick (SelectModal NoModal)
                         ]
                         [ Icons.xmark [ Svg.Attributes.fill "currentColor", Svg.Attributes.class "w-6 h-6" ] ]
                     ]
-                , modalContent audioSettings layoutData modeSettings modal
+                , modalContent audioSettings layoutData modeSettings changelog modal
                 ]
 
 
-modalContent : AudioSettings -> LayoutData -> ModeSettings -> Modal -> Html Msg
-modalContent audioSettings layoutData modeSettings modal =
+modalContent : AudioSettings -> LayoutData -> ModeSettings -> RemoteData Http.Error Changelog -> Modal -> Html Msg
+modalContent audioSettings layoutData modeSettings changelog modal =
     case modal of
         NoModal ->
             Html.Extra.nothing
@@ -230,34 +262,101 @@ modalContent audioSettings layoutData modeSettings modal =
         SettingsModal ->
             lazy3 settings audioSettings layoutData modeSettings
 
+        ReleasesModal viewAll ->
+            lazy2 View.Changelog.view viewAll changelog
+
 
 settings : AudioSettings -> LayoutData -> ModeSettings -> Html Msg
-settings audioSettings layoutData modeSettings =
+settings { pitchStandard } layoutData modeSettings =
     div [ Styles.flexCol, class "gap-2" ]
         [ lazy2 RadioFieldset.view layoutRadioConfig layoutData.layoutSelection
-        , lazy2 RadioFieldset.view pitchStandardRadioConfig audioSettings.pitchStandard
+        , RadioFieldset.view (pitchStandardRadioConfig pitchStandard) pitchStandard
         , lazy rangeFieldset modeSettings
         ]
 
 
 layoutRadioConfig : RadioFieldset.Config LayoutSelection Msg
 layoutRadioConfig =
-    { itemToString = LayoutData.layoutString
-    , legendText = "Layout"
-    , onSelect = SetLayout
-    , options = [ Auto, Manual Vertical, Manual Horizontal ]
-    , viewItem = Nothing
-    }
+    RadioFieldset.baseConfig
+        { itemToString = LayoutData.layoutString
+        , legendText = "Layout"
+        , onSelect = SetLayout
+        , options = [ Auto, Manual Vertical, Manual Horizontal ]
+        }
 
 
-pitchStandardRadioConfig : RadioFieldset.Config PitchStandard Msg
-pitchStandardRadioConfig =
-    { itemToString = Frequency.pitchStandardToString
-    , legendText = "Pitch Standard"
-    , onSelect = SetPitchStandard
-    , options = [ Ni256, Ke440 ]
-    , viewItem = Just viewPitchStandard
-    }
+pitchStandardRadioConfig : PitchStandard -> RadioFieldset.Config PitchStandard Msg
+pitchStandardRadioConfig currentPitchStandard =
+    let
+        isSelectedEqualityCheck =
+            case currentPitchStandard of
+                VariableDi _ ->
+                    \option _ ->
+                        case option of
+                            VariableDi _ ->
+                                True
+
+                            _ ->
+                                False
+
+                _ ->
+                    (==)
+    in
+    RadioFieldset.baseConfig
+        { itemToString = Frequency.pitchStandardToString
+        , legendText = "Pitch Standard"
+        , onSelect = SetPitchStandard
+        , options = [ Ni256, Ke440, VariableDi (Frequency.pitchStandardToDiFrequency currentPitchStandard) ]
+        }
+        |> RadioFieldset.withCustomViewItem viewPitchStandard
+        |> RadioFieldset.withCustomSelected isSelectedEqualityCheck
+        |> RadioFieldset.withConditionalPostpend
+            (\selectedPitchStandard ->
+                case selectedPitchStandard of
+                    VariableDi someFreq ->
+                        variableDiFrequencyInput someFreq
+
+                    _ ->
+                        Html.Extra.nothing
+            )
+
+
+variableDiFrequencyInput : Frequency -> Html Msg
+variableDiFrequencyInput diFrequency =
+    let
+        input type_ attrs =
+            Html.input
+                ([ Attr.type_ type_
+                 , Attr.id ("variable_di_" ++ type_)
+                 , Attr.min "300"
+                 , Attr.max "480"
+                 , Attr.step "0.1"
+                 , Attr.value (Frequency.preciseString diFrequency)
+                 , onInput setPitchStandard
+                 ]
+                    ++ attrs
+                )
+                []
+
+        setPitchStandard string =
+            String.toFloat string
+                |> Maybe.unwrap diFrequency Frequency
+                |> VariableDi
+                |> SetPitchStandard
+    in
+    div [ Styles.flexCol, class "mx-8 my-2 gap-2" ]
+        [ p [ class "max-w-xs italic text-sm" ]
+            [ text "Priest (or cantor) not much one for strict adherance to a pitch standard? "
+            , text "Set an arbitrary frequency for a reference "
+            , span [ class "font-greek" ] [ text "Δι" ]
+            , text " here."
+            ]
+        , div [ Styles.flexRow ]
+            [ input "number" [ class "text-right" ]
+            , span [ class "mr-4" ] [ text "Hz" ]
+            , input "range" [ class "w-full max-w-64" ]
+            ]
+        ]
 
 
 {-| Set the visible range of the pitch space. A minimum of a tetrachord is
@@ -328,13 +427,18 @@ viewPitchStandard pitchStandard =
         ( martyria, frequency ) =
             case pitchStandard of
                 Ni256 ->
-                    ( Martyria.for Diatonic Ni |> Martyria.view
+                    ( Martyria.for Diatonic Ni |> ByzHtmlMartyria.view
                     , " = 256 Hz"
                     )
 
                 Ke440 ->
-                    ( Martyria.for Diatonic Ke |> Martyria.view
+                    ( Martyria.for Diatonic Ke |> ByzHtmlMartyria.view
                     , " = 440 Hz"
+                    )
+
+                VariableDi _ ->
+                    ( Martyria.for Diatonic Di |> ByzHtmlMartyria.view
+                    , " = Priest’s Special"
                     )
     in
     div [ class "mb-1" ]
@@ -355,18 +459,23 @@ viewModeModal maybeMode =
 
 modeDataRadioConfig : RadioFieldset.Config (Maybe Mode) Msg
 modeDataRadioConfig =
-    { itemToString = Maybe.unwrap "" Mode.toString
-    , legendText = "Mode"
-    , onSelect = SelectModal << ModeModal
-    , options = List.map Just Mode.all
-    , viewItem = Nothing
-    }
+    RadioFieldset.baseConfig
+        { itemToString = Maybe.unwrap "" Mode.toString
+        , legendText = "Mode"
+        , onSelect = SelectModal << ModeModal
+        , options = List.map Just Mode.all
+        }
 
 
-pitchTracker : AudioSettings -> PitchState -> Maybe Frequency -> Html Msg
-pitchTracker audioSettings _ _ =
+pitchTracker : AudioSettings -> LayoutData -> Html Msg
+pitchTracker audioSettings layoutData =
     case audioSettings.audioMode of
         AudioSettings.Listen ->
+            let
+                -- Disable visualization on small screens for performance
+                shouldRenderVisualization =
+                    layoutData.viewport.viewport.width >= 640
+            in
             div [ class "m-4" ]
                 [ Html.node "pitch-tracker"
                     [ Attr.attribute "smoothing"
@@ -376,6 +485,13 @@ pitchTracker audioSettings _ _ =
 
                             AudioSettings.Smooth ->
                                 "smooth"
+                        )
+                    , Attr.attribute "render-visualization"
+                        (if shouldRenderVisualization then
+                            "true"
+
+                         else
+                            "false"
                         )
                     , class "hidden sm:block"
                     ]

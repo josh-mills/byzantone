@@ -8,7 +8,6 @@ import Html exposing (Html, button, div, h3, li, span, text, ul)
 import Html.Attributes exposing (class)
 import Html.Events exposing (onClick)
 import Html.Extra
-import List
 import Model exposing (Modal(..))
 import Styles
 import Update exposing (Msg(..))

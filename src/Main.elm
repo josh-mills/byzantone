@@ -9,6 +9,7 @@ import Model exposing (Model)
 import Model.DeviceInfo as DeviceInfo exposing (DeviceInfo)
 import Ports
 import Task
+import Time
 import Update exposing (Msg(..), update)
 import View exposing (view)
 
@@ -43,7 +44,13 @@ subscriptions : Model -> Sub Msg
 subscriptions _ =
     Sub.batch
         [ Browser.Events.onResize ViewportResize
-        , Ports.pitchDetected (\{ pitch } -> SetDetectedPitch (Maybe.map Frequency pitch))
+        , Ports.pitchDetected
+            (\{ pitch, timestamp } ->
+                SetDetectedPitch
+                    { maybeFrequency = Maybe.map Frequency pitch
+                    , timestamp = Time.millisToPosix timestamp
+                    }
+            )
         ]
 
 

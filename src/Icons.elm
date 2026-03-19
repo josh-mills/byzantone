@@ -1,5 +1,6 @@
 module Icons exposing
     ( bars
+    , caretDown
     , chevronDown
     , chevronLeft
     , chevronRight
@@ -43,6 +44,15 @@ bars attributes =
     svg (viewBox "0 0 448 512" :: attributes)
         [ path
             [ d "M0 96C0 78.3 14.3 64 32 64l384 0c17.7 0 32 14.3 32 32s-14.3 32-32 32L32 128C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32l384 0c17.7 0 32 14.3 32 32s-14.3 32-32 32L32 288c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32L32 448c-17.7 0-32-14.3-32-32s14.3-32 32-32l384 0c17.7 0 32 14.3 32 32z" ]
+            []
+        ]
+
+
+caretDown : List (Svg.Attribute msg) -> Html msg
+caretDown attributes =
+    svg (viewBox "0 0 640 640" :: attributes)
+        [ path
+            [ d "M300.3 440.8C312.9 451 331.4 450.3 343.1 438.6L471.1 310.6C480.3 301.4 483 287.7 478 275.7C473 263.7 461.4 256 448.5 256L192.5 256C179.6 256 167.9 263.8 162.9 275.8C157.9 287.8 160.7 301.5 169.9 310.6L297.9 438.6L300.3 440.8z" ]
             []
         ]
 

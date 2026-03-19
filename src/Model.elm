@@ -17,24 +17,27 @@ module Model exposing
 
 -}
 
-import Byzantine.Degree exposing (Degree(..))
-import Byzantine.Frequency exposing (Frequency)
+import Byzantine.DetectedPitch exposing (DetectedPitch)
 import Byzantine.Mode exposing (Mode)
-import Byzantine.Scale exposing (Scale(..))
+import Http
 import Model.AudioSettings as AudioSettings exposing (AudioSettings)
+import Model.Changelog exposing (Changelog)
 import Model.ControlsMenu as ControlsMenu exposing (OpenControlMenus)
 import Model.DeviceInfo exposing (DeviceInfo)
 import Model.LayoutData as LayoutData exposing (LayoutData)
 import Model.ModeSettings as ModeSettings exposing (ModeSettings)
 import Model.PitchSpaceData as PitchSpaceData exposing (PitchSpaceData)
 import Model.PitchState as PitchState exposing (PitchState)
-import Movement exposing (Movement(..))
+import RemoteData exposing (RemoteData)
+import Time
 
 
 type alias Model =
     { audioSettings : AudioSettings
-    , detectedPitch : Maybe Frequency
+    , changelog : RemoteData Http.Error Changelog
+    , detectedPitch : Maybe { detectedPitch : DetectedPitch, timestamp : Time.Posix }
     , deviceInfo : DeviceInfo
+    , headerCollapsed : Bool
     , layoutData : LayoutData
     , menuOpen : Bool
     , modal : Modal
@@ -52,8 +55,10 @@ init deviceInfo viewportDimensions =
             LayoutData.init viewportDimensions
     in
     { audioSettings = AudioSettings.defaultAudioSettings
+    , changelog = RemoteData.NotAsked
     , detectedPitch = Nothing
     , deviceInfo = deviceInfo
+    , headerCollapsed = False
     , layoutData = layoutData
     , menuOpen = False
     , modal = NoModal
@@ -77,6 +82,7 @@ type Modal
     | AboutModal
     | ModeModal (Maybe Mode)
     | SettingsModal
+    | ReleasesModal Bool
 
 
 modalToString : Modal -> String
@@ -93,6 +99,9 @@ modalToString modal =
 
         SettingsModal ->
             "Settings"
+
+        ReleasesModal _ ->
+            "Release Notes"
 
 
 modalOpen : Modal -> Bool

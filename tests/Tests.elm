@@ -3,12 +3,12 @@ module Tests exposing (..)
 import Array
 import Byzantine.Accidental as Accidental exposing (Accidental(..))
 import Byzantine.Degree as Degree exposing (Degree(..))
-import Byzantine.Pitch as Pitch exposing (Pitch(..))
+import Byzantine.Pitch as Pitch
+import Byzantine.PitchPosition as PitchPosition
 import Byzantine.Scale as Scale exposing (Scale(..))
 import Expect
 import List.Extra
 import Model.DegreeDataDict as DegreeDataDict
-import Result
 import Test exposing (Test, describe, test)
 
 
@@ -45,7 +45,9 @@ degreeTests =
                         (\degree ->
                             test (Scale.name scale ++ " pitch position for " ++ Degree.toString degree ++ " is not negative") <|
                                 \_ ->
-                                    Expect.greaterThan -1 (Pitch.pitchPosition scale (Pitch.natural degree))
+                                    PitchPosition.pitchPosition scale degree Nothing
+                                        |> PitchPosition.unwrap
+                                        |> Expect.greaterThan -1
                         )
                         gamutBuilder
                 )
@@ -271,7 +273,7 @@ pitchTests =
                                     pitch =
                                         Pitch.natural degree
                                 in
-                                test (Scale.name scale ++ " " ++ "Natural " ++ Pitch.toString pitch) <|
+                                test (Scale.name scale ++ " Natural " ++ Pitch.toString pitch) <|
                                     \_ ->
                                         pitch
                                             |> Pitch.encode scale

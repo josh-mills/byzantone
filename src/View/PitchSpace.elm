@@ -3,17 +3,18 @@ module View.PitchSpace exposing (view)
 {-| View logic for pitch space (i.e., the intervalic space and positioned pitches)
 -}
 
-import Array
 import Byzantine.Accidental as Accidental
-import Byzantine.ByzHtml.Accidental as Accidental
+import Byzantine.ByzHtml.Accidental as ByzHtmlAccidental
 import Byzantine.ByzHtml.Interval as ByzHtmlInterval
 import Byzantine.ByzHtml.Martyria as ByzHtmlMartyria
 import Byzantine.Degree as Degree exposing (Degree)
-import Byzantine.Frequency as Frequency exposing (Frequency)
+import Byzantine.DetectedPitch exposing (DetectedPitch)
+import Byzantine.Frequency as Frequency
+import Byzantine.Interval as Interval exposing (Interval)
 import Byzantine.IntervalCharacter as IntervalCharacter
 import Byzantine.Martyria as Martyria
-import Byzantine.Pitch as Pitch exposing (Interval, Pitch, PitchString)
-import Byzantine.Scale exposing (Scale)
+import Byzantine.Pitch as Pitch exposing (Pitch, PitchString)
+import Byzantine.PitchPosition as PitchPosition
 import Html exposing (Html, button, div, li, span, text)
 import Html.Attributes as Attr exposing (class, classList)
 import Html.Attributes.Extra as Attr exposing (attributeMaybe)
@@ -22,7 +23,7 @@ import Html.Extra exposing (viewIf, viewIfLazy, viewMaybe)
 import Html.Lazy
 import Maybe.Extra as Maybe
 import Model.AudioSettings as AudioSettings exposing (AudioSettings, Responsiveness(..))
-import Model.DegreeDataDict as DegreeDataDict exposing (DegreeDataDict)
+import Model.DegreeDataDict as DegreeDataDict
 import Model.LayoutData as LayoutData exposing (Layout(..))
 import Model.ModeSettings exposing (ModeSettings)
 import Model.PitchSpaceData as PitchSpaceData
@@ -33,11 +34,12 @@ import Model.PitchSpaceData as PitchSpaceData
         , PitchSpaceData
         , PositionWithinVisibleRange(..)
         )
-import Model.PitchState as PitchState exposing (IsonStatus(..), PitchState, ProposedAccidental(..))
+import Model.PitchState as PitchState exposing (PitchState, ProposedAccidental(..))
 import Movement exposing (Movement(..))
 import Result.Extra
 import Round
 import Styles
+import Time
 import Update exposing (Msg(..))
 
 
@@ -45,8 +47,8 @@ import Update exposing (Msg(..))
 -- WRAPPER AND VIEW HELPERS
 
 
-view : PitchSpaceData -> AudioSettings -> ModeSettings -> PitchState -> Maybe Frequency -> Html Msg
-view pitchSpaceData audioSettings modeSettings pitchState detectedPitch =
+view : PitchSpaceData -> AudioSettings -> ModeSettings -> PitchState -> Maybe { detectedPitch : DetectedPitch, timestamp : Time.Posix } -> Html Msg
+view pitchSpaceData audioSettings modeSettings pitchState maybeTimestampedDetectedPitch =
     div
         ([ Attr.id "pitch-space"
          , Styles.transition
@@ -54,8 +56,7 @@ view pitchSpaceData audioSettings modeSettings pitchState detectedPitch =
          ]
             ++ (if PitchSpaceData.isVertical pitchSpaceData.display then
                     [ Styles.flexRow
-                    , class "justify-around"
-                    , class "my-8 md:me-12 pb-12"
+                    , class "justify-around my-8 md:me-12 pb-12"
                     ]
 
                 else
@@ -63,10 +64,12 @@ view pitchSpaceData audioSettings modeSettings pitchState detectedPitch =
                )
         )
         [ Html.Lazy.lazy3 viewIntervals pitchSpaceData modeSettings pitchState
-        , viewIf (audioSettings.audioMode == AudioSettings.Listen)
-            (viewPitchTracker pitchSpaceData audioSettings detectedPitch)
+        , Html.Lazy.lazy3 viewPitchTracker
+            pitchSpaceData
+            audioSettings
+            (Maybe.map .detectedPitch maybeTimestampedDetectedPitch)
         , Html.Lazy.lazy3 viewPitches pitchSpaceData modeSettings pitchState
-        , viewAccidentalButtons pitchSpaceData.display pitchState.proposedAccidental
+        , Html.Lazy.lazy2 viewAccidentalButtons pitchSpaceData.display pitchState.proposedAccidental
         ]
 
 
@@ -104,17 +107,58 @@ viewIntervals pitchSpaceData modeSettings pitchState =
                )
             :: listAttributes pitchSpaceData.display
         )
-        (List.map
-            (viewInterval pitchSpaceData.display pitchSpaceData.scalingFactor modeSettings.scale pitchState)
-            (PitchSpaceData.intervalsWithVisibility pitchSpaceData)
+        (List.map (viewInterval pitchSpaceData modeSettings pitchState)
+            (PitchSpaceData.intervalsWithVisibility modeSettings.scale pitchSpaceData pitchState.proposedMovement)
         )
 
 
-viewInterval : Display -> Float -> Scale -> PitchState -> ( Interval, PositionWithinVisibleRange ) -> Html Msg
-viewInterval display scalingFactor scale pitchState ( interval, position ) =
+viewInterval : PitchSpaceData -> ModeSettings -> PitchState -> ( Interval, PositionWithinVisibleRange ) -> Html Msg
+viewInterval pitchSpaceData modeSettings pitchState ( interval, position ) =
     let
-        -- _ =
-        --     Debug.log "in viewInterval" interval
+        currentPitch =
+            PitchState.currentPitch modeSettings.scale pitchState
+
+        currentPitchString =
+            Maybe.unwrap "" (Pitch.encode modeSettings.scale) currentPitch
+
+        shouldHighlight =
+            shouldHighlightInterval currentPitch pitchState.proposedMovement interval
+    in
+    Html.Lazy.lazy6 viewIntervalLazy
+        currentPitchString
+        pitchSpaceData.display
+        pitchSpaceData.scalingFactor
+        (Interval.encode modeSettings.scale interval)
+        position
+        shouldHighlight
+
+
+viewIntervalLazy :
+    PitchString
+    -> Display
+    -> Float
+    -> String
+    -> PositionWithinVisibleRange
+    -> Bool
+    -> Html Msg
+viewIntervalLazy currentPitchString display scalingFactor intervalString position shouldHighlight =
+    let
+        interval =
+            Interval.decode intervalString
+
+        intervalMoria =
+            Result.Extra.unwrap -1 Interval.unwrapSize interval
+
+        intervalFromDegree =
+            Result.Extra.unwrap "err"
+                (\{ from } -> Pitch.unwrapDegree from |> Degree.toString)
+                interval
+
+        intervalToDegree =
+            Result.Extra.unwrap "err"
+                (\{ to } -> Pitch.unwrapDegree to |> Degree.toString)
+                interval
+
         size =
             case position of
                 Above ->
@@ -124,114 +168,141 @@ viewInterval display scalingFactor scale pitchState ( interval, position ) =
                     0
 
                 _ ->
-                    toFloat interval.moria * scalingFactor
+                    toFloat intervalMoria * scalingFactor
 
         currentPitch =
-            PitchState.currentPitch scale pitchState
+            Pitch.decode currentPitchString
+                |> Result.Extra.unwrap Nothing
+                    (Just << Tuple.second)
 
         movement =
-            Movement.ofInterval currentPitch interval
-
-        moria =
-            span [ class "text-gray-600" ]
-                [ text (String.fromInt interval.moria)
-                , viewIf LayoutData.showSpacing
-                    (text <| " (" ++ Round.round 2 size ++ "px)")
-                ]
+            Result.Extra.unwrap Movement.None (Movement.ofInterval currentPitch) interval
 
         buttonAttrs =
             [ class "w-full content-center cursor-pointer"
             , classList
-                [ ( "bg-slate-200"
-                  , shouldHighlightInterval currentPitch pitchState interval
-                  )
-                , ( "hover:bg-slate-200", Maybe.isJust pitchState.currentDegree )
+                [ ( "bg-slate-200", shouldHighlight )
+                , ( "hover:bg-slate-200", Maybe.isJust currentPitch )
                 ]
             , onFocus (SelectProposedMovement movement)
             , onMouseEnter (SelectProposedMovement movement)
             ]
+
+        moriaDomNode =
+            Html.Lazy.lazy2 viewMoria size intervalMoria
     in
     li
-        [ Attr.id
-            ("interval-"
-                ++ Degree.toString (Pitch.unwrapDegree interval.from)
-                ++ "-"
-                ++ Degree.toString (Pitch.unwrapDegree interval.to)
+        (Attr.id ("interval-" ++ intervalFromDegree ++ "-" ++ intervalToDegree)
+            :: (if PitchSpaceData.isVertical display then
+                    [ Styles.height size
+                    , class "border-r-0"
+                    ]
+
+                else
+                    [ Styles.width size
+                    , class "border-b-0"
+                    ]
+               )
+            ++ [ Styles.flexRowCentered
+               , Styles.transition
+               , Attr.attributeIf (PitchSpaceData.positionIsVisible position) Styles.border
+               ]
+        )
+        [ viewIfLazy (PitchSpaceData.positionIsVisible position)
+            (\_ ->
+                case movement of
+                    AscendTo toPitch ->
+                        button
+                            {- (Maybe.map DescendTo (Degree.step pitch -1)) ??? -}
+                            (onClick (SelectPitch (Just toPitch) Nothing)
+                                :: buttonAttrs
+                            )
+                            [ viewIntervalCharacter currentPitch toPitch
+                            , moriaDomNode
+                            ]
+
+                    DescendTo toPitch ->
+                        button
+                            {- (Maybe.map AscendTo (Degree.step pitch 1)) ??? -}
+                            (onClick (SelectPitch (Just toPitch) Nothing)
+                                :: buttonAttrs
+                            )
+                            [ viewIntervalCharacter currentPitch toPitch
+                            , moriaDomNode
+                            ]
+
+                    None ->
+                        div [ class "content-center" ]
+                            [ moriaDomNode ]
             )
-        , Styles.flexRowCentered
-        , if PitchSpaceData.isVertical display then
-            Styles.height size
-
-          else
-            Styles.width size
-        , Styles.transition
-        , Attr.attributeIf (PitchSpaceData.positionIsVisible position) Styles.border
-        , if PitchSpaceData.isVertical display then
-            class "border-r-0"
-
-          else
-            class "border-b-0"
-        ]
-        [ (case movement of
-            AscendTo pitch ->
-                button
-                    (onClick (SelectPitch (Just pitch) Nothing {- (Maybe.map DescendTo (Degree.step pitch -1)) -})
-                        :: buttonAttrs
-                    )
-                    [ viewIntervalCharacter pitchState.currentDegree pitch
-                    , moria
-                    ]
-
-            DescendTo pitch ->
-                button
-                    (onClick (SelectPitch (Just pitch) Nothing {- (Maybe.map AscendTo (Degree.step pitch 1)) -})
-                        :: buttonAttrs
-                    )
-                    [ viewIntervalCharacter pitchState.currentDegree pitch
-                    , moria
-                    ]
-
-            None ->
-                div [ class "content-center" ]
-                    [ moria ]
-          )
-            |> viewIf (PitchSpaceData.positionIsVisible position)
         ]
 
 
 {-| TODO: We should have this take pitches, not just degrees. And probably don't
 wrap in a maybe.
 -}
-viewIntervalCharacter : Maybe Degree -> Pitch -> Html Msg
-viewIntervalCharacter currentPitch toPitch =
-    currentPitch
-        |> Maybe.map (\current -> Degree.getInterval current (Pitch.unwrapDegree toPitch))
-        |> Maybe.andThen IntervalCharacter.basicInterval
-        |> Maybe.map (IntervalCharacter.applyAccidental (Pitch.unwrapAccidental toPitch))
+viewIntervalCharacter : Maybe Pitch -> Pitch -> Html Msg
+viewIntervalCharacter maybeFromPitch toPitch =
+    let
+        toAccidentalStr =
+            Pitch.unwrapAccidental toPitch
+                |> Maybe.unwrap "" Accidental.toString
+    in
+    maybeFromPitch
+        |> Maybe.map
+            (\fromPitch ->
+                Degree.getInterval
+                    (Pitch.unwrapDegree fromPitch)
+                    (Pitch.unwrapDegree toPitch)
+            )
+        |> viewMaybe (Html.Lazy.lazy2 viewIntervalCharacterLazy toAccidentalStr)
+
+
+viewIntervalCharacterLazy : String -> Int -> Html Msg
+viewIntervalCharacterLazy toAccidentalStr interval =
+    let
+        toAccidental =
+            Accidental.fromString toAccidentalStr |> Result.toMaybe
+    in
+    IntervalCharacter.basicInterval interval
+        |> Maybe.map (IntervalCharacter.applyAccidental toAccidental)
         |> Html.Extra.viewMaybe
-            (ByzHtmlInterval.view >> List.singleton >> span [ class "me-2" ])
+            (\intervalCharacter ->
+                span [ class "me-2" ] [ ByzHtmlInterval.view intervalCharacter ]
+            )
 
 
-shouldHighlightInterval : Maybe Pitch -> PitchState -> Interval -> Bool
-shouldHighlightInterval currentPitch { proposedMovement } interval =
+viewMoria : Float -> Int -> Html msg
+viewMoria size moria =
+    span [ class "text-gray-600" ]
+        [ text (String.fromInt moria)
+        , viewIfLazy LayoutData.showSpacing
+            (\_ -> text <| " (" ++ Round.round 2 size ++ "px)")
+        ]
+
+
+shouldHighlightInterval : Maybe Pitch -> Movement -> Interval -> Bool
+shouldHighlightInterval currentPitch proposedMovement interval =
     Maybe.unwrap False
         (\current ->
             let
                 currentPitchIndex =
                     Degree.indexOf current
-
-                fromIndex =
-                    Degree.indexOf (Pitch.unwrapDegree interval.from)
-
-                toIndex =
-                    Degree.indexOf (Pitch.unwrapDegree interval.to)
             in
             case proposedMovement of
                 AscendTo degree ->
+                    let
+                        toIndex =
+                            Degree.indexOf (Pitch.unwrapDegree interval.to)
+                    in
                     (currentPitchIndex < toIndex)
                         && (toIndex <= Degree.indexOf (Pitch.unwrapDegree degree))
 
                 DescendTo degree ->
+                    let
+                        fromIndex =
+                            Degree.indexOf (Pitch.unwrapDegree interval.from)
+                    in
                     (currentPitchIndex > fromIndex)
                         && (fromIndex >= Degree.indexOf (Pitch.unwrapDegree degree))
 
@@ -245,45 +316,114 @@ shouldHighlightInterval currentPitch { proposedMovement } interval =
 -- PITCH TRACKER COLUMN
 
 
-viewPitchTracker : PitchSpaceData -> AudioSettings -> Maybe Frequency -> Html Msg
+viewPitchTracker : PitchSpaceData -> AudioSettings -> Maybe DetectedPitch -> Html Msg
 viewPitchTracker pitchSpaceData audioSettings detectedPitch =
     div
         (if PitchSpaceData.isVertical pitchSpaceData.display then
-            [ Styles.flexCol, class "w-6" ]
+            [ Styles.flexCol
+            , Styles.transition
+            , classList
+                [ ( "w-6 md:w-12", audioSettings.audioMode == AudioSettings.Listen )
+                , ( "w-0", audioSettings.audioMode == AudioSettings.Play )
+                ]
+            ]
 
          else
-            [ Styles.flexRow, class "h-6 w-full" ]
+            [ Styles.flexRow
+            , Styles.transition
+            , classList
+                [ ( "h-6 w-full", audioSettings.audioMode == AudioSettings.Listen )
+                , ( "h-0", audioSettings.audioMode == AudioSettings.Play )
+                ]
+            ]
         )
         [ viewMaybe (viewPitchIndicator pitchSpaceData audioSettings) detectedPitch
+        , viewMaybe (viewDetectedPitch pitchSpaceData audioSettings) detectedPitch
         ]
 
 
-viewPitchIndicator : PitchSpaceData -> AudioSettings -> Frequency -> Html Msg
-viewPitchIndicator pitchSpaceData { pitchStandard, listenRegister, responsiveness } detectedPitch =
-    let
-        detectedPitchInMoria =
-            Frequency.toPitchPosition pitchStandard listenRegister detectedPitch
+viewDetectedPitch : PitchSpaceData -> AudioSettings -> DetectedPitch -> Html Msg
+viewDetectedPitch pitchSpaceData audioSettings detectedPitch =
+    div
+        [ class "w-full h-full font-mono text-center sm:text-lg lg:text-xl z-10 flex items-center"
+        , classList
+            [ ( "justify-center", not (PitchSpaceData.isVertical pitchSpaceData.display) )
+            ]
+        ]
+        [ text (formatPitchFeedback audioSettings.pitchFeedback detectedPitch)
+        ]
 
+
+formatPitchFeedback : AudioSettings.PitchFeedbackUnit -> DetectedPitch -> String
+formatPitchFeedback pitchFeedback detectedPitch =
+    case pitchFeedback of
+        AudioSettings.Hz ->
+            Frequency.displayString detectedPitch.frequency
+
+        AudioSettings.Cents ->
+            let
+                cents =
+                    detectedPitch.offset * 1200 / 72
+
+                sign =
+                    if cents >= 0 then
+                        "+"
+
+                    else
+                        ""
+            in
+            sign ++ String.fromInt (round cents) ++ " cents"
+
+        AudioSettings.Moria ->
+            let
+                moria =
+                    detectedPitch.offset
+
+                sign =
+                    if moria >= 0 then
+                        "+"
+
+                    else
+                        ""
+            in
+            sign ++ Round.round 1 moria ++ " moria"
+
+
+viewPitchIndicator : PitchSpaceData -> AudioSettings -> DetectedPitch -> Html Msg
+viewPitchIndicator pitchSpaceData { responsiveness } detectedPitch =
+    let
         position =
             case PitchSpaceData.displayToLayout pitchSpaceData.display of
                 Vertical ->
-                    Styles.top (pitchSpaceData.scalingFactor * (toFloat pitchSpaceData.visibleRangeEnd - detectedPitchInMoria))
+                    let
+                        endPosition =
+                            PitchPosition.toFloat pitchSpaceData.visibleRange.endPosition
+                    in
+                    Styles.top
+                        ((endPosition - detectedPitch.pitchPosition)
+                            * pitchSpaceData.scalingFactor
+                            - PitchSpaceData.pitchIndicatorPositionAdjustment pitchSpaceData.display
+                        )
 
                 Horizontal ->
-                    Styles.left (pitchSpaceData.scalingFactor * (detectedPitchInMoria - toFloat pitchSpaceData.visibleRangeStart))
-
-        { degree, offset } =
-            -- TODO: there's functionality here to build out
-            closestDegree pitchSpaceData.pitchPositions detectedPitchInMoria
+                    let
+                        startPosition =
+                            PitchPosition.toFloat pitchSpaceData.visibleRange.startPosition
+                    in
+                    Styles.left
+                        ((detectedPitch.pitchPosition - startPosition)
+                            * pitchSpaceData.scalingFactor
+                            + PitchSpaceData.pitchIndicatorPositionAdjustment pitchSpaceData.display
+                        )
 
         absOffset =
-            abs offset
+            abs detectedPitch.offset
 
         color =
-            if absOffset < 0.5 then
+            if absOffset < 0.6 then
                 "bg-green-500"
 
-            else if absOffset <= 1 then
+            else if absOffset <= 1.2 then
                 "bg-amber-400"
 
             else
@@ -304,69 +444,6 @@ viewPitchIndicator pitchSpaceData { pitchStandard, listenRegister, responsivenes
         []
 
 
-closestDegree : DegreeDataDict Int -> Float -> { degree : Degree, offset : Float }
-closestDegree pitchPositions detectedPitchInMoria =
-    let
-        initialGuessDegreeIndex =
-            floor (detectedPitchInMoria / 72 * 7)
-
-        initialGuessDegree =
-            Array.get initialGuessDegreeIndex Degree.gamut
-                |> Maybe.withDefaultLazy
-                    (\_ ->
-                        if initialGuessDegreeIndex < 0 then
-                            Degree.GA
-
-                        else
-                            Degree.Ga_
-                    )
-    in
-    closestDegreeHelper pitchPositions detectedPitchInMoria initialGuessDegree
-
-
-closestDegreeHelper : DegreeDataDict Int -> Float -> Degree -> { degree : Degree, offset : Float }
-closestDegreeHelper pitchPositions detectedPitch lowerNeighborCandidate =
-    let
-        lowerNeighborCandidatePosition =
-            toFloat (DegreeDataDict.get lowerNeighborCandidate pitchPositions)
-    in
-    case ( compare lowerNeighborCandidatePosition detectedPitch, Degree.step lowerNeighborCandidate 1 ) of
-        ( GT, _ ) ->
-            case Degree.step lowerNeighborCandidate -1 of
-                Just newTest ->
-                    closestDegreeHelper pitchPositions detectedPitch newTest
-
-                Nothing ->
-                    { degree = lowerNeighborCandidate, offset = detectedPitch - lowerNeighborCandidatePosition }
-
-        ( EQ, _ ) ->
-            -- don't hold your breath for this one.
-            { degree = lowerNeighborCandidate, offset = 0 }
-
-        ( LT, Nothing ) ->
-            { degree = lowerNeighborCandidate, offset = detectedPitch - lowerNeighborCandidatePosition }
-
-        ( LT, Just upperNeighborCandidate ) ->
-            let
-                upperNeighborCandidatePosition =
-                    toFloat (DegreeDataDict.get upperNeighborCandidate pitchPositions)
-            in
-            if detectedPitch < upperNeighborCandidatePosition then
-                if abs (lowerNeighborCandidatePosition - detectedPitch) < abs (upperNeighborCandidatePosition - detectedPitch) then
-                    { degree = lowerNeighborCandidate, offset = detectedPitch - lowerNeighborCandidatePosition }
-
-                else
-                    { degree = upperNeighborCandidate, offset = detectedPitch - upperNeighborCandidatePosition }
-
-            else
-                case Degree.step upperNeighborCandidate 1 of
-                    Just newTest ->
-                        closestDegreeHelper pitchPositions detectedPitch newTest
-
-                    Nothing ->
-                        { degree = upperNeighborCandidate, offset = detectedPitch - upperNeighborCandidatePosition }
-
-
 
 -- PITCH COLUMN
 
@@ -376,49 +453,61 @@ viewPitches pitchSpaceData modeSettings pitchState =
     let
         currentPitch =
             PitchState.currentPitch modeSettings.scale pitchState
-
-        shouldHighlight degree =
-            canBeSelectedAsIson degree || wouldBeValidInflection degree
-
-        canBeSelectedAsIson degree =
-            PitchSpaceData.canBeSelectedAsIson
-                (DegreeDataDict.get degree pitchSpaceData.isonIndicators)
-
-        wouldBeValidInflection degree =
-            case pitchState.proposedAccidental of
-                Apply accidental ->
-                    Pitch.isValidInflection modeSettings.scale accidental degree
-
-                CancelAccidental ->
-                    DegreeDataDict.get degree pitchState.appliedAccidentals
-                        |> Maybe.isJust
-
-                NoProposedAccidental ->
-                    False
     in
     Html.ol (listAttributes pitchSpaceData.display)
         (List.map
-            (\degree ->
-                Html.Lazy.lazy8 viewPitch
-                    (DegreeDataDict.get degree pitchSpaceData.pitches
-                        |> Pitch.encode modeSettings.scale
-                    )
-                    (Just degree == Maybe.map Pitch.unwrapDegree currentPitch)
-                    pitchSpaceData.display
-                    (DegreeDataDict.get degree pitchSpaceData.isonIndicators)
-                    (PitchSpaceData.encodePitchPositionContext pitchSpaceData degree)
-                    (shouldHighlight degree)
-                    (DegreeDataDict.get degree pitchSpaceData.pitchVisibility)
-                    pitchSpaceData.scalingFactor
-            )
+            (viewPitch pitchSpaceData modeSettings pitchState currentPitch)
             Degree.gamutList
         )
 
 
-{-| Renders a single pitch element in the pitch space. Prepared for lazy
-rendering.
+{-| Renders a single pitch element in the pitch space.
 -}
-viewPitch :
+viewPitch : PitchSpaceData -> ModeSettings -> PitchState -> Maybe Pitch -> Degree -> Html Msg
+viewPitch pitchSpaceData modeSettings pitchState currentPitch degree =
+    let
+        pitchString =
+            DegreeDataDict.get degree pitchSpaceData.pitches
+                |> Pitch.encode modeSettings.scale
+
+        isCurrentDegree =
+            Just degree == Maybe.map Pitch.unwrapDegree currentPitch
+
+        isonStatusIndicator =
+            DegreeDataDict.get degree pitchSpaceData.isonIndicators
+
+        pitchPositions =
+            PitchSpaceData.encodePitchPositionContext pitchSpaceData degree
+
+        shouldHighlight =
+            PitchSpaceData.canBeSelectedAsIson isonStatusIndicator
+                || (case pitchState.proposedAccidental of
+                        Apply accidental ->
+                            PitchPosition.isValidInflection modeSettings.scale accidental degree
+
+                        CancelAccidental ->
+                            DegreeDataDict.get degree pitchState.appliedAccidentals
+                                |> Maybe.isJust
+
+                        NoProposedAccidental ->
+                            False
+                   )
+
+        positionWithinRange =
+            DegreeDataDict.get degree pitchSpaceData.pitchVisibility
+    in
+    Html.Lazy.lazy8 viewPitchLazy
+        pitchString
+        isCurrentDegree
+        pitchSpaceData.display
+        isonStatusIndicator
+        pitchPositions
+        shouldHighlight
+        positionWithinRange
+        pitchSpaceData.scalingFactor
+
+
+viewPitchLazy :
     PitchString
     -> Bool
     -> Display
@@ -428,7 +517,7 @@ viewPitch :
     -> PositionWithinVisibleRange
     -> Float
     -> Html Msg
-viewPitch pitchString isCurrentDegree display isonStatusIndicator pitchPositions shouldHighlight positionWithinRange scalingFactor =
+viewPitchLazy pitchString isCurrentDegree display isonStatusIndicator pitchPositions shouldHighlight positionWithinRange scalingFactor =
     let
         degree =
             Pitch.decode pitchString
@@ -442,7 +531,7 @@ viewPitch pitchString isCurrentDegree display isonStatusIndicator pitchPositions
                 }
                 (PitchSpaceData.decodePitchPositionContext pitchPositions)
 
-        scale_ int =
+        scale int =
             (toFloat int / 2) * scalingFactor
 
         size =
@@ -452,7 +541,7 @@ viewPitch pitchString isCurrentDegree display isonStatusIndicator pitchPositions
 
                 LowerBoundary ->
                     Maybe.map
-                        (\above -> scale_ (above - pitchPosition))
+                        (\above -> scale (above - pitchPosition))
                         pitchPositionAbove
                         |> Maybe.withDefault 0
 
@@ -469,7 +558,7 @@ viewPitch pitchString isCurrentDegree display isonStatusIndicator pitchPositions
 
                 UpperBoundary ->
                     Maybe.map
-                        (\below -> scale_ (pitchPosition - below))
+                        (\below -> scale (pitchPosition - below))
                         pitchPositionBelow
                         |> Maybe.withDefault 0
 
@@ -590,7 +679,7 @@ pitchButton pitchString isCurrentDegree display pitchPositions shouldHighlight p
         [ Html.Extra.viewMaybe
             (\accidental ->
                 span [ class "absolute mt-2 md:mt-4", Styles.left 12 ]
-                    [ Accidental.view Accidental.Red accidental ]
+                    [ ByzHtmlAccidental.view ByzHtmlAccidental.Red accidental ]
             )
             (Maybe.andThen Pitch.unwrapAccidental decodedPitch)
         , Maybe.map2
@@ -742,7 +831,7 @@ viewAccidentalButton currentProposedAccidental buttonProposedAccidental =
         buttonContent =
             case buttonProposedAccidental of
                 Apply accidental ->
-                    Accidental.view Accidental.InheritColor accidental
+                    ByzHtmlAccidental.view ByzHtmlAccidental.InheritColor accidental
 
                 CancelAccidental ->
                     Html.text "×"
@@ -752,7 +841,8 @@ viewAccidentalButton currentProposedAccidental buttonProposedAccidental =
     in
     button
         [ Styles.buttonClass
-        , class "text-3xl min-w-12 max-w-14 m-1"
+        , Styles.transition
+        , class "text-2xl sm:text-3xl min-w-8 sm:min-w-12 max-w-14 m-1"
         , classList
             [ ( "text-blue-700 border-2 border-blue-700", isCurrent )
             , ( "border-2 border-transparent", not isCurrent )
