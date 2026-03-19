@@ -12,7 +12,10 @@ const filePaths = [
     ["dist", "src", "pitch_tracker.js"],
 ];
 
-const preservedFiles = [["dist", "changelog.json"]];
+const preservedFiles = [
+    ["dist", "changelog.json"],
+    ["dist", "about.json"],
+];
 
 async function applyHash() {
     try {

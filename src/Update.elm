@@ -16,6 +16,7 @@ import Model exposing (Modal, Model)
 import Model.AudioSettings as AudioSettings exposing (AudioSettings, ListenRegister, Responsiveness(..))
 import Model.Changelog exposing (Changelog)
 import Model.ControlsMenu as ControlsMenu
+import Model.Copy exposing (Copy)
 import Model.DegreeDataDict as DegreeDataDict exposing (DegreeDataDict)
 import Model.LayoutData exposing (LayoutData, LayoutSelection)
 import Model.ModeSettings exposing (ModeSettings)
@@ -29,6 +30,7 @@ import Time
 
 type Msg
     = ChangelogReceived (Result Http.Error Changelog)
+    | CopyReceived (Result Http.Error Copy)
     | CloseControlMenus
     | DomResult (Result Dom.Error ())
     | GotPitchSpaceElement (Result Dom.Error Dom.Element)
@@ -67,6 +69,9 @@ update msg model =
 
         ChangelogReceived result ->
             handleChangelogReceived result model
+
+        CopyReceived result ->
+            ( { model | copy = RemoteData.fromResult result }, Cmd.none )
 
         CloseControlMenus ->
             ( { model | openControlMenus = ControlsMenu.init }
@@ -873,14 +878,14 @@ handleChangelogReceived result model =
 handleModalSelection : Modal -> Model -> ( Model, Cmd Msg )
 handleModalSelection modal model =
     let
-        cmd =
+        focusCmd =
             if Model.modalOpen modal then
                 focus "modal"
 
             else
                 Cmd.none
 
-        ( changelogCmd, maybeSetLoading ) =
+        ( changelogCmd, maybeSetLoadingChangelog ) =
             case ( modal, model.changelog ) of
                 ( Model.ReleasesModal _, RemoteData.NotAsked ) ->
                     ( Model.Changelog.fetch ChangelogReceived
@@ -890,11 +895,21 @@ handleModalSelection modal model =
                 _ ->
                     ( Cmd.none, identity )
 
+        ( copyCmd, maybeSetLoadingCopy ) =
+            case ( modal, model.copy ) of
+                ( Model.AboutModal, RemoteData.NotAsked ) ->
+                    ( Model.Copy.fetch CopyReceived
+                    , \model_ -> { model_ | copy = RemoteData.Loading }
+                    )
+
+                _ ->
+                    ( Cmd.none, identity )
+
         updatedModel =
             { model | modal = modal, menuOpen = False }
     in
-    ( maybeSetLoading updatedModel
-    , Cmd.batch [ cmd, changelogCmd ]
+    ( updatedModel |> maybeSetLoadingChangelog |> maybeSetLoadingCopy
+    , Cmd.batch [ focusCmd, changelogCmd, copyCmd ]
     )
 
 

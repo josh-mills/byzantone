@@ -22,6 +22,7 @@ import Http
 import Model.AudioSettings as AudioSettings exposing (AudioSettings)
 import Model.Changelog exposing (Changelog)
 import Model.ControlsMenu as ControlsMenu exposing (OpenControlMenus)
+import Model.Copy exposing (Copy)
 import Model.DeviceInfo exposing (DeviceInfo)
 import Model.LayoutData as LayoutData exposing (LayoutData)
 import Model.ModeSettings as ModeSettings exposing (ModeSettings)
@@ -34,6 +35,7 @@ import Time
 type alias Model =
     { audioSettings : AudioSettings
     , changelog : RemoteData Http.Error Changelog
+    , copy : RemoteData Http.Error Copy
     , detectedPitch : Maybe { detectedPitch : DetectedPitch, timestamp : Time.Posix }
     , deviceInfo : DeviceInfo
     , headerCollapsed : Bool
@@ -55,6 +57,7 @@ init deviceInfo viewportDimensions =
     in
     { audioSettings = AudioSettings.defaultAudioSettings
     , changelog = RemoteData.NotAsked
+    , copy = RemoteData.NotAsked
     , detectedPitch = Nothing
     , deviceInfo = deviceInfo
     , headerCollapsed = False
