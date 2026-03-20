@@ -68,7 +68,11 @@ update msg model =
             ( model, Task.perform GotViewport Dom.getViewport )
 
         ChangelogReceived result ->
-            handleChangelogReceived result model
+            ( updateRemote
+                (\remote -> { remote | changelog = RemoteData.fromResult result })
+                model
+            , Cmd.none
+            )
 
         CopyReceived result ->
             ( updateRemote
@@ -879,11 +883,6 @@ setAndFocus model degree =
 -- CMD HELPERS
 
 
-handleChangelogReceived : Result Http.Error Changelog -> Model -> ( Model, Cmd Msg )
-handleChangelogReceived result model =
-    ( updateRemote (\r -> { r | changelog = RemoteData.fromResult result }) model, Cmd.none )
-
-
 handleModalSelection : Modal -> Model -> ( Model, Cmd Msg )
 handleModalSelection modal model =
     let
@@ -898,7 +897,7 @@ handleModalSelection modal model =
             case ( modal, model.remote.changelog ) of
                 ( Model.ReleasesModal _, RemoteData.NotAsked ) ->
                     ( Remote.Changelog.fetch ChangelogReceived
-                    , updateRemote (\r -> { r | changelog = RemoteData.Loading })
+                    , updateRemote (\remote -> { remote | changelog = RemoteData.Loading })
                     )
 
                 _ ->
@@ -908,16 +907,15 @@ handleModalSelection modal model =
             case ( modal, model.remote.aboutCopy ) of
                 ( Model.AboutModal, RemoteData.NotAsked ) ->
                     ( Remote.AboutCopy.fetch CopyReceived
-                    , updateRemote (\r -> { r | aboutCopy = RemoteData.Loading })
+                    , updateRemote (\remote -> { remote | aboutCopy = RemoteData.Loading })
                     )
 
                 _ ->
                     ( Cmd.none, identity )
-
-        updatedModel =
-            { model | modal = modal, menuOpen = False }
     in
-    ( updatedModel |> maybeSetLoadingChangelog |> maybeSetLoadingCopy
+    ( { model | modal = modal, menuOpen = False }
+        |> maybeSetLoadingChangelog
+        |> maybeSetLoadingCopy
     , Cmd.batch [ focusCmd, changelogCmd, copyCmd ]
     )
 
