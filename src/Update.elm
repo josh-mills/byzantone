@@ -12,9 +12,8 @@ import Byzantine.Register exposing (Register)
 import Byzantine.Scale exposing (Scale)
 import Http
 import Maybe.Extra as Maybe
-import Model exposing (Modal, Model)
+import Model exposing (Modal, Model, Remote)
 import Model.AudioSettings as AudioSettings exposing (AudioSettings, ListenRegister, Responsiveness(..))
-import Model.Changelog exposing (Changelog)
 import Model.ControlsMenu as ControlsMenu
 import Model.DegreeDataDict as DegreeDataDict exposing (DegreeDataDict)
 import Model.LayoutData exposing (LayoutData, LayoutSelection)
@@ -22,6 +21,8 @@ import Model.ModeSettings exposing (ModeSettings)
 import Model.PitchSpaceData as PitchSpaceData exposing (PitchSpaceData)
 import Model.PitchState as PitchState exposing (IsonStatus(..), PitchState, ProposedAccidental(..))
 import Movement exposing (Movement)
+import Remote.AboutCopy exposing (AboutCopy)
+import Remote.Changelog exposing (Changelog)
 import RemoteData
 import Task
 import Time
@@ -29,6 +30,7 @@ import Time
 
 type Msg
     = ChangelogReceived (Result Http.Error Changelog)
+    | CopyReceived (Result Http.Error AboutCopy)
     | CloseControlMenus
     | DomResult (Result Dom.Error ())
     | GotPitchSpaceElement (Result Dom.Error Dom.Element)
@@ -66,7 +68,18 @@ update msg model =
             ( model, Task.perform GotViewport Dom.getViewport )
 
         ChangelogReceived result ->
-            handleChangelogReceived result model
+            ( updateRemote
+                (\remote -> { remote | changelog = RemoteData.fromResult result })
+                model
+            , Cmd.none
+            )
+
+        CopyReceived result ->
+            ( updateRemote
+                (\remote -> { remote | aboutCopy = RemoteData.fromResult result })
+                model
+            , Cmd.none
+            )
 
         CloseControlMenus ->
             ( { model | openControlMenus = ControlsMenu.init }
@@ -448,6 +461,11 @@ updateDetectedPitch model maybeFrequency timestamp =
 
                 Nothing ->
                     model
+
+
+updateRemote : (Remote -> Remote) -> Model -> Model
+updateRemote f model =
+    { model | remote = f model.remote }
 
 
 updateAudioSettings : (AudioSettings -> AudioSettings) -> Model -> Model
@@ -865,36 +883,40 @@ setAndFocus model degree =
 -- CMD HELPERS
 
 
-handleChangelogReceived : Result Http.Error Changelog -> Model -> ( Model, Cmd Msg )
-handleChangelogReceived result model =
-    ( { model | changelog = RemoteData.fromResult result }, Cmd.none )
-
-
 handleModalSelection : Modal -> Model -> ( Model, Cmd Msg )
 handleModalSelection modal model =
     let
-        cmd =
+        focusCmd =
             if Model.modalOpen modal then
                 focus "modal"
 
             else
                 Cmd.none
 
-        ( changelogCmd, maybeSetLoading ) =
-            case ( modal, model.changelog ) of
+        ( changelogCmd, maybeSetLoadingChangelog ) =
+            case ( modal, model.remote.changelog ) of
                 ( Model.ReleasesModal _, RemoteData.NotAsked ) ->
-                    ( Model.Changelog.fetch ChangelogReceived
-                    , \model_ -> { model_ | changelog = RemoteData.Loading }
+                    ( Remote.Changelog.fetch ChangelogReceived
+                    , updateRemote (\remote -> { remote | changelog = RemoteData.Loading })
                     )
 
                 _ ->
                     ( Cmd.none, identity )
 
-        updatedModel =
-            { model | modal = modal, menuOpen = False }
+        ( copyCmd, maybeSetLoadingCopy ) =
+            case ( modal, model.remote.aboutCopy ) of
+                ( Model.AboutModal, RemoteData.NotAsked ) ->
+                    ( Remote.AboutCopy.fetch CopyReceived
+                    , updateRemote (\remote -> { remote | aboutCopy = RemoteData.Loading })
+                    )
+
+                _ ->
+                    ( Cmd.none, identity )
     in
-    ( maybeSetLoading updatedModel
-    , Cmd.batch [ cmd, changelogCmd ]
+    ( { model | modal = modal, menuOpen = False }
+        |> maybeSetLoadingChangelog
+        |> maybeSetLoadingCopy
+    , Cmd.batch [ focusCmd, changelogCmd, copyCmd ]
     )
 
 

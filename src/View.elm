@@ -6,28 +6,25 @@ import Byzantine.Frequency as Frequency exposing (Frequency(..), PitchStandard(.
 import Byzantine.Martyria as Martyria
 import Byzantine.Pitch as Pitch exposing (Pitch)
 import Byzantine.Scale exposing (Scale(..))
-import Copy
 import Html exposing (Html, button, datalist, div, h1, h2, main_, p, span, text)
 import Html.Attributes as Attr exposing (class, classList, id, type_)
 import Html.Attributes.Extra as Attr
 import Html.Events exposing (onClick, onInput)
 import Html.Extra exposing (viewIf)
 import Html.Lazy exposing (lazy, lazy2, lazy3, lazy4, lazy5)
-import Http
 import Icons
 import Json.Decode exposing (Decoder)
 import Maybe.Extra as Maybe
-import Model exposing (Modal(..), Model)
+import Model exposing (Modal(..), Model, Remote)
 import Model.AudioSettings as AudioSettings exposing (AudioSettings)
-import Model.Changelog exposing (Changelog)
 import Model.LayoutData as LayoutData exposing (Layout(..), LayoutData, LayoutSelection(..), layoutFor)
 import Model.ModeSettings exposing (ModeSettings)
 import Model.PitchState as PitchState
 import RadioFieldset
-import RemoteData exposing (RemoteData)
 import Styles
 import Svg.Attributes
 import Update exposing (Msg(..))
+import View.About
 import View.Changelog
 import View.Controls
 import View.PitchSpace as PitchSpace
@@ -50,7 +47,7 @@ view model =
             )
         , lazy2 backdrop model.menuOpen model.modal
         , lazy header model.headerCollapsed
-        , lazy5 viewModal model.audioSettings model.layoutData model.modeSettings model.changelog model.modal
+        , lazy5 viewModal model.audioSettings model.layoutData model.modeSettings model.remote model.modal
 
         -- , viewIf LayoutData.showSpacing (div [ class "text-center" ] [ text "|" ])
         , viewIf model.menuOpen menu
@@ -207,8 +204,8 @@ menu =
         ]
 
 
-viewModal : AudioSettings -> LayoutData -> ModeSettings -> RemoteData Http.Error Changelog -> Modal -> Html Msg
-viewModal audioSettings layoutData modeSettings changelog modal =
+viewModal : AudioSettings -> LayoutData -> ModeSettings -> Remote -> Modal -> Html Msg
+viewModal audioSettings layoutData modeSettings remote modal =
     case modal of
         NoModal ->
             Html.Extra.nothing
@@ -240,18 +237,18 @@ viewModal audioSettings layoutData modeSettings changelog modal =
                         ]
                         [ Icons.xmark [ Svg.Attributes.fill "currentColor", Svg.Attributes.class "w-6 h-6" ] ]
                     ]
-                , modalContent audioSettings layoutData modeSettings changelog modal
+                , modalContent audioSettings layoutData modeSettings remote modal
                 ]
 
 
-modalContent : AudioSettings -> LayoutData -> ModeSettings -> RemoteData Http.Error Changelog -> Modal -> Html Msg
-modalContent audioSettings layoutData modeSettings changelog modal =
+modalContent : AudioSettings -> LayoutData -> ModeSettings -> Remote -> Modal -> Html Msg
+modalContent audioSettings layoutData modeSettings { changelog, aboutCopy } modal =
     case modal of
         NoModal ->
             Html.Extra.nothing
 
         AboutModal ->
-            Copy.about
+            lazy View.About.view aboutCopy
 
         SettingsModal ->
             lazy3 settings audioSettings layoutData modeSettings

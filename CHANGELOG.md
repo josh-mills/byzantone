@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.4.1 (2026-03-20)
+### Added
+ - Improved static content management framework
+### Changed
+ - Copy update for “About” section
+
 ## v1.4.0 (2026-03-17)
 ### Added
  - Change log with release notes view accessible from the application menu

@@ -1,8 +1,8 @@
-module Model.Changelog.Entry exposing (Changes, Entry, compare, decoder)
+module Remote.Changelog.Entry exposing (Changes, Entry, compare, decoder)
 
 import Date exposing (Date)
 import Json.Decode as Decode exposing (Decoder)
-import Model.Changelog.Version as Version exposing (Version)
+import Remote.Changelog.Version as Version exposing (Version)
 
 
 type alias Entry =

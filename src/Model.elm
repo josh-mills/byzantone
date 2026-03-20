@@ -1,5 +1,6 @@
 module Model exposing
     ( Model, init
+    , Remote
     , Modal(..), modalOpen, modalToString
     )
 
@@ -11,6 +12,11 @@ module Model exposing
 @docs Model, init
 
 
+## Remote
+
+@docs Remote
+
+
 ## Modal
 
 @docs Modal, modalOpen, modalToString
@@ -20,20 +26,21 @@ module Model exposing
 import Byzantine.DetectedPitch exposing (DetectedPitch)
 import Http
 import Model.AudioSettings as AudioSettings exposing (AudioSettings)
-import Model.Changelog exposing (Changelog)
 import Model.ControlsMenu as ControlsMenu exposing (OpenControlMenus)
 import Model.DeviceInfo exposing (DeviceInfo)
 import Model.LayoutData as LayoutData exposing (LayoutData)
 import Model.ModeSettings as ModeSettings exposing (ModeSettings)
 import Model.PitchSpaceData as PitchSpaceData exposing (PitchSpaceData)
 import Model.PitchState as PitchState exposing (PitchState)
+import Remote.AboutCopy exposing (AboutCopy)
+import Remote.Changelog exposing (Changelog)
 import RemoteData exposing (RemoteData)
 import Time
 
 
 type alias Model =
     { audioSettings : AudioSettings
-    , changelog : RemoteData Http.Error Changelog
+    , remote : Remote
     , detectedPitch : Maybe { detectedPitch : DetectedPitch, timestamp : Time.Posix }
     , deviceInfo : DeviceInfo
     , headerCollapsed : Bool
@@ -47,6 +54,12 @@ type alias Model =
     }
 
 
+type alias Remote =
+    { changelog : RemoteData Http.Error Changelog
+    , aboutCopy : RemoteData Http.Error AboutCopy
+    }
+
+
 init : DeviceInfo -> { width : Float, height : Float } -> Model
 init deviceInfo viewportDimensions =
     let
@@ -54,7 +67,10 @@ init deviceInfo viewportDimensions =
             LayoutData.init viewportDimensions
     in
     { audioSettings = AudioSettings.defaultAudioSettings
-    , changelog = RemoteData.NotAsked
+    , remote =
+        { changelog = RemoteData.NotAsked
+        , aboutCopy = RemoteData.NotAsked
+        }
     , detectedPitch = Nothing
     , deviceInfo = deviceInfo
     , headerCollapsed = False
