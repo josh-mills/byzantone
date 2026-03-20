@@ -21,6 +21,7 @@ import Model.ModeSettings exposing (ModeSettings)
 import Model.PitchSpaceData as PitchSpaceData exposing (PitchSpaceData)
 import Model.PitchState as PitchState exposing (IsonStatus(..), PitchState, ProposedAccidental(..))
 import Movement exposing (Movement)
+import Process
 import Remote.AboutCopy exposing (AboutCopy)
 import Remote.Changelog exposing (Changelog)
 import RemoteData
@@ -65,7 +66,7 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         NoOp ->
-            ( model, Task.perform GotViewport Dom.getViewport )
+            ( model, getViewport )
 
         ChangelogReceived result ->
             ( updateRemote
@@ -113,10 +114,7 @@ update msg model =
 
         ViewportResize _ _ ->
             ( model
-            , Cmd.batch
-                [ Task.perform GotViewport Dom.getViewport
-                , Task.perform GotViewport Dom.getViewport
-                ]
+            , getViewport
             )
 
         PitchButtonClicked degree ->
@@ -152,7 +150,7 @@ update msg model =
               }
                 |> updateAudioSettings (\audioSettings -> { audioSettings | audioMode = mode })
                 |> resetPitchSpaceData
-            , Task.perform GotViewport Dom.getViewport
+            , getViewport
             )
 
         SetGain gain ->
@@ -175,7 +173,7 @@ update msg model =
                 (\layoutData -> { layoutData | layoutSelection = layoutSelection })
                 model
                 |> resetPitchSpaceData
-            , Task.perform GotViewport Dom.getViewport
+            , getViewport
             )
 
         SetPitchStandard pitchStandard ->
@@ -252,7 +250,7 @@ update msg model =
 
         ToggleHeaderCollapsed ->
             ( { model | headerCollapsed = not model.headerCollapsed }
-            , Cmd.none
+            , Cmd.batch [ getViewportAfter 300, getViewportAfter 800 ]
             )
 
         ToggleMenu ->
@@ -923,3 +921,15 @@ handleModalSelection modal model =
 focus : String -> Cmd Msg
 focus id =
     Task.attempt DomResult (Dom.focus id)
+
+
+getViewport : Cmd Msg
+getViewport =
+    Task.perform GotViewport Dom.getViewport
+
+
+getViewportAfter : Float -> Cmd Msg
+getViewportAfter delay =
+    Process.sleep delay
+        |> Task.andThen (\_ -> Dom.getViewport)
+        |> Task.perform GotViewport
