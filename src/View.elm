@@ -369,7 +369,7 @@ rangeFieldset { rangeStart, rangeEnd } =
             Degree.indexOf degree |> String.fromInt
 
         row label id_ min max value msg =
-            div [ Styles.flexRow, class "align-center max-w-full flex-wrap" ]
+            div [ Styles.flexRow, class "align-center max-w-full flex-wrap mt-2" ]
                 [ Html.label
                     [ Attr.for id_
                     , class "w-14 mt-1"
@@ -407,6 +407,12 @@ rangeFieldset { rangeStart, rangeEnd } =
     in
     Html.fieldset [ Styles.borderRounded, class "px-2 pb-1 mb-2" ]
         [ Html.legend [ class "px-1" ] [ Html.text "Range" ]
+        , p []
+            [ span [ class "me-1" ] [ text "Display range" ]
+            , Degree.text rangeStart
+            , span [ class "mx-1" ] [ text "to" ]
+            , Degree.text rangeEnd
+            ]
         , row "From:" "range-start" GA maxLowerBound rangeStart SetRangeStart
         , row "To:" "range-end" minUpperBound Ga_ rangeEnd SetRangeEnd
         ]
