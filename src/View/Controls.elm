@@ -6,6 +6,7 @@ import Byzantine.IntervalCharacter as Character
 import Byzantine.Pitch as Pitch exposing (Pitch)
 import Byzantine.Register as Register exposing (Register)
 import Byzantine.Scale as Scale exposing (Scale)
+import Collapsible
 import Html exposing (Html, button, div, span, text)
 import Html.Attributes as Attr exposing (class, classList, id)
 import Html.Events exposing (onClick, onInput)
@@ -58,13 +59,8 @@ item audioSettings modeSettings pitchState openControlMenus menuOption =
         isOpen =
             ControlsMenu.isOpen openControlMenus menuOption
     in
-    Html.li
-        [ class "grid transition-[grid-template-rows] duration-300 ease-in-out"
-        , classList
-            [ ( "grid-rows-[auto_0fr]", not isOpen )
-            , ( "grid-rows-[auto_1fr]", isOpen )
-            ]
-        ]
+    Collapsible.li (Collapsible.isOpen isOpen)
+        []
         [ lazy3 optionHeader audioSettings isOpen menuOption
         , optionContent audioSettings modeSettings pitchState isOpen menuOption
         ]

@@ -6,6 +6,7 @@ import Byzantine.Frequency as Frequency exposing (Frequency(..), PitchStandard(.
 import Byzantine.Martyria as Martyria
 import Byzantine.Pitch as Pitch exposing (Pitch)
 import Byzantine.Scale exposing (Scale(..))
+import Collapsible
 import Html exposing (Html, button, datalist, div, h1, h2, main_, p, span, text)
 import Html.Attributes as Attr exposing (class, classList, id, type_)
 import Html.Attributes.Extra as Attr
@@ -147,13 +148,10 @@ header headerCollapsed =
                 [ Icons.caretDown [ Svg.Attributes.class "w-6 h-6" ]
                 ]
             ]
-        , div
-            [ class "grid ease-in-out flex-1 mx-4"
+        , Collapsible.div
+            (Collapsible.isOpen (not headerCollapsed) |> Collapsible.withExternalTrigger)
+            [ class "flex-1 mx-4"
             , Styles.transition
-            , classList
-                [ ( "grid-rows-[0fr]", headerCollapsed )
-                , ( "grid-rows-[1fr]", not headerCollapsed )
-                ]
             ]
             [ div
                 [ class "overflow-hidden"
