@@ -37,8 +37,13 @@ import Html.Attributes exposing (classList)
 type Config
     = Config
         { open : Bool
-        , triggerIsChild : Bool
+        , trigger : Trigger
         }
+
+
+type Trigger
+    = TriggerChild
+    | TriggerSibling
 
 
 {-| Base config. Expects a trigger element and collapsible content as direct
@@ -48,7 +53,7 @@ isOpen : Bool -> Config
 isOpen open =
     Config
         { open = open
-        , triggerIsChild = True
+        , trigger = TriggerChild
         }
 
 
@@ -56,7 +61,7 @@ isOpen open =
 -}
 withExternalTrigger : Config -> Config
 withExternalTrigger (Config c) =
-    Config { c | triggerIsChild = False }
+    Config { c | trigger = TriggerSibling }
 
 
 
@@ -82,17 +87,18 @@ li c attrs contents =
 
 
 gridAttr : Config -> Html.Attribute msg
-gridAttr (Config { open, triggerIsChild }) =
-    if triggerIsChild then
-        classList
-            [ ( "grid transition-[grid-template-rows] duration-300 ease-in-out", True )
-            , ( "grid-rows-[auto_1fr]", open )
-            , ( "grid-rows-[auto_0fr]", not open )
-            ]
+gridAttr (Config { open, trigger }) =
+    case trigger of
+        TriggerChild ->
+            classList
+                [ ( "grid transition-[grid-template-rows] duration-300 ease-in-out", True )
+                , ( "grid-rows-[auto_1fr]", open )
+                , ( "grid-rows-[auto_0fr]", not open )
+                ]
 
-    else
-        classList
-            [ ( "grid transition-[grid-template-rows] duration-300 ease-in-out", True )
-            , ( "grid-rows-[1fr]", open )
-            , ( "grid-rows-[0fr]", not open )
-            ]
+        TriggerSibling ->
+            classList
+                [ ( "grid transition-[grid-template-rows] duration-300 ease-in-out", True )
+                , ( "grid-rows-[1fr]", open )
+                , ( "grid-rows-[0fr]", not open )
+                ]
