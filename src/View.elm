@@ -6,7 +6,8 @@ import Byzantine.Frequency as Frequency exposing (Frequency(..), PitchStandard(.
 import Byzantine.Martyria as Martyria
 import Byzantine.Pitch as Pitch exposing (Pitch)
 import Byzantine.Scale exposing (Scale(..))
-import Collapsible
+import Components.Collapsible as Collapsible
+import Components.RadioFieldset as RadioFieldset
 import Html exposing (Html, button, datalist, div, h1, h2, main_, p, span, text)
 import Html.Attributes as Attr exposing (class, classList, id, type_)
 import Html.Attributes.Extra as Attr
@@ -21,7 +22,6 @@ import Model.AudioSettings as AudioSettings exposing (AudioSettings)
 import Model.LayoutData as LayoutData exposing (Layout(..), LayoutData, LayoutSelection(..), layoutFor)
 import Model.ModeSettings exposing (ModeSettings)
 import Model.PitchState as PitchState
-import RadioFieldset
 import Styles
 import Svg.Attributes
 import Update exposing (Msg(..))

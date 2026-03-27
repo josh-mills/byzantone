@@ -6,7 +6,8 @@ import Byzantine.IntervalCharacter as Character
 import Byzantine.Pitch as Pitch exposing (Pitch)
 import Byzantine.Register as Register exposing (Register)
 import Byzantine.Scale as Scale exposing (Scale)
-import Collapsible
+import Components.Collapsible as Collapsible
+import Components.RadioFieldset as RadioFieldset
 import Html exposing (Html, button, div, span, text)
 import Html.Attributes as Attr exposing (class, classList, id)
 import Html.Events exposing (onClick, onInput)
@@ -18,7 +19,6 @@ import Model.AudioSettings as AudioSettings exposing (AudioSettings, ListenRegis
 import Model.ControlsMenu as ControlsMenu exposing (MenuOption(..), OpenControlMenus)
 import Model.ModeSettings exposing (ModeSettings)
 import Model.PitchState as PitchState exposing (IsonStatus, PitchState)
-import RadioFieldset
 import Styles
 import Svg
 import Svg.Attributes as Svg

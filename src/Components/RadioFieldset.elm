@@ -1,4 +1,4 @@
-module RadioFieldset exposing
+module Components.RadioFieldset exposing
     ( Config, baseConfig
     , withCustomSelected, withCustomViewItem, withConditionalPostpend
     , view

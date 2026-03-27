@@ -1,4 +1,4 @@
-module Collapsible exposing
+module Components.Collapsible exposing
     ( Config, isOpen
     , withExternalTrigger
     , div, li
