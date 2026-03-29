@@ -104,21 +104,32 @@ li config attrs contents =
 
 gridAttr : Config -> Html.Attribute msg
 gridAttr (Config { open, trigger, transition }) =
-    let
-        ( openClass, closedClass ) =
-            case trigger of
-                FirstChildTrigger ->
-                    ( "grid-rows-[auto_1fr]", "grid-rows-[auto_0fr]" )
-
-                ExternalTrigger ->
-                    ( "grid-rows-[1fr]", "grid-rows-[0fr]" )
-    in
     classList
         [ ( "grid transition-[grid-template-rows] ease-in-out", True )
         , ( durationClass transition, True )
-        , ( openClass, open )
-        , ( closedClass, not open )
+        , ( openClass trigger, open )
+        , ( closedClass trigger, not open )
         ]
+
+
+openClass : Trigger -> String
+openClass trigger =
+    case trigger of
+        FirstChildTrigger ->
+            "grid-rows-[auto_1fr]"
+
+        ExternalTrigger ->
+            "grid-rows-[1fr]"
+
+
+closedClass : Trigger -> String
+closedClass trigger =
+    case trigger of
+        FirstChildTrigger ->
+            "grid-rows-[auto_0fr]"
+
+        ExternalTrigger ->
+            "grid-rows-[0fr]"
 
 
 durationClass : TransitionDuration -> String
