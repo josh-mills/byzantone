@@ -138,11 +138,11 @@ optionHeaderWrapper isOpen optionHeaderTextNodes icon =
             [ class "flex flex-col md:flex-row" ]
             [ case icon of
                 SvgIcon svg ->
-                    div [ class "mx-auto" ]
+                    div [ class "mx-auto self-center" ]
                         [ svg [ Svg.fill "grey", Svg.width "24" ] ]
 
                 ByzHtmlIcon html ->
-                    div [ class "text-neutral-500" ] [ html ]
+                    div [ class "text-neutral-500 self-center" ] [ html ]
             , div [ class "md:ml-2 text-xs md:text-base" ]
                 optionHeaderTextNodes
             ]
