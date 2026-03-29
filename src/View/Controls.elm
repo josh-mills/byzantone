@@ -31,7 +31,7 @@ viewOverlay : OpenControlMenus -> Html Msg
 viewOverlay openControlMenus =
     Html.Extra.viewIf (ControlsMenu.anyOpen openControlMenus)
         (div
-            [ class "fixed left-0 top-0 w-full h-full z-10 lg:hidden"
+            [ class "fixed left-0 top-0 w-full h-full z-10 bg-slate-400 opacity-40 lg:hidden"
             , onClick CloseControlMenus
             ]
             []
