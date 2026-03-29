@@ -59,11 +59,11 @@ item audioSettings modeSettings pitchState openControlMenus menuOption =
         isOpen =
             ControlsMenu.isOpen openControlMenus menuOption
     in
-    Collapsible.li
-        (Collapsible.isOpen isOpen
-            |> Collapsible.withFirstChildTrigger
-            |> Collapsible.withTransition Collapsible.TransitionQuick
-        )
+    (Collapsible.isOpen isOpen
+        |> Collapsible.withFirstChildTrigger
+        |> Collapsible.withTransition Collapsible.TransitionQuick
+        |> Collapsible.li
+    )
         []
         [ lazy3 optionHeader audioSettings isOpen menuOption
         , optionContent audioSettings modeSettings pitchState isOpen menuOption

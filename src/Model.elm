@@ -43,7 +43,7 @@ type alias Model =
     , remote : Remote
     , detectedPitch : Maybe { detectedPitch : DetectedPitch, timestamp : Time.Posix }
     , deviceInfo : DeviceInfo
-    , headerCollapsed : Bool
+    , headerIsOpen : Bool
     , layoutData : LayoutData
     , menuOpen : Bool
     , modal : Modal
@@ -73,7 +73,7 @@ init deviceInfo viewportDimensions =
         }
     , detectedPitch = Nothing
     , deviceInfo = deviceInfo
-    , headerCollapsed = False
+    , headerIsOpen = True
     , layoutData = layoutData
     , menuOpen = False
     , modal = NoModal
