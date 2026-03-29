@@ -249,7 +249,7 @@ update msg model =
             )
 
         ToggleHeaderCollapsed ->
-            ( { model | headerCollapsed = not model.headerCollapsed }
+            ( { model | headerIsOpen = not model.headerIsOpen }
             , Cmd.batch [ getViewportAfter 300, getViewportAfter 800 ]
             )
 

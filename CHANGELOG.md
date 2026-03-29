@@ -1,5 +1,12 @@
 # Changelog
 
+## v.1.4.2 (2026-03-28)
+### Changed
+ - Minor refactor for collapsible items
+ - Give slight opacity to content cover for menu options
+### Fixed
+ - Changelog copy fix
+
 ## v1.4.1 (2026-03-20)
 ### Added
  - Improved static content management framework
@@ -61,7 +68,7 @@
  
 ## v1.0.0 (2025-09-26)
 ### Added
- - New mobile-first UX provides 
+ - New mobile-first UX 
  - Helpful new icons should be helpful
 ### Changed
  - Initial render is based on viewport information loaded upon app initialization rather than an arbitrary default
