@@ -1,6 +1,6 @@
 module Components.Collapsible exposing
     ( Config, isOpen
-    , withExternalTrigger, withTransition
+    , withFirstChildTrigger, withTransition
     , TransitionDuration(..)
     , div, li
     )
@@ -9,16 +9,16 @@ module Components.Collapsible exposing
 
     Collapsible.li (Collapsible.isOpen isOpen) [] [ triggerView, contentView ]
 
-    Collapsible.div
-        (Collapsible.isOpen isOpen |> Collapsible.withExternalTrigger)
-        [ class "flex-1 mx-4" ]
-        [ contentView ]
+    Collapsible.li
+        (Collapsible.isOpen isOpen |> Collapsible.withFirstChildTrigger)
+        []
+        [ triggerView, contentView ]
 
 
 # Config Builder
 
 @docs Config, isOpen
-@docs withExternalTrigger, withTransition
+@docs withFirstChildTrigger, withTransition
 @docs TransitionDuration
 
 
@@ -45,8 +45,8 @@ type Config
 
 
 type Trigger
-    = TriggerChild
-    | TriggerSibling
+    = ExternalTrigger
+    | FirstChildTrigger
 
 
 type TransitionDuration
@@ -54,23 +54,23 @@ type TransitionDuration
     | TransitionStandard
 
 
-{-| Base config. Expects a trigger element and collapsible content as direct
-children.
+{-| Base config. The trigger is expected to be a sibling outside this element.
 -}
 isOpen : Bool -> Config
 isOpen open =
     Config
         { open = open
-        , trigger = TriggerChild
+        , trigger = ExternalTrigger
         , transition = TransitionStandard
         }
 
 
-{-| Use when the trigger is a sibling outside this element, not a child.
+{-| Use when the trigger and collapsible content are both direct children.
+The collapsed content will need the transition class added to it.
 -}
-withExternalTrigger : Config -> Config
-withExternalTrigger (Config config) =
-    Config { config | trigger = TriggerSibling }
+withFirstChildTrigger : Config -> Config
+withFirstChildTrigger (Config config) =
+    Config { config | trigger = FirstChildTrigger }
 
 
 {-| Override the transition duration. Defaults to `TransitionStandard`.
@@ -107,10 +107,10 @@ gridAttr (Config { open, trigger, transition }) =
     let
         ( openClass, closedClass ) =
             case trigger of
-                TriggerChild ->
+                FirstChildTrigger ->
                     ( "grid-rows-[auto_1fr]", "grid-rows-[auto_0fr]" )
 
-                TriggerSibling ->
+                ExternalTrigger ->
                     ( "grid-rows-[1fr]", "grid-rows-[0fr]" )
     in
     classList
