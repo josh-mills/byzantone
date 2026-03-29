@@ -6,6 +6,8 @@ import Byzantine.Frequency as Frequency exposing (Frequency(..), PitchStandard(.
 import Byzantine.Martyria as Martyria
 import Byzantine.Pitch as Pitch exposing (Pitch)
 import Byzantine.Scale exposing (Scale(..))
+import Components.Collapsible as Collapsible
+import Components.RadioFieldset as RadioFieldset
 import Html exposing (Html, button, datalist, div, h1, h2, main_, p, span, text)
 import Html.Attributes as Attr exposing (class, classList, id, type_)
 import Html.Attributes.Extra as Attr
@@ -20,7 +22,6 @@ import Model.AudioSettings as AudioSettings exposing (AudioSettings)
 import Model.LayoutData as LayoutData exposing (Layout(..), LayoutData, LayoutSelection(..), layoutFor)
 import Model.ModeSettings exposing (ModeSettings)
 import Model.PitchState as PitchState
-import RadioFieldset
 import Styles
 import Svg.Attributes
 import Update exposing (Msg(..))
@@ -46,7 +47,7 @@ view model =
                     (PitchState.ison model.pitchState.ison)
             )
         , lazy2 backdrop model.menuOpen model.modal
-        , lazy header model.headerCollapsed
+        , lazy header model.headerIsOpen
         , lazy5 viewModal model.audioSettings model.layoutData model.modeSettings model.remote model.modal
 
         -- , viewIf LayoutData.showSpacing (div [ class "text-center" ] [ text "|" ])
@@ -127,34 +128,29 @@ Caret points down when expanded, rotates 180° when collapsed.
 
 -}
 header : Bool -> Html Msg
-header headerCollapsed =
+header headerIsOpen =
     Html.header
         [ Styles.flexRowCentered
         , Styles.transition
         , class "px-2 md:px-4"
         , classList
-            [ ( "py-1", headerCollapsed )
-            , ( "py-4", not headerCollapsed )
+            [ ( "py-1", not headerIsOpen )
+            , ( "py-4", headerIsOpen )
             ]
         ]
         [ div [ class "w-7" ]
             [ button
                 [ class "w-full lg:hidden"
                 , Styles.transition
-                , classList [ ( "-rotate-90", headerCollapsed ) ]
+                , classList [ ( "-rotate-90", not headerIsOpen ) ]
                 , onClick ToggleHeaderCollapsed
                 ]
                 [ Icons.caretDown [ Svg.Attributes.class "w-6 h-6" ]
                 ]
             ]
-        , div
-            [ class "grid ease-in-out flex-1 mx-4"
-            , Styles.transition
-            , classList
-                [ ( "grid-rows-[0fr]", headerCollapsed )
-                , ( "grid-rows-[1fr]", not headerCollapsed )
-                ]
-            ]
+        , Collapsible.div
+            (Collapsible.isOpen headerIsOpen)
+            [ class "flex-1 mx-4" ]
             [ div
                 [ class "overflow-hidden"
                 , Styles.flexCol
