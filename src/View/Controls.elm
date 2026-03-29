@@ -59,7 +59,7 @@ item audioSettings modeSettings pitchState openControlMenus menuOption =
         isOpen =
             ControlsMenu.isOpen openControlMenus menuOption
     in
-    Collapsible.li (Collapsible.isOpen isOpen)
+    Collapsible.li (Collapsible.isOpen isOpen |> Collapsible.withTransition Collapsible.TransitionQuick)
         []
         [ lazy3 optionHeader audioSettings isOpen menuOption
         , optionContent audioSettings modeSettings pitchState isOpen menuOption
@@ -78,7 +78,6 @@ optionHeader audioSettings isOpen menuOption =
         , class "py-2 px-3"
         , class "bg-white lg:bg-gray-200 hover:bg-gray-300"
         , class "border-t lg:border border-gray-300 lg:rounded-md"
-        , Styles.transitionQuick
         , classList [ ( "lg:rounded-b-none", isOpen ) ]
         , onClick (Update.ToggleControlMenu menuOption)
         ]

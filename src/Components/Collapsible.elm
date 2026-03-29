@@ -1,6 +1,7 @@
 module Components.Collapsible exposing
     ( Config, isOpen
-    , withExternalTrigger
+    , withExternalTrigger, withTransition
+    , TransitionDuration(..)
     , div, li
     )
 
@@ -17,7 +18,8 @@ module Components.Collapsible exposing
 # Config Builder
 
 @docs Config, isOpen
-@docs withExternalTrigger
+@docs withExternalTrigger, withTransition
+@docs TransitionDuration
 
 
 # View
@@ -38,12 +40,18 @@ type Config
     = Config
         { open : Bool
         , trigger : Trigger
+        , transition : TransitionDuration
         }
 
 
 type Trigger
     = TriggerChild
     | TriggerSibling
+
+
+type TransitionDuration
+    = TransitionQuick
+    | TransitionStandard
 
 
 {-| Base config. Expects a trigger element and collapsible content as direct
@@ -54,14 +62,22 @@ isOpen open =
     Config
         { open = open
         , trigger = TriggerChild
+        , transition = TransitionStandard
         }
 
 
 {-| Use when the trigger is a sibling outside this element, not a child.
 -}
 withExternalTrigger : Config -> Config
-withExternalTrigger (Config c) =
-    Config { c | trigger = TriggerSibling }
+withExternalTrigger (Config config) =
+    Config { config | trigger = TriggerSibling }
+
+
+{-| Override the transition duration. Defaults to `TransitionStandard`.
+-}
+withTransition : TransitionDuration -> Config -> Config
+withTransition duration (Config config) =
+    Config { config | transition = duration }
 
 
 
@@ -71,15 +87,15 @@ withExternalTrigger (Config c) =
 {-| Render as a `<div>`.
 -}
 div : Config -> List (Html.Attribute msg) -> List (Html msg) -> Html msg
-div c attrs contents =
-    Html.div (gridAttr c :: attrs) contents
+div config attrs contents =
+    Html.div (gridAttr config :: attrs) contents
 
 
 {-| Render as a `<li>`.
 -}
 li : Config -> List (Html.Attribute msg) -> List (Html msg) -> Html msg
-li c attrs contents =
-    Html.li (gridAttr c :: attrs) contents
+li config attrs contents =
+    Html.li (gridAttr config :: attrs) contents
 
 
 
@@ -87,18 +103,29 @@ li c attrs contents =
 
 
 gridAttr : Config -> Html.Attribute msg
-gridAttr (Config { open, trigger }) =
-    case trigger of
-        TriggerChild ->
-            classList
-                [ ( "grid transition-[grid-template-rows] duration-300 ease-in-out", True )
-                , ( "grid-rows-[auto_1fr]", open )
-                , ( "grid-rows-[auto_0fr]", not open )
-                ]
+gridAttr (Config { open, trigger, transition }) =
+    let
+        ( openClass, closedClass ) =
+            case trigger of
+                TriggerChild ->
+                    ( "grid-rows-[auto_1fr]", "grid-rows-[auto_0fr]" )
 
-        TriggerSibling ->
-            classList
-                [ ( "grid transition-[grid-template-rows] duration-300 ease-in-out", True )
-                , ( "grid-rows-[1fr]", open )
-                , ( "grid-rows-[0fr]", not open )
-                ]
+                TriggerSibling ->
+                    ( "grid-rows-[1fr]", "grid-rows-[0fr]" )
+    in
+    classList
+        [ ( "grid transition-[grid-template-rows] ease-in-out", True )
+        , ( durationClass transition, True )
+        , ( openClass, open )
+        , ( closedClass, not open )
+        ]
+
+
+durationClass : TransitionDuration -> String
+durationClass duration =
+    case duration of
+        TransitionQuick ->
+            "duration-300"
+
+        TransitionStandard ->
+            "duration-800"

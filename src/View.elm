@@ -150,9 +150,7 @@ header headerCollapsed =
             ]
         , Collapsible.div
             (Collapsible.isOpen (not headerCollapsed) |> Collapsible.withExternalTrigger)
-            [ class "flex-1 mx-4"
-            , Styles.transition
-            ]
+            [ class "flex-1 mx-4" ]
             [ div
                 [ class "overflow-hidden"
                 , Styles.flexCol
