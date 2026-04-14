@@ -1,5 +1,6 @@
 module Model exposing
     ( Model, init
+    , Remote
     , Modal(..), modalOpen, modalToString
     )
 
@@ -11,6 +12,11 @@ module Model exposing
 @docs Model, init
 
 
+## Remote
+
+@docs Remote
+
+
 ## Modal
 
 @docs Modal, modalOpen, modalToString
@@ -19,25 +25,28 @@ module Model exposing
 
 import Byzantine.DetectedPitch exposing (DetectedPitch)
 import Byzantine.Mode exposing (Mode)
+import Date exposing (Date)
 import Http
 import Model.AudioSettings as AudioSettings exposing (AudioSettings)
-import Model.Changelog exposing (Changelog)
+import Model.CalendarInfo as CalendarInfo exposing (CalendarInfo)
 import Model.ControlsMenu as ControlsMenu exposing (OpenControlMenus)
 import Model.DeviceInfo exposing (DeviceInfo)
 import Model.LayoutData as LayoutData exposing (LayoutData)
 import Model.ModeSettings as ModeSettings exposing (ModeSettings)
 import Model.PitchSpaceData as PitchSpaceData exposing (PitchSpaceData)
 import Model.PitchState as PitchState exposing (PitchState)
+import Remote.AboutCopy exposing (AboutCopy)
+import Remote.Changelog exposing (Changelog)
 import RemoteData exposing (RemoteData)
 import Time
 
 
 type alias Model =
     { audioSettings : AudioSettings
-    , changelog : RemoteData Http.Error Changelog
+    , calendar : CalendarInfo
     , detectedPitch : Maybe { detectedPitch : DetectedPitch, timestamp : Time.Posix }
     , deviceInfo : DeviceInfo
-    , headerCollapsed : Bool
+    , headerIsOpen : Bool
     , layoutData : LayoutData
     , menuOpen : Bool
     , modal : Modal
@@ -45,20 +54,27 @@ type alias Model =
     , openControlMenus : OpenControlMenus
     , pitchSpaceData : PitchSpaceData
     , pitchState : PitchState
+    , remote : Remote
     }
 
 
-init : DeviceInfo -> { width : Float, height : Float } -> Model
-init deviceInfo viewportDimensions =
+type alias Remote =
+    { changelog : RemoteData Http.Error Changelog
+    , aboutCopy : RemoteData Http.Error AboutCopy
+    }
+
+
+init : DeviceInfo -> { width : Float, height : Float } -> Maybe Date -> Model
+init deviceInfo viewportDimensions currentDate =
     let
         layoutData =
             LayoutData.init viewportDimensions
     in
     { audioSettings = AudioSettings.defaultAudioSettings
-    , changelog = RemoteData.NotAsked
+    , calendar = CalendarInfo.init currentDate
     , detectedPitch = Nothing
     , deviceInfo = deviceInfo
-    , headerCollapsed = False
+    , headerIsOpen = True
     , layoutData = layoutData
     , menuOpen = False
     , modal = NoModal
@@ -70,6 +86,10 @@ init deviceInfo viewportDimensions =
             ModeSettings.initialModeSettings
             PitchState.initialPitchState
     , pitchState = PitchState.initialPitchState
+    , remote =
+        { changelog = RemoteData.NotAsked
+        , aboutCopy = RemoteData.NotAsked
+        }
     }
 
 

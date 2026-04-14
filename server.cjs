@@ -39,6 +39,38 @@ if (fs.existsSync("CHANGELOG.md")) {
     });
 }
 
+// Import the about parser (using dynamic import for ES modules)
+let parseAbout;
+import("./scripts/parseAbout.mjs").then((module) => {
+    parseAbout = module.parseAbout;
+    // Generate initial about
+    generateAbout();
+});
+
+function generateAbout() {
+    if (parseAbout) {
+        try {
+            const aboutPath = "static-content/about.md";
+            const outputPath = "public/dist/about.json";
+
+            // Ensure directory exists
+            fs.mkdirSync(path.dirname(outputPath), { recursive: true });
+
+            parseAbout(aboutPath, outputPath);
+        } catch (error) {
+            console.error("Error generating about:", error);
+        }
+    }
+}
+
+// Watch for changes to about.md in development
+if (fs.existsSync("static-content/about.md")) {
+    fs.watchFile("static-content/about.md", (curr, prev) => {
+        console.log("about.md changed, regenerating...");
+        generateAbout();
+    });
+}
+
 // Serve static files from the 'public' directory
 app.use(express.static("public"));
 
@@ -55,6 +87,23 @@ app.get("/dist/changelog.json", (req, res) => {
             res.sendFile(path.resolve(changelogPath));
         } else {
             res.status(500).json({ error: "Could not generate changelog" });
+        }
+    }
+});
+
+// API endpoint for about (fallback if file doesn't exist)
+app.get("/dist/about.json", (req, res) => {
+    const aboutPath = "public/dist/about.json";
+
+    if (fs.existsSync(aboutPath)) {
+        res.sendFile(path.resolve(aboutPath));
+    } else {
+        // Generate on-demand if file doesn't exist
+        generateAbout();
+        if (fs.existsSync(aboutPath)) {
+            res.sendFile(path.resolve(aboutPath));
+        } else {
+            res.status(500).json({ error: "Could not generate about" });
         }
     }
 });

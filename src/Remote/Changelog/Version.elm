@@ -1,4 +1,4 @@
-module Model.Changelog.Version exposing (Version, compareVersion, decoder)
+module Remote.Changelog.Version exposing (Version, compareVersion, decoder)
 
 import Json.Decode as Decode exposing (Decoder)
 

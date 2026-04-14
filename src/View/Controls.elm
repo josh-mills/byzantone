@@ -6,6 +6,8 @@ import Byzantine.IntervalCharacter as Character
 import Byzantine.Pitch as Pitch exposing (Pitch)
 import Byzantine.Register as Register exposing (Register)
 import Byzantine.Scale as Scale exposing (Scale)
+import Components.Collapsible as Collapsible
+import Components.RadioFieldset as RadioFieldset
 import Html exposing (Html, button, div, span, text)
 import Html.Attributes as Attr exposing (class, classList, id)
 import Html.Events exposing (onClick, onInput)
@@ -17,7 +19,6 @@ import Model.AudioSettings as AudioSettings exposing (AudioSettings, ListenRegis
 import Model.ControlsMenu as ControlsMenu exposing (MenuOption(..), OpenControlMenus)
 import Model.ModeSettings exposing (ModeSettings)
 import Model.PitchState as PitchState exposing (IsonStatus, PitchState)
-import RadioFieldset
 import Styles
 import Svg
 import Svg.Attributes as Svg
@@ -30,7 +31,7 @@ viewOverlay : OpenControlMenus -> Html Msg
 viewOverlay openControlMenus =
     Html.Extra.viewIf (ControlsMenu.anyOpen openControlMenus)
         (div
-            [ class "fixed left-0 top-0 w-full h-full z-10 lg:hidden"
+            [ class "fixed left-0 top-0 w-full h-full z-10 bg-slate-400 opacity-40 lg:hidden"
             , onClick CloseControlMenus
             ]
             []
@@ -58,13 +59,12 @@ item audioSettings modeSettings pitchState openControlMenus menuOption =
         isOpen =
             ControlsMenu.isOpen openControlMenus menuOption
     in
-    Html.li
-        [ class "grid transition-[grid-template-rows] duration-300 ease-in-out"
-        , classList
-            [ ( "grid-rows-[auto_0fr]", not isOpen )
-            , ( "grid-rows-[auto_1fr]", isOpen )
-            ]
-        ]
+    (Collapsible.isOpen isOpen
+        |> Collapsible.withFirstChildTrigger
+        |> Collapsible.withTransition Collapsible.TransitionQuick
+        |> Collapsible.li
+    )
+        []
         [ lazy3 optionHeader audioSettings isOpen menuOption
         , optionContent audioSettings modeSettings pitchState isOpen menuOption
         ]
@@ -82,7 +82,6 @@ optionHeader audioSettings isOpen menuOption =
         , class "py-2 px-3"
         , class "bg-white lg:bg-gray-200 hover:bg-gray-300"
         , class "border-t lg:border border-gray-300 lg:rounded-md"
-        , Styles.transitionQuick
         , classList [ ( "lg:rounded-b-none", isOpen ) ]
         , onClick (Update.ToggleControlMenu menuOption)
         ]

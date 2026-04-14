@@ -8,9 +8,9 @@ import Html.Extra
 import Http
 import Markdown
 import Model exposing (Modal(..))
-import Model.Changelog exposing (Changelog)
-import Model.Changelog.Entry exposing (Entry)
-import Model.Changelog.Version exposing (Version)
+import Remote.Changelog exposing (Changelog)
+import Remote.Changelog.Entry exposing (Entry)
+import Remote.Changelog.Version exposing (Version)
 import RemoteData exposing (RemoteData)
 import Styles
 import Update exposing (Msg(..))

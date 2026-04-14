@@ -7,28 +7,27 @@ import Byzantine.Martyria as Martyria
 import Byzantine.Mode as Mode exposing (Mode)
 import Byzantine.Pitch as Pitch exposing (Pitch)
 import Byzantine.Scale exposing (Scale(..))
-import Copy
+import Components.Collapsible as Collapsible
+import Components.RadioFieldset as RadioFieldset
 import Html exposing (Html, button, datalist, div, h1, h2, main_, p, span, text)
 import Html.Attributes as Attr exposing (class, classList, id, type_)
 import Html.Attributes.Extra as Attr
 import Html.Events exposing (onClick, onInput)
 import Html.Extra exposing (viewIf)
 import Html.Lazy exposing (lazy, lazy2, lazy3, lazy4, lazy5)
-import Http
 import Icons
 import Json.Decode exposing (Decoder)
 import Maybe.Extra as Maybe
-import Model exposing (Modal(..), Model)
+import Model exposing (Modal(..), Model, Remote)
 import Model.AudioSettings as AudioSettings exposing (AudioSettings)
-import Model.Changelog exposing (Changelog)
+import Model.CalendarInfo exposing (CalendarInfo)
 import Model.LayoutData as LayoutData exposing (Layout(..), LayoutData, LayoutSelection(..), layoutFor)
 import Model.ModeSettings exposing (ModeSettings)
 import Model.PitchState as PitchState
-import RadioFieldset
-import RemoteData exposing (RemoteData)
 import Styles
 import Svg.Attributes
 import Update exposing (Msg(..))
+import View.About
 import View.Changelog
 import View.Controls
 import View.ModeData
@@ -51,8 +50,8 @@ view model =
                     (PitchState.ison model.pitchState.ison)
             )
         , lazy2 backdrop model.menuOpen model.modal
-        , lazy header model.headerCollapsed
-        , lazy5 viewModal model.audioSettings model.layoutData model.modeSettings model.changelog model.modal
+        , lazy2 header model.calendar model.headerIsOpen
+        , lazy5 viewModal model.audioSettings model.layoutData model.modeSettings model.remote model.modal
 
         -- , viewIf LayoutData.showSpacing (div [ class "text-center" ] [ text "|" ])
         , viewIf model.menuOpen menu
@@ -131,35 +130,30 @@ chantEngineNode audioSettings scale currentPitch currentIson =
 Caret points down when expanded, rotates 180° when collapsed.
 
 -}
-header : Bool -> Html Msg
-header headerCollapsed =
+header : CalendarInfo -> Bool -> Html Msg
+header calendarInfo headerIsOpen =
     Html.header
         [ Styles.flexRowCentered
         , Styles.transition
         , class "px-2 md:px-4"
         , classList
-            [ ( "py-1", headerCollapsed )
-            , ( "py-4", not headerCollapsed )
+            [ ( "py-1", not headerIsOpen )
+            , ( "py-4", headerIsOpen )
             ]
         ]
         [ div [ class "w-7" ]
             [ button
                 [ class "w-full lg:hidden"
                 , Styles.transition
-                , classList [ ( "-rotate-90", headerCollapsed ) ]
+                , classList [ ( "-rotate-90", not headerIsOpen ) ]
                 , onClick ToggleHeaderCollapsed
                 ]
                 [ Icons.caretDown [ Svg.Attributes.class "w-6 h-6" ]
                 ]
             ]
-        , div
-            [ class "grid ease-in-out flex-1 mx-4"
-            , Styles.transition
-            , classList
-                [ ( "grid-rows-[0fr]", headerCollapsed )
-                , ( "grid-rows-[1fr]", not headerCollapsed )
-                ]
-            ]
+        , Collapsible.div
+            (Collapsible.isOpen headerIsOpen)
+            [ class "flex-1 mx-4" ]
             [ div
                 [ class "overflow-hidden"
                 , Styles.flexCol
@@ -169,6 +163,13 @@ header headerCollapsed =
                     [ text "ByzanTone" ]
                 , p [ class "font-serif text-center" ]
                     [ text "A tool for learning the pitches and intervals of Byzantine chant." ]
+                , viewIf calendarInfo.isEastertide
+                    (p [ class "font-serif text-center" ]
+                        [ span [ class "font-greek" ] [ text "Χριστὸς ἀνέστη" ]
+                        , text " – "
+                        , text "Christ is risen!"
+                        ]
+                    )
 
                 -- , viewIf model.layoutData.showSpacing (p [ class "text-center" ] [ text "|" ])
                 ]
@@ -210,8 +211,8 @@ menu =
         ]
 
 
-viewModal : AudioSettings -> LayoutData -> ModeSettings -> RemoteData Http.Error Changelog -> Modal -> Html Msg
-viewModal audioSettings layoutData modeSettings changelog modal =
+viewModal : AudioSettings -> LayoutData -> ModeSettings -> Remote -> Modal -> Html Msg
+viewModal audioSettings layoutData modeSettings remote modal =
     case modal of
         NoModal ->
             Html.Extra.nothing
@@ -243,18 +244,18 @@ viewModal audioSettings layoutData modeSettings changelog modal =
                         ]
                         [ Icons.xmark [ Svg.Attributes.fill "currentColor", Svg.Attributes.class "w-6 h-6" ] ]
                     ]
-                , modalContent audioSettings layoutData modeSettings changelog modal
+                , modalContent audioSettings layoutData modeSettings remote modal
                 ]
 
 
-modalContent : AudioSettings -> LayoutData -> ModeSettings -> RemoteData Http.Error Changelog -> Modal -> Html Msg
-modalContent audioSettings layoutData modeSettings changelog modal =
+modalContent : AudioSettings -> LayoutData -> ModeSettings -> Remote -> Modal -> Html Msg
+modalContent audioSettings layoutData modeSettings { changelog, aboutCopy } modal =
     case modal of
         NoModal ->
             Html.Extra.nothing
 
         AboutModal ->
-            Copy.about
+            lazy View.About.view aboutCopy
 
         ModeModal maybeMode ->
             lazy viewModeModal maybeMode
