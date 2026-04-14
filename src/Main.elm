@@ -85,14 +85,14 @@ flagsDecoder =
 dateDecoder : Decoder (Maybe Date)
 dateDecoder =
     Decode.string
-        |> Decode.andThen
+        |> Decode.map
             (\str ->
                 case Date.fromIsoString (String.left 10 str) of
                     Ok date ->
-                        Decode.succeed (Just date)
+                        Just date
 
                     Err _ ->
-                        Decode.succeed Nothing
+                        Nothing
             )
 
 
