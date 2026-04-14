@@ -24,8 +24,10 @@ module Model exposing
 -}
 
 import Byzantine.DetectedPitch exposing (DetectedPitch)
+import Date exposing (Date)
 import Http
 import Model.AudioSettings as AudioSettings exposing (AudioSettings)
+import Model.CalendarInfo as CalendarInfo exposing (CalendarInfo)
 import Model.ControlsMenu as ControlsMenu exposing (OpenControlMenus)
 import Model.DeviceInfo exposing (DeviceInfo)
 import Model.LayoutData as LayoutData exposing (LayoutData)
@@ -40,7 +42,7 @@ import Time
 
 type alias Model =
     { audioSettings : AudioSettings
-    , remote : Remote
+    , calendar : CalendarInfo
     , detectedPitch : Maybe { detectedPitch : DetectedPitch, timestamp : Time.Posix }
     , deviceInfo : DeviceInfo
     , headerIsOpen : Bool
@@ -51,6 +53,7 @@ type alias Model =
     , openControlMenus : OpenControlMenus
     , pitchSpaceData : PitchSpaceData
     , pitchState : PitchState
+    , remote : Remote
     }
 
 
@@ -60,17 +63,14 @@ type alias Remote =
     }
 
 
-init : DeviceInfo -> { width : Float, height : Float } -> Model
-init deviceInfo viewportDimensions =
+init : DeviceInfo -> { width : Float, height : Float } -> Maybe Date -> Model
+init deviceInfo viewportDimensions currentDate =
     let
         layoutData =
             LayoutData.init viewportDimensions
     in
     { audioSettings = AudioSettings.defaultAudioSettings
-    , remote =
-        { changelog = RemoteData.NotAsked
-        , aboutCopy = RemoteData.NotAsked
-        }
+    , calendar = CalendarInfo.init currentDate
     , detectedPitch = Nothing
     , deviceInfo = deviceInfo
     , headerIsOpen = True
@@ -85,6 +85,10 @@ init deviceInfo viewportDimensions =
             ModeSettings.initialModeSettings
             PitchState.initialPitchState
     , pitchState = PitchState.initialPitchState
+    , remote =
+        { changelog = RemoteData.NotAsked
+        , aboutCopy = RemoteData.NotAsked
+        }
     }
 
 
