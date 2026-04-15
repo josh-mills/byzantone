@@ -1,5 +1,9 @@
 # Changelog
 
+## v.1.4.3 (2026-04-13)
+### Added
+ - Χριστὸς ἀνέστη!
+
 ## v.1.4.2 (2026-03-28)
 ### Changed
  - Minor refactor for collapsible items

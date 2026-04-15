@@ -19,6 +19,7 @@ import Json.Decode exposing (Decoder)
 import Maybe.Extra as Maybe
 import Model exposing (Modal(..), Model, Remote)
 import Model.AudioSettings as AudioSettings exposing (AudioSettings)
+import Model.CalendarInfo exposing (CalendarInfo)
 import Model.LayoutData as LayoutData exposing (Layout(..), LayoutData, LayoutSelection(..), layoutFor)
 import Model.ModeSettings exposing (ModeSettings)
 import Model.PitchState as PitchState
@@ -47,7 +48,7 @@ view model =
                     (PitchState.ison model.pitchState.ison)
             )
         , lazy2 backdrop model.menuOpen model.modal
-        , lazy header model.headerIsOpen
+        , lazy2 header model.calendar model.headerIsOpen
         , lazy5 viewModal model.audioSettings model.layoutData model.modeSettings model.remote model.modal
 
         -- , viewIf LayoutData.showSpacing (div [ class "text-center" ] [ text "|" ])
@@ -127,8 +128,8 @@ chantEngineNode audioSettings scale currentPitch currentIson =
 Caret points down when expanded, rotates 180° when collapsed.
 
 -}
-header : Bool -> Html Msg
-header headerIsOpen =
+header : CalendarInfo -> Bool -> Html Msg
+header calendarInfo headerIsOpen =
     Html.header
         [ Styles.flexRowCentered
         , Styles.transition
@@ -160,6 +161,13 @@ header headerIsOpen =
                     [ text "ByzanTone" ]
                 , p [ class "font-serif text-center" ]
                     [ text "A tool for learning the pitches and intervals of Byzantine chant." ]
+                , viewIf calendarInfo.isEastertide
+                    (p [ class "font-serif text-center" ]
+                        [ span [ class "font-greek" ] [ text "Χριστὸς ἀνέστη" ]
+                        , text " – "
+                        , text "Christ is risen!"
+                        ]
+                    )
 
                 -- , viewIf model.layoutData.showSpacing (p [ class "text-center" ] [ text "|" ])
                 ]
