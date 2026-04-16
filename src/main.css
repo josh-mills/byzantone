@@ -25,18 +25,21 @@
 .pitch-button-accidental {
     position: absolute;
     left: 12px;
-    top: 16px;
-    font-size: 1.25rem; /* text-xl: matches button font size */
+    top: 12px;
+    font-size: 1rem;
     min-width: 1em;
     min-height: 1em;
     z-index: 30;
-    /* Anchor positioning (Chrome 125+, Safari 26+, Firefox 147+).
-       If anchor() is unsupported, the browser skips these declarations
-       and the fallback left/top values above remain in effect. */
     @media (min-width: 640px) {
         font-size: 1.875rem; /* sm:text-3xl: matches button font size */
     }
+    /* Anchor positioning (Chrome 125+, Safari 26+, Firefox 147+).
+       If anchor() is unsupported, the browser skips these declarations
+       and the fallback left/top values above remain in effect. */
     position-anchor: --pitch-button-anchor;
-    left: calc(anchor(left) + 12px);
-    top: calc(anchor(top) + 16px);
+    left: calc(anchor(left) + 10px);
+    @media (min-width: 640px) {
+        left: calc(anchor(left) + 14px);
+    }
+    top: calc(anchor(top) + 12px);
 }
