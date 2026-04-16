@@ -674,6 +674,7 @@ pitchButton pitchString isCurrentDegree display pitchPositions shouldHighlight p
         ]
         [ button
             [ attributeMaybe (\degree -> onClick (PitchButtonClicked degree)) decodedDegree
+            , attributeMaybe (\degree -> Attr.id ("p_" ++ Degree.toString degree)) decodedDegree
             , pitchButtonSizeClass
             , class "pitch-button rounded-full hover:z-20 cursor-pointer pb-8"
             , classList

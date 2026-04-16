@@ -30,6 +30,7 @@
     min-width: 1em;
     min-height: 1em;
     z-index: 30;
+    pointer-events: none;
     @media (min-width: 640px) {
         font-size: 1.875rem; /* sm:text-3xl: matches button font size */
     }
