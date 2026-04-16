@@ -1,5 +1,13 @@
 # Changelog
 
+## v.1.5.0 (2026-04-16)
+### Added
+ - Text description of the range setting (improved feedback for WebKit browsers)
+### Changed
+ - Tweaks to viewport recalculation following header toggle
+### Fixed
+ - Anchor positioning and minimum size for accidentals on pitch buttons fixes hiding of applied accidentals on Webkit browsers
+
 ## v.1.4.3 (2026-04-13)
 ### Added
  - Χριστὸς ἀνέστη!
