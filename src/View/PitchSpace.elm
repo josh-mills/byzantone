@@ -656,41 +656,63 @@ pitchButton pitchString isCurrentDegree display pitchPositions shouldHighlight p
                 pitchPositions
                 positionWithinRange
                 scalingFactor
+
+        decodedAccidental =
+            Maybe.andThen Pitch.unwrapAccidental decodedPitch
+
+        accidentalId =
+            Maybe.map (\degree -> Degree.toString degree ++ "-accidental") decodedDegree
     in
-    button
-        [ attributeMaybe (\degree -> onClick (PitchButtonClicked degree)) decodedDegree
-        , pitchButtonSizeClass
-        , class "rounded-full hover:z-20 cursor-pointer relative pb-8"
+    div
+        [ class "pitch-button-wrapper"
         , Styles.transition
         , if PitchSpaceData.isVertical display then
             Styles.top position
 
           else
             Styles.left position
-        , classList
-            [ ( "bg-red-200 z-10", isCurrentDegree )
-            , ( "hover:text-green-700 bg-slate-200 hover:bg-slate-300 opacity-75 hover:opacity-90", not isCurrentDegree )
-
-            -- , ( "text-green-700 bg-slate-300 z-10", Movement.unwrapTargetPitch pitchState.proposedMovement == decodedPitch )
-            , ( "border-2 border-blue-700", shouldHighlight )
-            , ( "border-2 border-transparent", not shouldHighlight )
-            ]
         ]
-        [ Html.Extra.viewMaybe
+        [ button
+            [ attributeMaybe (\degree -> onClick (PitchButtonClicked degree)) decodedDegree
+            , attributeMaybe (\degree -> Attr.id ("p_" ++ Degree.toString degree)) decodedDegree
+            , pitchButtonSizeClass
+            , class "pitch-button rounded-full hover:z-20 cursor-pointer pb-8"
+            , classList
+                [ ( "bg-red-200 z-10", isCurrentDegree )
+                , ( "hover:text-green-700 bg-slate-200 hover:bg-slate-300 opacity-75 hover:opacity-90", not isCurrentDegree )
+
+                -- , ( "text-green-700 bg-slate-300 z-10", Movement.unwrapTargetPitch pitchState.proposedMovement == decodedPitch )
+                , ( "border-2 border-blue-700", shouldHighlight )
+                , ( "border-2 border-transparent", not shouldHighlight )
+                ]
+            ]
+            [ Maybe.map2
+                (\scale pitch ->
+                    ByzHtmlMartyria.viewWithAttributes
+                        ([ Styles.left -3, Styles.top -3 ]
+                            ++ (Maybe.map2
+                                    (\_ id -> [ Attr.attribute "aria-owns" id ])
+                                    decodedAccidental
+                                    accidentalId
+                                    |> Maybe.withDefault []
+                               )
+                        )
+                        (Martyria.for scale (Pitch.unwrapDegree pitch))
+                )
+                decodedScale
+                decodedPitch
+                |> Maybe.withDefault Html.Extra.nothing
+            ]
+        , Html.Extra.viewMaybe
             (\accidental ->
-                span [ class "absolute mt-2 md:mt-4", Styles.left 12 ]
+                span
+                    [ class "pitch-button-accidental"
+                    , attributeMaybe Attr.id accidentalId
+                    , Attr.attribute "aria-label" (Accidental.toString accidental ++ " moria")
+                    ]
                     [ ByzHtmlAccidental.view ByzHtmlAccidental.Red accidental ]
             )
-            (Maybe.andThen Pitch.unwrapAccidental decodedPitch)
-        , Maybe.map2
-            (\scale pitch ->
-                ByzHtmlMartyria.viewWithAttributes
-                    [ Styles.left -3, Styles.top -3 ]
-                    (Martyria.for scale (Pitch.unwrapDegree pitch))
-            )
-            decodedScale
-            decodedPitch
-            |> Maybe.withDefault Html.Extra.nothing
+            decodedAccidental
         ]
 
 
