@@ -656,6 +656,12 @@ pitchButton pitchString isCurrentDegree display pitchPositions shouldHighlight p
                 pitchPositions
                 positionWithinRange
                 scalingFactor
+
+        decodedAccidental =
+            Maybe.andThen Pitch.unwrapAccidental decodedPitch
+
+        accidentalId =
+            Maybe.map (\degree -> Degree.toString degree ++ "-accidental") decodedDegree
     in
     div
         [ class "pitch-button-wrapper"
@@ -682,7 +688,14 @@ pitchButton pitchString isCurrentDegree display pitchPositions shouldHighlight p
             [ Maybe.map2
                 (\scale pitch ->
                     ByzHtmlMartyria.viewWithAttributes
-                        [ Styles.left -3, Styles.top -3 ]
+                        ([ Styles.left -3, Styles.top -3 ]
+                            ++ (Maybe.map2
+                                    (\_ id -> [ Attr.attribute "aria-owns" id ])
+                                    decodedAccidental
+                                    accidentalId
+                                    |> Maybe.withDefault []
+                               )
+                        )
                         (Martyria.for scale (Pitch.unwrapDegree pitch))
                 )
                 decodedScale
@@ -691,10 +704,14 @@ pitchButton pitchString isCurrentDegree display pitchPositions shouldHighlight p
             ]
         , Html.Extra.viewMaybe
             (\accidental ->
-                span [ class "pitch-button-accidental" ]
+                span
+                    [ class "pitch-button-accidental"
+                    , attributeMaybe Attr.id accidentalId
+                    , Attr.attribute "aria-label" (Accidental.toString accidental ++ " moria")
+                    ]
                     [ ByzHtmlAccidental.view ByzHtmlAccidental.Red accidental ]
             )
-            (Maybe.andThen Pitch.unwrapAccidental decodedPitch)
+            decodedAccidental
         ]
 
 
