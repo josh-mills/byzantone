@@ -27,6 +27,7 @@ import Byzantine.DetectedPitch exposing (DetectedPitch)
 import Byzantine.Mode exposing (Mode)
 import Date exposing (Date)
 import Http
+import ModeBuilder
 import Model.AudioSettings as AudioSettings exposing (AudioSettings)
 import Model.CalendarInfo as CalendarInfo exposing (CalendarInfo)
 import Model.ControlsMenu as ControlsMenu exposing (OpenControlMenus)
@@ -50,6 +51,7 @@ type alias Model =
     , layoutData : LayoutData
     , menuOpen : Bool
     , modal : Modal
+    , modeBuilder : ModeBuilder.Model
     , modeSettings : ModeSettings
     , openControlMenus : OpenControlMenus
     , pitchSpaceData : PitchSpaceData
@@ -78,6 +80,7 @@ init deviceInfo viewportDimensions currentDate =
     , layoutData = layoutData
     , menuOpen = False
     , modal = NoModal
+    , modeBuilder = ModeBuilder.init
     , modeSettings = ModeSettings.initialModeSettings
     , openControlMenus = ControlsMenu.init
     , pitchSpaceData =

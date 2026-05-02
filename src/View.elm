@@ -18,6 +18,7 @@ import Html.Lazy exposing (lazy, lazy2, lazy3, lazy4, lazy5)
 import Icons
 import Json.Decode exposing (Decoder)
 import Maybe.Extra as Maybe
+import ModeBuilder
 import Model exposing (Modal(..), Model, Remote)
 import Model.AudioSettings as AudioSettings exposing (AudioSettings)
 import Model.CalendarInfo exposing (CalendarInfo)
@@ -78,6 +79,7 @@ view model =
                 model.pitchState
                 model.openControlMenus
             , lazy View.Controls.viewOverlay model.openControlMenus
+            , Html.map ModeBuilderMsg (ModeBuilder.view model.modeBuilder)
             , lazy2 pitchTracker model.audioSettings model.layoutData
             ]
         ]

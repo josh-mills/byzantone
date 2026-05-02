@@ -1,6 +1,6 @@
 module Components.RadioFieldset exposing
     ( Config, baseConfig
-    , withCustomSelected, withCustomViewItem, withConditionalPostpend
+    , withCustomSelected, withCustomViewItem, withConditionalPostpend, withItemToString
     , view
     )
 
@@ -10,7 +10,7 @@ module Components.RadioFieldset exposing
 # Config Builder
 
 @docs Config, baseConfig
-@docs withCustomSelected, withCustomViewItem, withConditionalPostpend
+@docs withCustomSelected, withCustomViewItem, withConditionalPostpend, withItemToString
 
 
 # View
@@ -84,6 +84,15 @@ of the fieldset. The argument will be the selected option.
 withConditionalPostpend : (a -> Html msg) -> Config a msg -> Config a msg
 withConditionalPostpend bottomElement (Config config) =
     Config { config | maybeBottomElement = Just bottomElement }
+
+
+{-| Override the `itemToString` function used to derive element IDs and default
+label text. Useful when two fieldsets share the same option type and would
+otherwise produce identical `id` attributes.
+-}
+withItemToString : (a -> String) -> Config a msg -> Config a msg
+withItemToString fn (Config config) =
+    Config { config | itemToString = fn }
 
 
 
