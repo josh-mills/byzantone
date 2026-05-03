@@ -152,29 +152,24 @@ baseRadioConfig bases =
         }
         |> RadioFieldset.withCustomViewItem
             (Html.Extra.viewMaybe viewPitch)
-        |> RadioFieldset.withCustomSelected
-            (\option selected ->
-                case ( option, selected ) of
-                    ( Just o, Just s ) ->
-                        Pitch.unwrapDegree o
-                            == Pitch.unwrapDegree s
-                            && Pitch.unwrapAccidental o
-                            == Pitch.unwrapAccidental s
-
-                    _ ->
-                        False
-            )
 
 
 viewPitch : Pitch -> Html msg
 viewPitch pitch =
     case Pitch.unwrapAccidental pitch of
         Nothing ->
-            Degree.textOctave (Pitch.unwrapDegree pitch)
+            Degree.text (Pitch.unwrapDegree pitch)
+
+        Just Accidental.Flat4 ->
+            span []
+                [ Degree.text (Pitch.unwrapDegree pitch)
+                , text "-flat"
+                ]
 
         Just accidental ->
+            -- this should never happen
             span []
-                [ Degree.textOctave (Pitch.unwrapDegree pitch)
+                [ Degree.text (Pitch.unwrapDegree pitch)
                 , text (" " ++ Accidental.toString accidental)
                 ]
 
