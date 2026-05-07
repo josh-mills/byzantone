@@ -31,11 +31,12 @@ import Byzantine.Scale exposing (Scale(..))
 {-| The data modeling here is still mostly TBD.
 -}
 type Mode
-    = AuthenticOnePapadic
-    | AuthenticOneEirmologic
-    | AuthenticOneSticheraric
-    | PlagalOneSticheraric
-    | PlagalOnePapadic
+    = AuthenticOne_Ke_Papadic
+    | AuthenticOne_Pa_Eirmologic
+    | AuthenticOne_Pa_Sticheraric
+    | PlagalOne_Pa_Sticheraric
+    | PlagalOne_Pa_Papadic
+    | PlagalOne_Ke_Eirmologic
 
 
 {-| Display string.
@@ -43,20 +44,23 @@ type Mode
 toString : Mode -> String
 toString mode =
     case mode of
-        AuthenticOnePapadic ->
+        AuthenticOne_Ke_Papadic ->
             "Authentic Mode One, Papadic"
 
-        AuthenticOneEirmologic ->
+        AuthenticOne_Pa_Eirmologic ->
             "Lower Mode One, Eirmologic"
 
-        AuthenticOneSticheraric ->
+        AuthenticOne_Pa_Sticheraric ->
             "Lower Mode One, Sticheraric"
 
-        PlagalOneSticheraric ->
+        PlagalOne_Pa_Sticheraric ->
             "Plagal Mode One, Sticheraric"
 
-        PlagalOnePapadic ->
+        PlagalOne_Pa_Papadic ->
             "Plagal Mode One, Papadic"
+
+        PlagalOne_Ke_Eirmologic ->
+            "Plagal Mode One, Eirmologic"
 
 
 all : List Mode
@@ -66,21 +70,24 @@ all =
         next modes =
             case List.head modes of
                 Nothing ->
-                    AuthenticOnePapadic :: modes |> next
+                    AuthenticOne_Ke_Papadic :: modes |> next
 
-                Just AuthenticOnePapadic ->
-                    AuthenticOneEirmologic :: modes |> next
+                Just AuthenticOne_Ke_Papadic ->
+                    AuthenticOne_Pa_Eirmologic :: modes |> next
 
-                Just AuthenticOneEirmologic ->
-                    AuthenticOneSticheraric :: modes |> next
+                Just AuthenticOne_Pa_Eirmologic ->
+                    AuthenticOne_Pa_Sticheraric :: modes |> next
 
-                Just AuthenticOneSticheraric ->
-                    PlagalOneSticheraric :: modes |> next
+                Just AuthenticOne_Pa_Sticheraric ->
+                    PlagalOne_Pa_Sticheraric :: modes |> next
 
-                Just PlagalOneSticheraric ->
-                    PlagalOnePapadic :: modes |> next
+                Just PlagalOne_Pa_Sticheraric ->
+                    PlagalOne_Pa_Papadic :: modes |> next
 
-                Just PlagalOnePapadic ->
+                Just PlagalOne_Pa_Papadic ->
+                    PlagalOne_Ke_Eirmologic :: modes |> next
+
+                Just PlagalOne_Ke_Eirmologic ->
                     modes
     in
     next [] |> List.reverse
@@ -93,20 +100,23 @@ all =
 data : Mode -> ModeData
 data mode =
     case mode of
-        AuthenticOnePapadic ->
-            authenticOnePapadic
+        AuthenticOne_Ke_Papadic ->
+            authenticOne_Ke_Papadic
 
-        AuthenticOneEirmologic ->
-            authenticOneEirmologic
+        AuthenticOne_Pa_Eirmologic ->
+            authenticOne_Pa_Eirmologic
 
-        AuthenticOneSticheraric ->
-            authenticOneSticheraric
+        AuthenticOne_Pa_Sticheraric ->
+            authenticOne_Pa_Sticheraric
 
-        PlagalOneSticheraric ->
-            plagalOneSticheraric
+        PlagalOne_Pa_Sticheraric ->
+            plagalOne_Pa_Sticheraric
 
-        PlagalOnePapadic ->
-            plagalOnePapadic
+        PlagalOne_Pa_Papadic ->
+            plagalOne_Pa_Papadic
+
+        PlagalOne_Ke_Eirmologic ->
+            plagalOne_Ke_Eirmologic
 
 
 {-| other points to capture:
@@ -157,8 +167,8 @@ type alias Inflection =
 -- CATALOG
 
 
-authenticOnePapadic : ModeData
-authenticOnePapadic =
+authenticOne_Ke_Papadic : ModeData
+authenticOne_Ke_Papadic =
     { scale = Diatonic
     , dominantTones =
         { base = Ke
@@ -185,8 +195,8 @@ authenticOnePapadic =
     }
 
 
-authenticOneEirmologic : ModeData
-authenticOneEirmologic =
+authenticOne_Pa_Eirmologic : ModeData
+authenticOne_Pa_Eirmologic =
     { scale = Diatonic
     , dominantTones =
         { base = Pa
@@ -219,8 +229,8 @@ with dominant tones.
 Ke as non-cadential melodic focus
 
 -}
-authenticOneSticheraric : ModeData
-authenticOneSticheraric =
+authenticOne_Pa_Sticheraric : ModeData
+authenticOne_Pa_Sticheraric =
     { scale = Diatonic
     , dominantTones =
         { base = Pa
@@ -251,8 +261,8 @@ There are two variants: fast sticheraric will have final of Ke.
   - TODO: verify this is the right accidental for Zo
 
 -}
-plagalOneSticheraric : ModeData
-plagalOneSticheraric =
+plagalOne_Pa_Sticheraric : ModeData
+plagalOne_Pa_Sticheraric =
     { scale = Diatonic
     , dominantTones =
         { base = Pa
@@ -285,8 +295,8 @@ There are two variants: fast sticheraric will have final of Ke.
   - TODO: additional details for papadic
 
 -}
-plagalOnePapadic : ModeData
-plagalOnePapadic =
+plagalOne_Pa_Papadic : ModeData
+plagalOne_Pa_Papadic =
     { scale = Diatonic
     , dominantTones =
         { base = Pa
@@ -309,5 +319,33 @@ plagalOnePapadic =
         , { degree = Ga, accidentals = [ Sharp2, Sharp4, Sharp6 ] }
         , { degree = Di, accidentals = [ Flat4 ] }
         , { degree = Zo_, accidentals = [ Flat4 ] }
+        ]
+    }
+
+
+plagalOne_Ke_Eirmologic : ModeData
+plagalOne_Ke_Eirmologic =
+    { scale = Diatonic
+    , dominantTones =
+        { base = Ke
+        , cadencePoints =
+            { final = Ke
+            , complete = [ Ke ]
+            , medial = []
+            , incomplete = [ Ni_ ]
+            }
+        , nonCadentialFoci = []
+        }
+    , isonOptions = [ Ke ]
+    , range =
+        { start = Pa
+        , end = Pa_
+        }
+    , recitingTone = Ke
+    , possibleInflections =
+        [ { degree = Zo_, accidentals = [ Sharp2 ] }
+        , { degree = Pa_, accidentals = [ Flat2, Flat4 ] }
+        , { degree = Ni_, accidentals = [ Sharp2, Sharp4 ] }
+        , { degree = Ga_, accidentals = [ Flat4 ] }
         ]
     }
