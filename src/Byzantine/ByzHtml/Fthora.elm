@@ -1,17 +1,6 @@
 module Byzantine.ByzHtml.Fthora exposing
-    ( diatonicNiLowAbove, diatonicNiLowSecondary, diatonicNiLowTertiary, diatonicNiLowBelow
-    , diatonicPaAbove, diatonicPaSecondary, diatonicPaTertiary, diatonicPaBelow
-    , diatonicVouAbove, diatonicVouSecondary, diatonicVouTertiary, diatonicVouBelow
-    , diatonicGaAbove, diatonicGaSecondary, diatonicGaTertiary, diatonicGaBelow
-    , diatonicDiAbove, diatonicDiSecondary, diatonicDiTertiary, diatonicDiBelow
-    , diatonicKeAbove, diatonicKeSecondary, diatonicKeTertiary, diatonicKeBelow
-    , diatonicZoAbove, diatonicZoSecondary, diatonicZoTertiary, diatonicZoBelow
-    , diatonicNiHighAbove, diatonicNiHighSecondary, diatonicNiHighTertiary, diatonicNiHighBelow
-    , hardChromaticPaAbove, hardChromaticPaSecondary, hardChromaticPaTertiary, hardChromaticPaBelow
-    , hardChromaticDiAbove, hardChromaticDiSecondary, hardChromaticDiTertiary, hardChromaticDiBelow
-    , softChromaticDiAbove, softChromaticDiSecondary, softChromaticDiTertiary, softChromaticDiBelow
-    , softChromaticKeAbove, softChromaticKeSecondary, softChromaticKeTertiary, softChromaticKeBelow
-    , enharmonicAbove, enharmonicSecondary, enharmonicTertiary, enharmonicBelow
+    ( Variant(..)
+    , view
     , agemAbove, agemSecondary, agemTertiary, agemBelow
     , zygosAbove, zygosSecondary, zygosTertiary, zygosBelow
     , klitonAbove, klitonSecondary, klitonTertiary, klitonBelow
@@ -21,69 +10,14 @@ module Byzantine.ByzHtml.Fthora exposing
 {-|
 
 
-## Diatonic Ni Low
+## Variant
 
-@docs diatonicNiLowAbove, diatonicNiLowSecondary, diatonicNiLowTertiary, diatonicNiLowBelow
-
-
-## Diatonic Pa
-
-@docs diatonicPaAbove, diatonicPaSecondary, diatonicPaTertiary, diatonicPaBelow
+@docs Variant
 
 
-## Diatonic Vou
+## View
 
-@docs diatonicVouAbove, diatonicVouSecondary, diatonicVouTertiary, diatonicVouBelow
-
-
-## Diatonic Ga
-
-@docs diatonicGaAbove, diatonicGaSecondary, diatonicGaTertiary, diatonicGaBelow
-
-
-## Diatonic Di
-
-@docs diatonicDiAbove, diatonicDiSecondary, diatonicDiTertiary, diatonicDiBelow
-
-
-## Diatonic Ke
-
-@docs diatonicKeAbove, diatonicKeSecondary, diatonicKeTertiary, diatonicKeBelow
-
-
-## Diatonic Zo
-
-@docs diatonicZoAbove, diatonicZoSecondary, diatonicZoTertiary, diatonicZoBelow
-
-
-## Diatonic Ni High
-
-@docs diatonicNiHighAbove, diatonicNiHighSecondary, diatonicNiHighTertiary, diatonicNiHighBelow
-
-
-## Hard Chromatic Pa
-
-@docs hardChromaticPaAbove, hardChromaticPaSecondary, hardChromaticPaTertiary, hardChromaticPaBelow
-
-
-## Hard Chromatic Di
-
-@docs hardChromaticDiAbove, hardChromaticDiSecondary, hardChromaticDiTertiary, hardChromaticDiBelow
-
-
-## Soft Chromatic Di
-
-@docs softChromaticDiAbove, softChromaticDiSecondary, softChromaticDiTertiary, softChromaticDiBelow
-
-
-## Soft Chromatic Ke
-
-@docs softChromaticKeAbove, softChromaticKeSecondary, softChromaticKeTertiary, softChromaticKeBelow
-
-
-## Enharmonic
-
-@docs enharmonicAbove, enharmonicSecondary, enharmonicTertiary, enharmonicBelow
+@docs view
 
 
 ## Agem
@@ -107,7 +41,125 @@ module Byzantine.ByzHtml.Fthora exposing
 
 -}
 
+import Byzantine.Fthora exposing (DiatonicDegree(..), EnharmonicDegree(..), Fthora(..), HardChromaticDegree(..), SoftChromaticDegree(..))
 import Html exposing (Html)
+
+
+type Variant
+    = Above
+    | Secondary
+    | Tertiary
+    | Below
+
+
+view : Variant -> Fthora -> Html msg
+view variant fthora =
+    let
+        { above, secondary, tertiary, below } =
+            case fthora of
+                Diatonic D_Ni ->
+                    { above = diatonicNiLowAbove
+                    , secondary = diatonicNiLowSecondary
+                    , tertiary = diatonicNiLowTertiary
+                    , below = diatonicNiLowBelow
+                    }
+
+                Diatonic D_Pa ->
+                    { above = diatonicPaAbove
+                    , secondary = diatonicPaSecondary
+                    , tertiary = diatonicPaTertiary
+                    , below = diatonicPaBelow
+                    }
+
+                Diatonic D_Bou ->
+                    { above = diatonicVouAbove
+                    , secondary = diatonicVouSecondary
+                    , tertiary = diatonicVouTertiary
+                    , below = diatonicVouBelow
+                    }
+
+                Diatonic D_Ga ->
+                    { above = diatonicGaAbove
+                    , secondary = diatonicGaSecondary
+                    , tertiary = diatonicGaTertiary
+                    , below = diatonicGaBelow
+                    }
+
+                Diatonic D_Di ->
+                    { above = diatonicDiAbove
+                    , secondary = diatonicDiSecondary
+                    , tertiary = diatonicDiTertiary
+                    , below = diatonicDiBelow
+                    }
+
+                Diatonic D_Ke ->
+                    { above = diatonicKeAbove
+                    , secondary = diatonicKeSecondary
+                    , tertiary = diatonicKeTertiary
+                    , below = diatonicKeBelow
+                    }
+
+                Diatonic D_Zo_ ->
+                    { above = diatonicZoAbove
+                    , secondary = diatonicZoSecondary
+                    , tertiary = diatonicZoTertiary
+                    , below = diatonicZoBelow
+                    }
+
+                Diatonic D_Ni_ ->
+                    { above = diatonicNiHighAbove
+                    , secondary = diatonicNiHighSecondary
+                    , tertiary = diatonicNiHighTertiary
+                    , below = diatonicNiHighBelow
+                    }
+
+                Enharmonic E_Zo_ ->
+                    { above = enharmonicAbove
+                    , secondary = enharmonicSecondary
+                    , tertiary = enharmonicTertiary
+                    , below = enharmonicBelow
+                    }
+
+                SoftChromatic SC_Di ->
+                    { above = softChromaticDiAbove
+                    , secondary = softChromaticDiSecondary
+                    , tertiary = softChromaticDiTertiary
+                    , below = softChromaticDiBelow
+                    }
+
+                SoftChromatic SC_Ke ->
+                    { above = softChromaticKeAbove
+                    , secondary = softChromaticKeSecondary
+                    , tertiary = softChromaticKeTertiary
+                    , below = softChromaticKeBelow
+                    }
+
+                HardChromatic HC_Pa ->
+                    { above = hardChromaticPaAbove
+                    , secondary = hardChromaticPaSecondary
+                    , tertiary = hardChromaticPaTertiary
+                    , below = hardChromaticPaBelow
+                    }
+
+                HardChromatic HC_Di ->
+                    { above = hardChromaticDiAbove
+                    , secondary = hardChromaticDiSecondary
+                    , tertiary = hardChromaticDiTertiary
+                    , below = hardChromaticDiBelow
+                    }
+    in
+    case variant of
+        Above ->
+            above
+
+        Secondary ->
+            secondary
+
+        Tertiary ->
+            tertiary
+
+        Below ->
+            below
 
 
 
