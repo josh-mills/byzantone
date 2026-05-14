@@ -79,91 +79,91 @@ type alias Variants =
 variants : Fthora -> Variants
 variants fthora =
     case fthora of
-        Diatonic D_Ni ->
+        DiatonicFthora D_Ni ->
             { above = diatonicNiLowAbove
             , secondary = diatonicNiLowSecondary
             , tertiary = diatonicNiLowTertiary
             , below = diatonicNiLowBelow
             }
 
-        Diatonic D_Pa ->
+        DiatonicFthora D_Pa ->
             { above = diatonicPaAbove
             , secondary = diatonicPaSecondary
             , tertiary = diatonicPaTertiary
             , below = diatonicPaBelow
             }
 
-        Diatonic D_Bou ->
+        DiatonicFthora D_Bou ->
             { above = diatonicVouAbove
             , secondary = diatonicVouSecondary
             , tertiary = diatonicVouTertiary
             , below = diatonicVouBelow
             }
 
-        Diatonic D_Ga ->
+        DiatonicFthora D_Ga ->
             { above = diatonicGaAbove
             , secondary = diatonicGaSecondary
             , tertiary = diatonicGaTertiary
             , below = diatonicGaBelow
             }
 
-        Diatonic D_Di ->
+        DiatonicFthora D_Di ->
             { above = diatonicDiAbove
             , secondary = diatonicDiSecondary
             , tertiary = diatonicDiTertiary
             , below = diatonicDiBelow
             }
 
-        Diatonic D_Ke ->
+        DiatonicFthora D_Ke ->
             { above = diatonicKeAbove
             , secondary = diatonicKeSecondary
             , tertiary = diatonicKeTertiary
             , below = diatonicKeBelow
             }
 
-        Diatonic D_Zo_ ->
+        DiatonicFthora D_Zo_ ->
             { above = diatonicZoAbove
             , secondary = diatonicZoSecondary
             , tertiary = diatonicZoTertiary
             , below = diatonicZoBelow
             }
 
-        Diatonic D_Ni_ ->
+        DiatonicFthora D_Ni_ ->
             { above = diatonicNiHighAbove
             , secondary = diatonicNiHighSecondary
             , tertiary = diatonicNiHighTertiary
             , below = diatonicNiHighBelow
             }
 
-        Enharmonic E_Zo_ ->
+        EnharmonicFthora E_Zo_ ->
             { above = enharmonicAbove
             , secondary = enharmonicSecondary
             , tertiary = enharmonicTertiary
             , below = enharmonicBelow
             }
 
-        SoftChromatic SC_Di ->
+        SoftChromaticFthora SC_Di ->
             { above = softChromaticDiAbove
             , secondary = softChromaticDiSecondary
             , tertiary = softChromaticDiTertiary
             , below = softChromaticDiBelow
             }
 
-        SoftChromatic SC_Ke ->
+        SoftChromaticFthora SC_Ke ->
             { above = softChromaticKeAbove
             , secondary = softChromaticKeSecondary
             , tertiary = softChromaticKeTertiary
             , below = softChromaticKeBelow
             }
 
-        HardChromatic HC_Pa ->
+        HardChromaticFthora HC_Pa ->
             { above = hardChromaticPaAbove
             , secondary = hardChromaticPaSecondary
             , tertiary = hardChromaticPaTertiary
             , below = hardChromaticPaBelow
             }
 
-        HardChromatic HC_Di ->
+        HardChromaticFthora HC_Di ->
             { above = hardChromaticDiAbove
             , secondary = hardChromaticDiSecondary
             , tertiary = hardChromaticDiTertiary
