@@ -1,12 +1,19 @@
 module Byzantine.ByzHtml.ModalSignature exposing
-    ( modeFirst, modeSecond, modeThird, modeThirdNana, modeFourth, modeLegetos, modePlagalFirst, modePlagalSecond, modeVarys, modeVarys2, modePlagalFourth, modeWordVarys
+    ( modePlagal, modeWordEchos
+    , modeFirst, modeSecond, modeThird, modeThirdNana, modeFourth, modeLegetos, modePlagalFirst, modePlagalSecond, modeVarys, modeVarys2, modePlagalFourth, modeWordVarys
     , modeNi, modePa, modeVou, modeGa, modeDi, modeKe, modeZo
     , modeOligonKentimaAbove, modeOligonYpsili, modeElafron, modeRunningElafron
-    , modePlagal, modeWordEchos
     , modeAlpha, modeBeta, modeGamma, modeDelta, modeAlphaCapital, modeBetaCapital, modeGammaCapital, modeDeltaCapital
     )
 
-{-|
+{-| WIP. The component elements are here, but the underlying type modeling needs
+to be built out so we can implement a general `view` function.
+
+
+
+## Division
+
+@docs modePlagal, modeWordEchos
 
 
 ## Classification
@@ -22,11 +29,6 @@ module Byzantine.ByzHtml.ModalSignature exposing
 ## Neumes
 
 @docs modeOligonKentimaAbove, modeOligonYpsili, modeElafron, modeRunningElafron
-
-
-## Division
-
-@docs modePlagal, modeWordEchos
 
 
 ## Ordinals

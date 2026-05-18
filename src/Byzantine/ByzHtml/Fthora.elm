@@ -68,7 +68,7 @@ view positionVariant fthora =
             (variants fthora).below
 
 
-type alias Variants =
+type alias Variants msg =
     { above : Html msg
     , secondary : Html msg
     , tertiary : Html msg
@@ -76,7 +76,7 @@ type alias Variants =
     }
 
 
-variants : Fthora -> Variants
+variants : Fthora -> Variants msg
 variants fthora =
     case fthora of
         DiatonicFthora D_Ni ->
