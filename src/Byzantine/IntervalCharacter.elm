@@ -108,6 +108,7 @@ type DescendingChar
     = Apostrophos
     | Iporroi
     | Elafron
+    | SynechesElafron
     | Khamili
 
 
