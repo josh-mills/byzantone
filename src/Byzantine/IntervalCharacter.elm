@@ -37,7 +37,7 @@ import Byzantine.Accidental exposing (Accidental)
 -}
 type IntervalCharacter
     = Ascending AscendingChar (Maybe Accidental)
-    | Descending DescendingSteps (Maybe Accidental)
+    | Descending DescendingChar (Maybe Accidental)
     | Ison
 
 
@@ -46,7 +46,7 @@ allIntervals =
     List.concat
         [ [ Ison ]
         , List.map (flip Ascending Nothing) allAscendingChars
-        , List.map (flip Descending Nothing) allDescendingSteps
+        , List.map (flip Descending Nothing) allDescendingChars
         ]
 
 
@@ -57,7 +57,7 @@ type AscendingChar
     = SomaStep SomaChar
     | Kentimata
     | Skip SkipType
-    | Leap SomaChar AscendingSteps
+    | Ypsili SomaChar AscendingSteps
 
 
 allAscendingChars : List AscendingChar
@@ -66,7 +66,7 @@ allAscendingChars =
         [ List.map SomaStep allSomata
         , [ Kentimata ]
         , List.map Skip allSkips
-        , List.concatMap (\soma -> List.map (Leap soma) allAscendingSteps) allSomata
+        , List.concatMap (\soma -> List.map (Ypsili soma) allAscendingSteps) allSomata
         ]
 
 
@@ -109,7 +109,19 @@ type DescendingChar
     | Iporroi
     | Elafron
     | SynechesElafron
-    | Khamili
+    | ElafronApostrophos
+    | Khamili DescendingSteps
+
+
+allDescendingChars : List DescendingChar
+allDescendingChars =
+    [ Apostrophos
+    , Iporroi
+    , Elafron
+    , SynechesElafron
+    , ElafronApostrophos
+    ]
+        ++ List.map Khamili allDescendingSteps
 
 
 type AscendingSteps
@@ -165,10 +177,7 @@ ascendingStepsString steps =
 
 
 type DescendingSteps
-    = DownOne
-    | DownTwo
-    | DownThree
-    | DownFour
+    = DownFour
     | DownFive
     | DownSix
     | DownSeven
@@ -181,21 +190,12 @@ type DescendingSteps
 
 allDescendingSteps : List DescendingSteps
 allDescendingSteps =
-    [ DownOne, DownTwo, DownThree, DownFour, DownFive, DownSix, DownSeven, DownEight, DownNine, DownTen, DownEleven, DownTwelve ]
+    [ DownFour, DownFive, DownSix, DownSeven, DownEight, DownNine, DownTen, DownEleven, DownTwelve ]
 
 
 descendingStepsString : DescendingSteps -> String
 descendingStepsString steps =
     case steps of
-        DownOne ->
-            "1"
-
-        DownTwo ->
-            "2"
-
-        DownThree ->
-            "3"
-
         DownFour ->
             "4"
 
@@ -240,72 +240,72 @@ basicInterval int =
             Just (Ascending (Skip OligonKentimaRight) Nothing)
 
         3 ->
-            Just (Ascending (Leap Oligon UpThree) Nothing)
+            Just (Ascending (Ypsili Oligon UpThree) Nothing)
 
         4 ->
-            Just (Ascending (Leap Oligon UpFour) Nothing)
+            Just (Ascending (Ypsili Oligon UpFour) Nothing)
 
         5 ->
-            Just (Ascending (Leap Oligon UpFive) Nothing)
+            Just (Ascending (Ypsili Oligon UpFive) Nothing)
 
         6 ->
-            Just (Ascending (Leap Oligon UpSix) Nothing)
+            Just (Ascending (Ypsili Oligon UpSix) Nothing)
 
         7 ->
-            Just (Ascending (Leap Oligon UpSeven) Nothing)
+            Just (Ascending (Ypsili Oligon UpSeven) Nothing)
 
         8 ->
-            Just (Ascending (Leap Oligon UpEight) Nothing)
+            Just (Ascending (Ypsili Oligon UpEight) Nothing)
 
         9 ->
-            Just (Ascending (Leap Oligon UpNine) Nothing)
+            Just (Ascending (Ypsili Oligon UpNine) Nothing)
 
         10 ->
-            Just (Ascending (Leap Oligon UpTen) Nothing)
+            Just (Ascending (Ypsili Oligon UpTen) Nothing)
 
         11 ->
-            Just (Ascending (Leap Oligon UpEleven) Nothing)
+            Just (Ascending (Ypsili Oligon UpEleven) Nothing)
 
         12 ->
-            Just (Ascending (Leap Oligon UpTwelve) Nothing)
+            Just (Ascending (Ypsili Oligon UpTwelve) Nothing)
 
         other ->
             case negate other of
                 1 ->
-                    Just (Descending DownOne Nothing)
+                    Just (Descending Apostrophos Nothing)
 
                 2 ->
-                    Just (Descending DownTwo Nothing)
+                    Just (Descending Elafron Nothing)
 
                 3 ->
-                    Just (Descending DownThree Nothing)
+                    Just (Descending ElafronApostrophos Nothing)
 
                 4 ->
-                    Just (Descending DownFour Nothing)
+                    Just (Descending (Khamili DownFour) Nothing)
 
                 5 ->
-                    Just (Descending DownFive Nothing)
+                    Just (Descending (Khamili DownFive) Nothing)
 
                 6 ->
-                    Just (Descending DownSix Nothing)
+                    Just (Descending (Khamili DownSix) Nothing)
 
                 7 ->
-                    Just (Descending DownSeven Nothing)
+                    Just (Descending (Khamili DownSeven) Nothing)
 
                 8 ->
-                    Just (Descending DownEight Nothing)
+                    Just (Descending (Khamili DownEight) Nothing)
 
                 9 ->
-                    Just (Descending DownNine Nothing)
+                    Just (Descending (Khamili DownNine) Nothing)
 
                 10 ->
-                    Just (Descending DownTen Nothing)
+                    Just (Descending (Khamili DownTen) Nothing)
 
                 11 ->
-                    Just (Descending DownEleven Nothing)
+                    Just (Descending (Khamili DownEleven) Nothing)
 
                 12 ->
-                    Just (Descending DownTwelve Nothing)
+                    Just (Descending (Khamili DownTwelve) Nothing)
 
                 _ ->
                     Nothing
