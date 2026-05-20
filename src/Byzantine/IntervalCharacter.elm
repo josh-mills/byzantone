@@ -1,6 +1,6 @@
 module Byzantine.IntervalCharacter exposing
     ( IntervalCharacter(..), allIntervals, basicInterval
-    , AscendingChar(..), SomaChar(..), SkipType(..), ascendingStepsString
+    , AscendingChar(..), SomaChar(..), SkipType(..), AscendingSteps(..), ascendingStepsString
     , DescendingChar(..), DescendingSteps(..), descendingStepsString
     , applyAccidental
     )
@@ -15,7 +15,7 @@ module Byzantine.IntervalCharacter exposing
 
 # Ascending Characters
 
-@docs AscendingChar, SomaChar, SkipType, ascendingStepsString
+@docs AscendingChar, SomaChar, SkipType, AscendingSteps, ascendingStepsString
 
 
 # Descending Characters
