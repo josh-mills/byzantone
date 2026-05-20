@@ -3,10 +3,13 @@ module ModeBuilder exposing (Model, Msg, init, update, view)
 {-| Experimental modeling for constructing a mode.
 -}
 
-import Byzantine.Accidental as Accidental exposing (Accidental(..))
-import Byzantine.Degree as Degree exposing (Degree(..))
+import Byzantine.Accidental as Accidental
+import Byzantine.ByzHtml.ModalSignature as ByzHtml
+import Byzantine.Degree as Degree
+import Byzantine.ModalSignature as ModalSignature
+import Byzantine.Mode.Classification as Classification exposing (Classification)
 import Byzantine.Pitch as Pitch exposing (Pitch)
-import Byzantine.Scale as Scale exposing (Scale(..))
+import Byzantine.Scale as Scale exposing (Scale)
 import Components.RadioFieldset as RadioFieldset
 import Html exposing (Html, div, span, text)
 import Html.Attributes exposing (class)
@@ -111,10 +114,12 @@ view model =
         , Html.Extra.viewMaybe
             (\classification ->
                 RadioFieldset.view
-                    (baseRadioConfig (basesForClassification classification))
+                    (baseRadioConfig (Classification.basesFor classification))
                     model.base
             )
             model.classification
+        , div [ Styles.flexCol, class "gap-2" ]
+            (List.map ByzHtml.view ModalSignature.all)
         ]
 
 
@@ -133,13 +138,13 @@ scaleRadioConfig =
 classificationRadioConfig : RadioFieldset.Config (Maybe Classification) Msg
 classificationRadioConfig =
     RadioFieldset.baseConfig
-        { itemToString = Maybe.Extra.unwrap "" toString >> (++) "mode-builder-"
+        { itemToString = Maybe.Extra.unwrap "" Classification.toString >> (++) "mode-builder-"
         , legendText = "Classification"
         , onSelect = SelectClassification
-        , options = List.map Just allClassifications
+        , options = List.map Just Classification.all
         }
         |> RadioFieldset.withCustomViewItem
-            (Html.Extra.viewMaybe text << Maybe.map toString)
+            (Html.Extra.viewMaybe text << Maybe.map Classification.toString)
 
 
 baseRadioConfig : List Pitch -> RadioFieldset.Config (Maybe Pitch) Msg
@@ -172,124 +177,3 @@ viewPitch pitch =
                 [ Degree.text (Pitch.unwrapDegree pitch)
                 , text (" " ++ Accidental.toString accidental)
                 ]
-
-
-
--- CLASSIFICATION
-
-
-{-| I think "Classification" (or maybe "OktoichosClassification") will work as a
-term, at least for internal conceptual modeling. How this is exposed towards
-users is a different question.
-
-I'm wondering if it would be better to have just a flat list of eight rather than
-a product type.
-
--}
-type Classification
-    = Classification Division Ordinal
-
-
-type Division
-    = Authentic
-    | Plagal
-
-
-type Ordinal
-    = ModeOne
-    | ModeTwo
-    | ModeThree
-    | ModeFour
-
-
-allClassifications : List Classification
-allClassifications =
-    [ Classification Authentic ModeOne
-    , Classification Authentic ModeTwo
-    , Classification Authentic ModeThree
-    , Classification Authentic ModeFour
-    , Classification Plagal ModeOne
-    , Classification Plagal ModeTwo
-    , Classification Plagal ModeThree
-    , Classification Plagal ModeFour
-    ]
-
-
-toString : Classification -> String
-toString (Classification division ordinal) =
-    case ( division, ordinal ) of
-        ( Authentic, ModeOne ) ->
-            "Authentic Mode One"
-
-        ( Authentic, ModeTwo ) ->
-            "Authentic Mode Two"
-
-        ( Authentic, ModeThree ) ->
-            "Authentic Mode Three"
-
-        ( Authentic, ModeFour ) ->
-            "Authentic Mode Four"
-
-        ( Plagal, ModeOne ) ->
-            "Plagal Mode One"
-
-        ( Plagal, ModeTwo ) ->
-            "Plagal Mode Two"
-
-        ( Plagal, ModeThree ) ->
-            "Grave Mode"
-
-        ( Plagal, ModeFour ) ->
-            "Plagal Mode Four"
-
-
-{-| A Mode can be generally built from a classification plus a base.
-
-A base is a pitch (which, in all but one case, will be natural, but
-there does exist a grave variant on Ζω-flat, which prevents a simple
-definition on degree).
-
-But, not all pitches are actual bases.
-
-Bases:
-
-  - Authentic 1: Κε, Πα
-  - Authentic 2: Δι, Πα -- Βου
-  - Authentic 3: Γα
-  - Authentic 4: Βου, Δι -- Πα, maybe?
-  - Plagal 1: Κε, Πα
-  - Plagal 2: Δι, Βου
-  - Plagal 3: Γα, Ζω, Ζω-flat4
-  - Plagal 4: Νη, Γα
-
--}
-basesForClassification : Classification -> List Pitch
-basesForClassification (Classification division ordinal) =
-    case ( division, ordinal ) of
-        ( Authentic, ModeOne ) ->
-            [ Pitch.natural Ke, Pitch.natural Pa ]
-
-        ( Authentic, ModeTwo ) ->
-            [ Pitch.natural Di, Pitch.natural Pa ]
-
-        ( Authentic, ModeThree ) ->
-            [ Pitch.natural Ga ]
-
-        ( Authentic, ModeFour ) ->
-            [ Pitch.natural Bou, Pitch.natural Di ]
-
-        ( Plagal, ModeOne ) ->
-            [ Pitch.natural Ke, Pitch.natural Pa ]
-
-        ( Plagal, ModeTwo ) ->
-            [ Pitch.natural Di, Pitch.natural Bou ]
-
-        ( Plagal, ModeThree ) ->
-            [ Pitch.natural Ga |> Just
-            , Pitch.natural Zo_ |> Just
-            , Pitch.inflected Enharmonic Flat4 Zo_ |> Result.toMaybe
-            ]
-                |> Maybe.Extra.values
-
-        ( Plagal, ModeFour ) ->
-            [ Pitch.natural Ni, Pitch.natural Ga ]
