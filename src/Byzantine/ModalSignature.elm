@@ -3,8 +3,14 @@ module Byzantine.ModalSignature exposing
     , Ichos(..), Indicator(..)
     , Elements, elements
     , all
-    , authenticOneKe
-    , authenticFourDi, medialFourBou_1
+    , authenticOneKe, authenticOnePa
+    , secondDi, secondPa, secondBou
+    , lowerThirdGa_1, lowerThirdGa_2, lowerThirdGa_3, lowerThirdGa_papadic
+    , authenticFourDi, medialFourBou_1, medialFourBou_2, paramedialFourPa, medialFourDi_softChromatic, medialFourBou_softChromatic
+    , plagalFirstPa, plagalFirstKe, plagalFirstPa_pentaphone, plagalFirstPa_phrygian, plagalFirstPa_minor
+    , plagalSecondPa, plagalSecondBou, plagalSecondDi_softChromatic, plagalSecondDi_hardChromatic
+    , graveGa, graveZo, graveZoFlat
+    , plagalFourthNi, plagalFourthGa_1, plagalFourthGa_2
     )
 
 {-| WIP.
@@ -34,30 +40,42 @@ cases.
 
 ## Authentic First
 
-@docs authenticOneKe
+@docs authenticOneKe, authenticOnePa
 
 
 ## Authentic Second
 
+@docs secondDi, secondPa, secondBou
+
 
 ## Authentic Third
+
+@docs lowerThirdGa_1, lowerThirdGa_2, lowerThirdGa_3, lowerThirdGa_papadic
 
 
 ## Authentic Fourth
 
-@docs authenticFourDi, medialFourBou_1
+@docs authenticFourDi, medialFourBou_1, medialFourBou_2, paramedialFourPa, medialFourDi_softChromatic, medialFourBou_softChromatic
 
 
 ## Plagal First
 
+@docs plagalFirstPa, plagalFirstKe, plagalFirstPa_pentaphone, plagalFirstPa_phrygian, plagalFirstPa_minor
+
 
 ## Plagal Second
+
+@docs plagalSecondPa, plagalSecondBou, plagalSecondDi_softChromatic, plagalSecondDi_hardChromatic
 
 
 ## Plagal Third
 
+@docs graveGa, graveZo, graveZoFlat
+
 
 ## Plagal Fourth
+
+@docs plagalFourthNi, plagalFourthGa_1, plagalFourthGa_2
 
 -}
 
@@ -66,12 +84,9 @@ import Byzantine.Fthora as Fthora exposing (Fthora)
 import Byzantine.IntervalCharacter as IntervalCharacter
     exposing
         ( AscendingChar(..)
-        , AscendingSteps(..)
         , DescendingChar(..)
         , IntervalCharacter(..)
         , SkipType(..)
-        , SomaChar(..)
-        , basicInterval
         )
 import Byzantine.Scale exposing (Scale(..))
 
