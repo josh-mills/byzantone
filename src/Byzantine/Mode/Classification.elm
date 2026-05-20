@@ -1,5 +1,5 @@
 module Byzantine.Mode.Classification exposing
-    ( Classification, Division(..), Ordinal(..)
+    ( Classification(..), Division(..), Ordinal(..)
     , all, toString, basesFor
     )
 

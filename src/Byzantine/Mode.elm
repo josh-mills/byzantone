@@ -25,10 +25,14 @@ module Byzantine.Mode exposing
 
 import Byzantine.Accidental exposing (Accidental(..))
 import Byzantine.Degree exposing (Degree(..))
+import Byzantine.Mode.Classification exposing (Classification(..), Division(..), Ordinal(..))
 import Byzantine.Scale exposing (Scale(..))
 
 
 {-| The data modeling here is still mostly TBD.
+
+We'll need to pick up Hard-Diatonic Aneanes modes (categorized as plagal first)
+
 -}
 type Mode
     = AuthenticOne_Ke_Papadic
@@ -122,12 +126,13 @@ data mode =
 {-| other points to capture:
 
   - ison (may also want to include "unison")
-  - modal signature
+  - modal signature (may be more than one)
   - apichima
 
 -}
 type alias ModeData =
-    { scale : Scale
+    { classification : Classification
+    , scale : Scale
     , dominantTones : DominantTones
     , isonOptions : List Degree
     , range :
@@ -169,7 +174,8 @@ type alias Inflection =
 
 authenticOne_Ke_Papadic : ModeData
 authenticOne_Ke_Papadic =
-    { scale = Diatonic
+    { classification = Classification Authentic ModeOne
+    , scale = Diatonic
     , dominantTones =
         { base = Ke
         , cadencePoints =
@@ -197,7 +203,8 @@ authenticOne_Ke_Papadic =
 
 authenticOne_Pa_Eirmologic : ModeData
 authenticOne_Pa_Eirmologic =
-    { scale = Diatonic
+    { classification = Classification Authentic ModeOne
+    , scale = Diatonic
     , dominantTones =
         { base = Pa
         , cadencePoints =
@@ -231,7 +238,8 @@ Ke as non-cadential melodic focus
 -}
 authenticOne_Pa_Sticheraric : ModeData
 authenticOne_Pa_Sticheraric =
-    { scale = Diatonic
+    { classification = Classification Authentic ModeOne
+    , scale = Diatonic
     , dominantTones =
         { base = Pa
         , cadencePoints =
@@ -263,7 +271,8 @@ There are two variants: fast sticheraric will have final of Ke.
 -}
 plagalOne_Pa_Sticheraric : ModeData
 plagalOne_Pa_Sticheraric =
-    { scale = Diatonic
+    { classification = Classification Plagal ModeOne
+    , scale = Diatonic
     , dominantTones =
         { base = Pa
         , cadencePoints =
@@ -297,7 +306,8 @@ There are two variants: fast sticheraric will have final of Ke.
 -}
 plagalOne_Pa_Papadic : ModeData
 plagalOne_Pa_Papadic =
-    { scale = Diatonic
+    { classification = Classification Plagal ModeOne
+    , scale = Diatonic
     , dominantTones =
         { base = Pa
         , cadencePoints =
@@ -325,7 +335,8 @@ plagalOne_Pa_Papadic =
 
 plagalOne_Ke_Eirmologic : ModeData
 plagalOne_Ke_Eirmologic =
-    { scale = Diatonic
+    { classification = Classification Plagal ModeOne
+    , scale = Diatonic
     , dominantTones =
         { base = Ke
         , cadencePoints =
