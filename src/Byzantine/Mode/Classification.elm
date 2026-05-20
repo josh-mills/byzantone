@@ -3,12 +3,10 @@ module Byzantine.Mode.Classification exposing
     , all, toString, basesFor
     )
 
-{-| I think "Classification" (or maybe "OktoichosClassification") will work as a
-term, at least for internal conceptual modeling. How this is exposed towards
-users is a different question.
-
-I'm wondering if it would be better to have just a flat list of eight rather than
-a product type.
+{-| `Classification` represents the Oktoichos (Ὀκτώηχος) classification: four
+authentic modes and four plagal modes. But, this system is primarily a
+classification system for liturgical purposes, so the actual musical structure
+of the modes is more complex.
 
 
 # Classification
@@ -62,48 +60,50 @@ toString : Classification -> String
 toString (Classification division ordinal) =
     case ( division, ordinal ) of
         ( Authentic, ModeOne ) ->
-            "Authentic Mode One"
+            "First Mode"
 
         ( Authentic, ModeTwo ) ->
-            "Authentic Mode Two"
+            "Second Mode"
 
         ( Authentic, ModeThree ) ->
-            "Authentic Mode Three"
+            "Third Mode"
 
         ( Authentic, ModeFour ) ->
-            "Authentic Mode Four"
+            "Fourth Mode"
 
         ( Plagal, ModeOne ) ->
-            "Plagal Mode One"
+            "Plagal First Mode"
 
         ( Plagal, ModeTwo ) ->
-            "Plagal Mode Two"
+            "Plagal Second Mode"
 
         ( Plagal, ModeThree ) ->
             "Grave Mode"
 
         ( Plagal, ModeFour ) ->
-            "Plagal Mode Four"
+            "Plagal Fourth Mode"
 
 
 {-| A Mode can be generally built from a classification plus a base.
 
-A base is a pitch (which, in all but one case, will be natural, but
-there does exist a grave variant on Ζω-flat, which prevents a simple
-definition on degree).
+A base is a pitch (which, in all but one case, will be natural, but there does
+exist a grave variant on Ζω-flat, which prevents a simple definition on degree).
 
 But, not all pitches are actual bases.
 
 Bases:
 
   - Authentic 1: Κε, Πα
-  - Authentic 2: Δι, Πα -- Βου
+  - Authentic 2: Δι, Πα, Βου
   - Authentic 3: Γα
-  - Authentic 4: Βου, Δι -- Πα, maybe?
+  - Authentic 4: Βου, Δι, Πα
   - Plagal 1: Κε, Πα
-  - Plagal 2: Δι, Βου
+  - Plagal 2: Δι, Βου, Πα
   - Plagal 3: Γα, Ζω, Ζω-flat4
   - Plagal 4: Νη, Γα
+
+It may be worth it to make a separate Mode.Base module, but that would have to
+be kept separate from the concept of the modal signature base.
 
 -}
 basesFor : Classification -> List Pitch
@@ -113,19 +113,19 @@ basesFor (Classification division ordinal) =
             [ Pitch.natural Ke, Pitch.natural Pa ]
 
         ( Authentic, ModeTwo ) ->
-            [ Pitch.natural Di, Pitch.natural Pa ]
+            [ Pitch.natural Di, Pitch.natural Pa, Pitch.natural Bou ]
 
         ( Authentic, ModeThree ) ->
             [ Pitch.natural Ga ]
 
         ( Authentic, ModeFour ) ->
-            [ Pitch.natural Bou, Pitch.natural Di ]
+            [ Pitch.natural Bou, Pitch.natural Di, Pitch.natural Pa ]
 
         ( Plagal, ModeOne ) ->
             [ Pitch.natural Ke, Pitch.natural Pa ]
 
         ( Plagal, ModeTwo ) ->
-            [ Pitch.natural Di, Pitch.natural Bou ]
+            [ Pitch.natural Di, Pitch.natural Bou, Pitch.natural Pa ]
 
         ( Plagal, ModeThree ) ->
             [ Pitch.natural Ga |> Just
