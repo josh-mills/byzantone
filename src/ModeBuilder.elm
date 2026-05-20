@@ -6,8 +6,8 @@ module ModeBuilder exposing (Model, Msg, init, update, view)
 import Byzantine.Accidental as Accidental
 import Byzantine.ByzHtml.ModalSignature as ByzHtml
 import Byzantine.Degree as Degree
-import Byzantine.ModalSignature as ModalSignature
 import Byzantine.Mode.Classification as Classification exposing (Classification)
+import Byzantine.Mode.Signature as Signature
 import Byzantine.Pitch as Pitch exposing (Pitch)
 import Byzantine.Scale as Scale exposing (Scale)
 import Components.RadioFieldset as RadioFieldset
@@ -119,7 +119,7 @@ view model =
             )
             model.classification
         , div [ Styles.flexCol, class "gap-2" ]
-            (List.map ByzHtml.view ModalSignature.all)
+            (List.map ByzHtml.view Signature.all)
         ]
 
 

@@ -1,5 +1,5 @@
-module Byzantine.ModalSignature exposing
-    ( ModalSignature
+module Byzantine.Mode.Signature exposing
+    ( Signature
     , Ichos(..), Indicator(..)
     , Elements, elements
     , all
@@ -15,7 +15,7 @@ module Byzantine.ModalSignature exposing
 
 {-| WIP.
 
-I think I'd like for ModalSignature to be opaque to ensure validity, but for
+I think I'd like for Signature to be opaque to ensure validity, but for
 view purposes, we'll need some way of deconstructing a signature into its
 constituent parts. The signature itself as a type should be able to encode the
 constituent elements, but I think probably not how they are rendered in all
@@ -24,7 +24,7 @@ cases.
 
 # Types
 
-@docs ModalSignature
+@docs Signature
 @docs Ichos, Indicator
 
 
@@ -99,7 +99,7 @@ Some have a different pattern, which usually involves a neume indicator
 (interval character).
 
 -}
-type ModalSignature
+type Signature
     = Regular
         { ichos : Ichos
         , indicator : Indicator
@@ -117,7 +117,7 @@ type alias Elements =
     }
 
 
-elements : ModalSignature -> Elements
+elements : Signature -> Elements
 elements signature =
     case signature of
         Regular { ichos, indicator, base } ->
@@ -185,7 +185,7 @@ deconstructBase (Base degree fthora) =
 -- SIGNATURES
 
 
-all : List ModalSignature
+all : List Signature
 all =
     List.concat
         [ firstModes
@@ -203,12 +203,12 @@ all =
 -- Mode 1
 
 
-firstModes : List ModalSignature
+firstModes : List Signature
 firstModes =
     [ authenticOneKe, authenticOnePa ]
 
 
-authenticOneKe : ModalSignature
+authenticOneKe : Signature
 authenticOneKe =
     Regular
         { ichos = Ichos
@@ -217,7 +217,7 @@ authenticOneKe =
         }
 
 
-authenticOnePa : ModalSignature
+authenticOnePa : Signature
 authenticOnePa =
     Regular
         { ichos = Ichos
@@ -230,12 +230,12 @@ authenticOnePa =
 -- Mode 2
 
 
-secondModes : List ModalSignature
+secondModes : List Signature
 secondModes =
     [ secondDi, secondPa, secondBou ]
 
 
-secondDi : ModalSignature
+secondDi : Signature
 secondDi =
     Regular
         { ichos = Ichos
@@ -244,7 +244,7 @@ secondDi =
         }
 
 
-secondPa : ModalSignature
+secondPa : Signature
 secondPa =
     Regular
         { ichos = Ichos
@@ -253,7 +253,7 @@ secondPa =
         }
 
 
-secondBou : ModalSignature
+secondBou : Signature
 secondBou =
     Regular
         { ichos = Ichos
@@ -266,14 +266,14 @@ secondBou =
 -- Mode 3
 
 
-thirdModes : List ModalSignature
+thirdModes : List Signature
 thirdModes =
     [ lowerThirdGa_1, lowerThirdGa_2, lowerThirdGa_3, lowerThirdGa_papadic ]
 
 
 {-| TODO: think on this. Should be something like "Ηχος γ. Γα"
 -}
-lowerThirdGa_1 : ModalSignature
+lowerThirdGa_1 : Signature
 lowerThirdGa_1 =
     Irregular
         { ichos = Ichos
@@ -284,7 +284,7 @@ lowerThirdGa_1 =
         }
 
 
-lowerThirdGa_2 : ModalSignature
+lowerThirdGa_2 : Signature
 lowerThirdGa_2 =
     Regular
         { ichos = Ichos
@@ -293,7 +293,7 @@ lowerThirdGa_2 =
         }
 
 
-lowerThirdGa_3 : ModalSignature
+lowerThirdGa_3 : Signature
 lowerThirdGa_3 =
     Regular
         { ichos = Ichos
@@ -302,7 +302,7 @@ lowerThirdGa_3 =
         }
 
 
-lowerThirdGa_papadic : ModalSignature
+lowerThirdGa_papadic : Signature
 lowerThirdGa_papadic =
     Regular
         { ichos = Ichos
@@ -315,7 +315,7 @@ lowerThirdGa_papadic =
 -- Mode 4
 
 
-fourthModes : List ModalSignature
+fourthModes : List Signature
 fourthModes =
     [ authenticFourDi
     , medialFourBou_1
@@ -326,7 +326,7 @@ fourthModes =
     ]
 
 
-authenticFourDi : ModalSignature
+authenticFourDi : Signature
 authenticFourDi =
     Regular
         { ichos = Ichos
@@ -335,7 +335,7 @@ authenticFourDi =
         }
 
 
-medialFourBou_1 : ModalSignature
+medialFourBou_1 : Signature
 medialFourBou_1 =
     Irregular
         { ichos = Ichos
@@ -346,7 +346,7 @@ medialFourBou_1 =
         }
 
 
-medialFourBou_2 : ModalSignature
+medialFourBou_2 : Signature
 medialFourBou_2 =
     Irregular
         { ichos = Ichos
@@ -357,7 +357,7 @@ medialFourBou_2 =
         }
 
 
-paramedialFourPa : ModalSignature
+paramedialFourPa : Signature
 paramedialFourPa =
     Regular
         { ichos = Ichos
@@ -366,7 +366,7 @@ paramedialFourPa =
         }
 
 
-medialFourDi_softChromatic : ModalSignature
+medialFourDi_softChromatic : Signature
 medialFourDi_softChromatic =
     Regular
         { ichos = Ichos
@@ -375,7 +375,7 @@ medialFourDi_softChromatic =
         }
 
 
-medialFourBou_softChromatic : ModalSignature
+medialFourBou_softChromatic : Signature
 medialFourBou_softChromatic =
     Irregular
         { ichos = Ichos
@@ -390,7 +390,7 @@ medialFourBou_softChromatic =
 -- Plagal Mode 1
 
 
-plagalFirstModes : List ModalSignature
+plagalFirstModes : List Signature
 plagalFirstModes =
     [ plagalFirstPa
     , plagalFirstKe
@@ -400,7 +400,7 @@ plagalFirstModes =
     ]
 
 
-plagalFirstPa : ModalSignature
+plagalFirstPa : Signature
 plagalFirstPa =
     Regular
         { ichos = IchosPlagal
@@ -409,7 +409,7 @@ plagalFirstPa =
         }
 
 
-plagalFirstKe : ModalSignature
+plagalFirstKe : Signature
 plagalFirstKe =
     Irregular
         { ichos = IchosPlagal
@@ -420,7 +420,7 @@ plagalFirstKe =
         }
 
 
-plagalFirstPa_pentaphone : ModalSignature
+plagalFirstPa_pentaphone : Signature
 plagalFirstPa_pentaphone =
     Irregular
         { ichos = IchosPlagal
@@ -435,7 +435,7 @@ plagalFirstPa_pentaphone =
 This may be something to incorporate into the Accidental modeling
 (local vs persistent).
 -}
-plagalFirstPa_phrygian : ModalSignature
+plagalFirstPa_phrygian : Signature
 plagalFirstPa_phrygian =
     Irregular
         { ichos = IchosPlagal
@@ -446,7 +446,7 @@ plagalFirstPa_phrygian =
         }
 
 
-plagalFirstPa_minor : ModalSignature
+plagalFirstPa_minor : Signature
 plagalFirstPa_minor =
     Regular
         { ichos = IchosPlagal
@@ -459,7 +459,7 @@ plagalFirstPa_minor =
 -- Plagal Mode 2
 
 
-plagalSecondModes : List ModalSignature
+plagalSecondModes : List Signature
 plagalSecondModes =
     [ plagalSecondPa
     , plagalSecondBou
@@ -468,7 +468,7 @@ plagalSecondModes =
     ]
 
 
-plagalSecondPa : ModalSignature
+plagalSecondPa : Signature
 plagalSecondPa =
     Regular
         { ichos = IchosPlagal
@@ -477,7 +477,7 @@ plagalSecondPa =
         }
 
 
-plagalSecondBou : ModalSignature
+plagalSecondBou : Signature
 plagalSecondBou =
     Irregular
         { ichos = IchosPlagal
@@ -488,7 +488,7 @@ plagalSecondBou =
         }
 
 
-plagalSecondDi_softChromatic : ModalSignature
+plagalSecondDi_softChromatic : Signature
 plagalSecondDi_softChromatic =
     Regular
         { ichos = IchosPlagal
@@ -497,7 +497,7 @@ plagalSecondDi_softChromatic =
         }
 
 
-plagalSecondDi_hardChromatic : ModalSignature
+plagalSecondDi_hardChromatic : Signature
 plagalSecondDi_hardChromatic =
     Irregular
         { ichos = IchosPlagal
@@ -512,12 +512,12 @@ plagalSecondDi_hardChromatic =
 -- Plagal Mode 3
 
 
-graveModes : List ModalSignature
+graveModes : List Signature
 graveModes =
     [ graveGa, graveZo, graveZoFlat ]
 
 
-graveGa : ModalSignature
+graveGa : Signature
 graveGa =
     Regular
         { ichos = Ichos
@@ -526,7 +526,7 @@ graveGa =
         }
 
 
-graveZo : ModalSignature
+graveZo : Signature
 graveZo =
     Regular
         { ichos = Ichos
@@ -535,7 +535,7 @@ graveZo =
         }
 
 
-graveZoFlat : ModalSignature
+graveZoFlat : Signature
 graveZoFlat =
     Regular
         { ichos = Ichos
@@ -548,12 +548,12 @@ graveZoFlat =
 -- Plagal Mode 4
 
 
-plagalFourthModes : List ModalSignature
+plagalFourthModes : List Signature
 plagalFourthModes =
     [ plagalFourthNi, plagalFourthGa_1, plagalFourthGa_2 ]
 
 
-plagalFourthNi : ModalSignature
+plagalFourthNi : Signature
 plagalFourthNi =
     Regular
         { ichos = IchosPlagal
@@ -562,7 +562,7 @@ plagalFourthNi =
         }
 
 
-plagalFourthGa_1 : ModalSignature
+plagalFourthGa_1 : Signature
 plagalFourthGa_1 =
     Irregular
         { ichos = IchosPlagal
@@ -573,7 +573,7 @@ plagalFourthGa_1 =
         }
 
 
-plagalFourthGa_2 : ModalSignature
+plagalFourthGa_2 : Signature
 plagalFourthGa_2 =
     Regular
         { ichos = IchosPlagal

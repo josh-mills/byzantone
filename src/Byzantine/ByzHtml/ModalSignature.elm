@@ -1,5 +1,6 @@
 module Byzantine.ByzHtml.ModalSignature exposing
-    ( modePlagal, modeWordEchos
+    ( view
+    , modePlagal, modeWordEchos
     , modeFirst, modeSecond, modeThird, modeThirdNana, modeFourth, modeLegetos, modePlagalFirst, modePlagalSecond, modeVarys, modeVarys2, modePlagalFourth, modeWordVarys
     , modeNi, modePa, modeVou, modeGa, modeDi, modeKe, modeZo
     , modeOligonKentimaAbove, modeOligonYpsili, modeElafron, modeRunningElafron
@@ -9,6 +10,13 @@ module Byzantine.ByzHtml.ModalSignature exposing
 {-| WIP. The component elements are here, but the underlying type modeling needs
 to be built out so we can implement a general `view` function.
 
+
+# View
+
+@docs view
+
+
+# Components
 
 
 ## Division
@@ -37,11 +45,110 @@ to be built out so we can implement a general `view` function.
 
 -}
 
+import Byzantine.Mode.Signature as Signature exposing (Elements, Ichos(..), Indicator(..), Signature)
 import Html exposing (Html)
+import Html.Attributes exposing (class)
+import Html.Lazy
+import Maybe.Extra
+
+
+
+-- view
+
+
+view : Signature -> Html msg
+view modalSignature =
+    Html.Lazy.lazy
+        (\signature ->
+            let
+                elements : Elements
+                elements =
+                    Signature.elements signature
+            in
+            [ viewDivision elements.ichos
+            , viewMaybe viewClassification elements.indicator
+            ]
+                |> List.concat
+                |> Html.div [ class "text-2xl" ]
+        )
+        modalSignature
+
+
+viewMaybe : (a -> Html msg) -> Maybe a -> List (Html msg)
+viewMaybe f a =
+    Maybe.Extra.unwrap [] (f >> List.singleton) a
+
+
+viewMode : Elements -> Html msg
+viewMode elements =
+    case elements.indicator of
+        _ ->
+            Debug.todo "hm..."
+
+
+
+-- division
+
+
+viewDivision : Ichos -> List (Html msg)
+viewDivision ichos =
+    case ichos of
+        Ichos ->
+            [ modeWordEchos ]
+
+        IchosPlagal ->
+            [ modeWordEchos, modePlagal ]
+
+
+modePlagal : Html msg
+modePlagal =
+    Html.node "x-mode-plagal" [] []
+
+
+modeWordEchos : Html msg
+modeWordEchos =
+    Html.node "x-mode-word-echos" [] []
 
 
 
 -- classification
+
+
+viewClassification : Indicator -> Html msg
+viewClassification indicator =
+    case indicator of
+        First ->
+            modeFirst
+
+        Second ->
+            modeSecond
+
+        Third ->
+            modeThird
+
+        ThirdNaNa ->
+            modeThirdNana
+
+        Fourth ->
+            modeFourth
+
+        Legetos ->
+            modeLegetos
+
+        PlagalFirst ->
+            modePlagalFirst
+
+        PlagalSecond ->
+            modePlagalSecond
+
+        Varys ->
+            modeVarys
+
+        VarysZo ->
+            modeVarys2
+
+        PlagalFourth ->
+            modePlagalFourth
 
 
 modeFirst : Html msg
@@ -165,20 +272,6 @@ modeElafron =
 modeRunningElafron : Html msg
 modeRunningElafron =
     Html.node "x-mode-running-elafron" [] []
-
-
-
--- division
-
-
-modePlagal : Html msg
-modePlagal =
-    Html.node "x-mode-plagal" [] []
-
-
-modeWordEchos : Html msg
-modeWordEchos =
-    Html.node "x-mode-word-echos" [] []
 
 
 
