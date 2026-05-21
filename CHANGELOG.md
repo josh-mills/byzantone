@@ -1,5 +1,9 @@
 # Changelog
 
+## v.1.5.1 (2026-05-21)
+### Fixed
+ - Off by one calendar error
+
 ## v.1.5.0 (2026-04-16)
 ### Added
  - Text description of the range setting (improved feedback for WebKit browsers)
