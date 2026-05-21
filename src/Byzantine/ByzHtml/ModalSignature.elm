@@ -45,11 +45,11 @@ to be built out so we can implement a general `view` function.
 
 -}
 
+import Byzantine.Mode.Classification exposing (Classification(..), Ordinal(..))
 import Byzantine.Mode.Signature as Signature exposing (Elements, Ichos(..), Indicator(..), Signature)
 import Html exposing (Html)
 import Html.Attributes exposing (class)
 import Html.Lazy
-import Maybe.Extra
 
 
 
@@ -66,7 +66,7 @@ view modalSignature =
                     Signature.elements signature
             in
             [ viewDivision elements.ichos
-            , viewMaybe viewClassification elements.indicator
+            , [ viewIndicator elements.indicator ]
             ]
                 |> List.concat
                 |> Html.div [ class "text-2xl" ]
@@ -74,22 +74,17 @@ view modalSignature =
         modalSignature
 
 
-viewMaybe : (a -> Html msg) -> Maybe a -> List (Html msg)
-viewMaybe f a =
-    Maybe.Extra.unwrap [] (f >> List.singleton) a
 
-
-viewMode : Elements -> Html msg
-viewMode elements =
-    case elements.indicator of
-        _ ->
-            Debug.todo "hm..."
-
-
-
+{-
+   viewMaybe : (a -> Html msg) -> Maybe a -> List (Html msg)
+   viewMaybe f a =
+       Maybe.Extra.unwrap [] (f >> List.singleton) a
+-}
 -- division
 
 
+{-| Classification: Ichos or Ichos Plagal
+-}
 viewDivision : Ichos -> List (Html msg)
 viewDivision ichos =
     case ichos of
@@ -111,11 +106,11 @@ modeWordEchos =
 
 
 
--- classification
+-- indicators
 
 
-viewClassification : Indicator -> Html msg
-viewClassification indicator =
+viewIndicator : Indicator -> Html msg
+viewIndicator indicator =
     case indicator of
         First ->
             modeFirst
@@ -149,6 +144,20 @@ viewClassification indicator =
 
         PlagalFourth ->
             modePlagalFourth
+
+        ClassificationIndicator (Classification _ ordinal) ->
+            case ordinal of
+                ModeOne ->
+                    modeAlpha
+
+                ModeTwo ->
+                    modeBeta
+
+                ModeThree ->
+                    modeGamma
+
+                ModeFour ->
+                    modeDelta
 
 
 modeFirst : Html msg
@@ -275,7 +284,7 @@ modeRunningElafron =
 
 
 
--- ordinals
+-- classification ordinals
 
 
 modeAlpha : Html msg

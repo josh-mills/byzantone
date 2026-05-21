@@ -2,6 +2,7 @@ module Byzantine.Mode.Signature exposing
     ( Signature
     , Ichos(..), Indicator(..)
     , Elements, elements
+    , classification
     , all
     , authenticOneKe, authenticOnePa
     , secondDi, secondPa, secondBou
@@ -31,6 +32,7 @@ cases.
 ## Elements
 
 @docs Elements, elements
+@docs classification
 
 
 # Catalog
@@ -88,6 +90,7 @@ import Byzantine.IntervalCharacter as IntervalCharacter
         , IntervalCharacter(..)
         , SkipType(..)
         )
+import Byzantine.Mode.Classification exposing (Classification(..), Division(..), Ordinal(..))
 import Byzantine.Scale exposing (Scale(..))
 
 
@@ -110,7 +113,7 @@ type Signature
 
 type alias Elements =
     { ichos : Ichos
-    , indicator : Maybe Indicator
+    , indicator : Indicator
     , baseDegree : Maybe Degree
     , fthora : Maybe Fthora
     , neume : Maybe IntervalCharacter
@@ -126,7 +129,7 @@ elements signature =
                     deconstructBase base
             in
             { ichos = ichos
-            , indicator = Just indicator
+            , indicator = indicator
             , baseDegree = Just degree
             , fthora = fthora
             , neume = Nothing
@@ -155,6 +158,7 @@ type Indicator
     | Varys
     | VarysZo
     | PlagalFourth
+    | ClassificationIndicator Classification
 
 
 {-| Regular base could probably be modeled as the syllable plus a fthora. We'll
@@ -179,6 +183,46 @@ type Base
 deconstructBase : Base -> { degree : Degree, fthora : Maybe Fthora }
 deconstructBase (Base degree fthora) =
     { degree = degree, fthora = fthora }
+
+
+classification : Signature -> Classification
+classification signature =
+    case (elements signature).indicator of
+        First ->
+            Classification Authentic ModeOne
+
+        Second ->
+            Classification Authentic ModeTwo
+
+        Third ->
+            Classification Authentic ModeThree
+
+        ThirdNaNa ->
+            Classification Authentic ModeThree
+
+        Fourth ->
+            Classification Authentic ModeFour
+
+        Legetos ->
+            Classification Authentic ModeFour
+
+        PlagalFirst ->
+            Classification Plagal ModeOne
+
+        PlagalSecond ->
+            Classification Plagal ModeTwo
+
+        Varys ->
+            Classification Plagal ModeThree
+
+        VarysZo ->
+            Classification Plagal ModeThree
+
+        PlagalFourth ->
+            Classification Plagal ModeFour
+
+        ClassificationIndicator classification_ ->
+            classification_
 
 
 
@@ -271,16 +315,12 @@ thirdModes =
     [ lowerThirdGa_1, lowerThirdGa_2, lowerThirdGa_3, lowerThirdGa_papadic ]
 
 
-{-| TODO: think on this. Should be something like "Ηχος γ. Γα"
--}
 lowerThirdGa_1 : Signature
 lowerThirdGa_1 =
-    Irregular
+    Regular
         { ichos = Ichos
-        , indicator = Nothing
-        , baseDegree = Just Ga
-        , fthora = Fthora.for Diatonic Ga
-        , neume = Nothing
+        , indicator = ClassificationIndicator (Classification Authentic ModeThree)
+        , base = Base Ga (Fthora.for Diatonic Ga)
         }
 
 
@@ -339,7 +379,7 @@ medialFourBou_1 : Signature
 medialFourBou_1 =
     Irregular
         { ichos = Ichos
-        , indicator = Just Fourth
+        , indicator = Fourth
         , baseDegree = Just Bou
         , fthora = Fthora.for Diatonic Bou
         , neume = Just (Descending SynechesElafron Nothing)
@@ -350,7 +390,7 @@ medialFourBou_2 : Signature
 medialFourBou_2 =
     Irregular
         { ichos = Ichos
-        , indicator = Just Legetos
+        , indicator = Legetos
         , baseDegree = Just Bou
         , fthora = Fthora.for Diatonic Bou
         , neume = Nothing
@@ -379,7 +419,7 @@ medialFourBou_softChromatic : Signature
 medialFourBou_softChromatic =
     Irregular
         { ichos = Ichos
-        , indicator = Just Fourth
+        , indicator = Fourth
         , baseDegree = Just Bou
         , fthora = Fthora.for SoftChromatic Bou
         , neume = Just (Descending SynechesElafron Nothing)
@@ -413,7 +453,7 @@ plagalFirstKe : Signature
 plagalFirstKe =
     Irregular
         { ichos = IchosPlagal
-        , indicator = Just PlagalFirst
+        , indicator = PlagalFirst
         , baseDegree = Just Ke
         , fthora = Fthora.for Diatonic Ke
         , neume = IntervalCharacter.basicInterval 5
@@ -424,7 +464,7 @@ plagalFirstPa_pentaphone : Signature
 plagalFirstPa_pentaphone =
     Irregular
         { ichos = IchosPlagal
-        , indicator = Just PlagalFirst
+        , indicator = PlagalFirst
         , baseDegree = Just Pa
         , fthora = Fthora.for Enharmonic Zo_
         , neume = IntervalCharacter.basicInterval 5
@@ -439,7 +479,7 @@ plagalFirstPa_phrygian : Signature
 plagalFirstPa_phrygian =
     Irregular
         { ichos = IchosPlagal
-        , indicator = Just PlagalFirst
+        , indicator = PlagalFirst
         , baseDegree = Just Pa
         , fthora = Nothing
         , neume = Nothing
@@ -481,7 +521,7 @@ plagalSecondBou : Signature
 plagalSecondBou =
     Irregular
         { ichos = IchosPlagal
-        , indicator = Just PlagalSecond
+        , indicator = PlagalSecond
         , baseDegree = Just Bou
         , fthora = Fthora.for SoftChromatic Di
         , neume = Just (Ascending (Skip OligonKentimaBelow) Nothing)
@@ -501,7 +541,7 @@ plagalSecondDi_hardChromatic : Signature
 plagalSecondDi_hardChromatic =
     Irregular
         { ichos = IchosPlagal
-        , indicator = Just PlagalSecond
+        , indicator = PlagalSecond
         , baseDegree = Just Di
         , fthora = Fthora.for HardChromatic Di
         , neume = IntervalCharacter.basicInterval 3
@@ -566,7 +606,7 @@ plagalFourthGa_1 : Signature
 plagalFourthGa_1 =
     Irregular
         { ichos = IchosPlagal
-        , indicator = Just PlagalFourth
+        , indicator = PlagalFourth
         , baseDegree = Nothing
         , fthora = Nothing
         , neume = IntervalCharacter.basicInterval 4
