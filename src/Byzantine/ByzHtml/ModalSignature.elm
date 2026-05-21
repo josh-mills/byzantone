@@ -45,7 +45,7 @@ to be built out so we can implement a general `view` function.
 
 -}
 
-import Byzantine.Mode.Classification exposing (Classification(..), Ordinal(..))
+import Byzantine.Mode.Classification as Classification exposing (Classification(..), Ordinal(..))
 import Byzantine.Mode.Signature as Signature exposing (Elements, Ichos(..), Indicator(..), Signature)
 import Html exposing (Html)
 import Html.Attributes exposing (class)
@@ -145,8 +145,8 @@ viewIndicator indicator =
         PlagalFourth ->
             modePlagalFourth
 
-        ClassificationIndicator (Classification _ ordinal) ->
-            case ordinal of
+        ClassificationIndicator classification ->
+            case Classification.ordinal classification of
                 ModeOne ->
                     modeAlpha
 

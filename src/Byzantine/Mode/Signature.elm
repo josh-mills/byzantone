@@ -90,7 +90,7 @@ import Byzantine.IntervalCharacter as IntervalCharacter
         , IntervalCharacter(..)
         , SkipType(..)
         )
-import Byzantine.Mode.Classification exposing (Classification(..), Division(..), Ordinal(..))
+import Byzantine.Mode.Classification exposing (Classification(..), Ordinal(..))
 import Byzantine.Scale exposing (Scale(..))
 
 
@@ -189,37 +189,37 @@ classification : Signature -> Classification
 classification signature =
     case (elements signature).indicator of
         First ->
-            Classification Authentic ModeOne
+            Authentic ModeOne
 
         Second ->
-            Classification Authentic ModeTwo
+            Authentic ModeTwo
 
         Third ->
-            Classification Authentic ModeThree
+            Authentic ModeThree
 
         ThirdNaNa ->
-            Classification Authentic ModeThree
+            Authentic ModeThree
 
         Fourth ->
-            Classification Authentic ModeFour
+            Authentic ModeFour
 
         Legetos ->
-            Classification Authentic ModeFour
+            Authentic ModeFour
 
         PlagalFirst ->
-            Classification Plagal ModeOne
+            Plagal ModeOne
 
         PlagalSecond ->
-            Classification Plagal ModeTwo
+            Plagal ModeTwo
 
         Varys ->
-            Classification Plagal ModeThree
+            Plagal ModeThree
 
         VarysZo ->
-            Classification Plagal ModeThree
+            Plagal ModeThree
 
         PlagalFourth ->
-            Classification Plagal ModeFour
+            Plagal ModeFour
 
         ClassificationIndicator classification_ ->
             classification_
@@ -319,7 +319,7 @@ lowerThirdGa_1 : Signature
 lowerThirdGa_1 =
     Regular
         { ichos = Ichos
-        , indicator = ClassificationIndicator (Classification Authentic ModeThree)
+        , indicator = ClassificationIndicator (Authentic ModeThree)
         , base = Base Ga (Fthora.for Diatonic Ga)
         }
 

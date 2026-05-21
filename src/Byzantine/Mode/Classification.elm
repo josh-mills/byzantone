@@ -1,6 +1,6 @@
 module Byzantine.Mode.Classification exposing
-    ( Classification(..), Division(..), Ordinal(..)
-    , all, toString, basesFor
+    ( Classification(..), Ordinal(..)
+    , all, toString, basesFor, ordinal
     )
 
 {-| `Classification` represents the Oktoichos (Ὀκτώηχος) classification: four
@@ -11,12 +11,12 @@ of the modes is more complex.
 
 # Classification
 
-@docs Classification, Division, Ordinal
+@docs Classification, Ordinal
 
 
 ## Functions
 
-@docs all, toString, basesFor
+@docs all, toString, basesFor, ordinal
 
 -}
 
@@ -28,12 +28,8 @@ import Maybe.Extra
 
 
 type Classification
-    = Classification Division Ordinal
-
-
-type Division
-    = Authentic
-    | Plagal
+    = Authentic Ordinal
+    | Plagal Ordinal
 
 
 type Ordinal
@@ -43,44 +39,54 @@ type Ordinal
     | ModeFour
 
 
+ordinal : Classification -> Ordinal
+ordinal classification =
+    case classification of
+        Authentic o ->
+            o
+
+        Plagal o ->
+            o
+
+
 all : List Classification
 all =
-    [ Classification Authentic ModeOne
-    , Classification Authentic ModeTwo
-    , Classification Authentic ModeThree
-    , Classification Authentic ModeFour
-    , Classification Plagal ModeOne
-    , Classification Plagal ModeTwo
-    , Classification Plagal ModeThree
-    , Classification Plagal ModeFour
+    [ Authentic ModeOne
+    , Authentic ModeTwo
+    , Authentic ModeThree
+    , Authentic ModeFour
+    , Plagal ModeOne
+    , Plagal ModeTwo
+    , Plagal ModeThree
+    , Plagal ModeFour
     ]
 
 
 toString : Classification -> String
-toString (Classification division ordinal) =
-    case ( division, ordinal ) of
-        ( Authentic, ModeOne ) ->
+toString classification =
+    case classification of
+        Authentic ModeOne ->
             "First Mode"
 
-        ( Authentic, ModeTwo ) ->
+        Authentic ModeTwo ->
             "Second Mode"
 
-        ( Authentic, ModeThree ) ->
+        Authentic ModeThree ->
             "Third Mode"
 
-        ( Authentic, ModeFour ) ->
+        Authentic ModeFour ->
             "Fourth Mode"
 
-        ( Plagal, ModeOne ) ->
+        Plagal ModeOne ->
             "Plagal First Mode"
 
-        ( Plagal, ModeTwo ) ->
+        Plagal ModeTwo ->
             "Plagal Second Mode"
 
-        ( Plagal, ModeThree ) ->
+        Plagal ModeThree ->
             "Grave Mode"
 
-        ( Plagal, ModeFour ) ->
+        Plagal ModeFour ->
             "Plagal Fourth Mode"
 
 
@@ -107,32 +113,32 @@ be kept separate from the concept of the modal signature base.
 
 -}
 basesFor : Classification -> List Pitch
-basesFor (Classification division ordinal) =
-    case ( division, ordinal ) of
-        ( Authentic, ModeOne ) ->
+basesFor classification =
+    case classification of
+        Authentic ModeOne ->
             [ Pitch.natural Ke, Pitch.natural Pa ]
 
-        ( Authentic, ModeTwo ) ->
+        Authentic ModeTwo ->
             [ Pitch.natural Di, Pitch.natural Pa, Pitch.natural Bou ]
 
-        ( Authentic, ModeThree ) ->
+        Authentic ModeThree ->
             [ Pitch.natural Ga ]
 
-        ( Authentic, ModeFour ) ->
+        Authentic ModeFour ->
             [ Pitch.natural Bou, Pitch.natural Di, Pitch.natural Pa ]
 
-        ( Plagal, ModeOne ) ->
+        Plagal ModeOne ->
             [ Pitch.natural Ke, Pitch.natural Pa ]
 
-        ( Plagal, ModeTwo ) ->
+        Plagal ModeTwo ->
             [ Pitch.natural Di, Pitch.natural Bou, Pitch.natural Pa ]
 
-        ( Plagal, ModeThree ) ->
+        Plagal ModeThree ->
             [ Pitch.natural Ga |> Just
             , Pitch.natural Zo_ |> Just
             , Pitch.inflected Enharmonic Flat4 Zo_ |> Result.toMaybe
             ]
                 |> Maybe.Extra.values
 
-        ( Plagal, ModeFour ) ->
+        Plagal ModeFour ->
             [ Pitch.natural Ni, Pitch.natural Ga ]

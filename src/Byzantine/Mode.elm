@@ -25,7 +25,7 @@ module Byzantine.Mode exposing
 
 import Byzantine.Accidental exposing (Accidental(..))
 import Byzantine.Degree exposing (Degree(..))
-import Byzantine.Mode.Classification exposing (Classification(..), Division(..), Ordinal(..))
+import Byzantine.Mode.Classification exposing (Classification(..), Ordinal(..))
 import Byzantine.Mode.Genre exposing (Genre(..))
 import Byzantine.Scale exposing (Scale(..))
 
@@ -272,7 +272,7 @@ type alias Inflection =
 
 authenticOne_Ke_Papadic : ModeData
 authenticOne_Ke_Papadic =
-    { classification = Classification Authentic ModeOne
+    { classification = Authentic ModeOne
     , genres = [ Papadic ]
     , scale = Diatonic
     , dominantTones =
@@ -302,7 +302,7 @@ authenticOne_Ke_Papadic =
 
 authenticOne_Pa_Eirmologic : ModeData
 authenticOne_Pa_Eirmologic =
-    { classification = Classification Authentic ModeOne
+    { classification = Authentic ModeOne
     , genres = [ Eirmologic ]
     , scale = Diatonic
     , dominantTones =
@@ -338,7 +338,7 @@ Ke as non-cadential melodic focus
 -}
 authenticOne_Pa_Sticheraric : ModeData
 authenticOne_Pa_Sticheraric =
-    { classification = Classification Authentic ModeOne
+    { classification = Authentic ModeOne
     , genres = [ Sticheraric ]
     , scale = Diatonic
     , dominantTones =
@@ -382,7 +382,7 @@ upper Ni at climactic moments shifts to a triphone, hard-diatonic organization.
 -}
 authenticTwo_Di : ModeData
 authenticTwo_Di =
-    { classification = Classification Authentic ModeTwo
+    { classification = Authentic ModeTwo
     , genres = [ Eirmologic, Sticheraric, Papadic ]
     , scale = SoftChromatic
     , dominantTones =
@@ -422,7 +422,7 @@ the melody; Pa and Ke carry the internal cadential weight.
 -}
 authenticThree_Ga_Eirmologic : ModeData
 authenticThree_Ga_Eirmologic =
-    { classification = Classification Authentic ModeThree
+    { classification = Authentic ModeThree
     , genres = [ Eirmologic, Sticheraric ]
     , scale = Diatonic
     , dominantTones =
@@ -458,7 +458,7 @@ largely those of whichever modal region is currently active.
 -}
 authenticThree_Ga_Papadic : ModeData
 authenticThree_Ga_Papadic =
-    { classification = Classification Authentic ModeThree
+    { classification = Authentic ModeThree
     , genres = [ Papadic ]
     , scale = Diatonic
     , dominantTones =
@@ -495,7 +495,7 @@ when passing to a natural Zo or into an Agia phrase.
 -}
 authenticFour_Bou_Legetos : ModeData
 authenticFour_Bou_Legetos =
-    { classification = Classification Authentic ModeFour
+    { classification = Authentic ModeFour
     , genres = [ Eirmologic ]
     , scale = Diatonic
     , dominantTones =
@@ -526,7 +526,7 @@ is flattened by four units when Di is dominant and the phrase descends.
 
   - TODO: `range.start = Zo` (lower octave, index 3). The wiki says "take Ζω as
     a typical lower limit" but does not clarify which octave. If this refers to
-    Zo_ (index 10, just above the base Di), the range would be substantially
+    Zo\_ (index 10, just above the base Di), the range would be substantially
     narrower; expert clarification needed.
   - TODO: `{ degree = Zo_, accidentals = [ Flat4, Sharp2, Sharp4 ] }` collapses
     two strictly context-dependent behaviors (flat when descending to a
@@ -536,7 +536,7 @@ is flattened by four units when Di is dominant and the phrase descends.
 -}
 authenticFour_Di_Agia : ModeData
 authenticFour_Di_Agia =
-    { classification = Classification Authentic ModeFour
+    { classification = Authentic ModeFour
     , genres = [ Papadic ]
     , scale = Diatonic
     , dominantTones =
@@ -576,7 +576,7 @@ endings are on Bou; reciting tone is Pa.
 -}
 authenticFour_Pa_Sticheraric : ModeData
 authenticFour_Pa_Sticheraric =
-    { classification = Classification Authentic ModeFour
+    { classification = Authentic ModeFour
     , genres = [ Sticheraric ]
     , scale = Diatonic
     , dominantTones =
@@ -610,7 +610,7 @@ There are two variants: fast sticheraric will have final of Ke.
 -}
 plagalOne_Pa_Sticheraric : ModeData
 plagalOne_Pa_Sticheraric =
-    { classification = Classification Plagal ModeOne
+    { classification = Plagal ModeOne
     , genres = [ Sticheraric ]
     , scale = Diatonic
     , dominantTones =
@@ -646,7 +646,7 @@ There are two variants: fast sticheraric will have final of Ke.
 -}
 plagalOne_Pa_Papadic : ModeData
 plagalOne_Pa_Papadic =
-    { classification = Classification Plagal ModeOne
+    { classification = Plagal ModeOne
     , genres = [ Papadic ]
     , scale = Diatonic
     , dominantTones =
@@ -676,7 +676,7 @@ plagalOne_Pa_Papadic =
 
 plagalOne_Ke_Eirmologic : ModeData
 plagalOne_Ke_Eirmologic =
-    { classification = Classification Plagal ModeOne
+    { classification = Plagal ModeOne
     , genres = [ Eirmologic ]
     , scale = Diatonic
     , dominantTones =
@@ -714,7 +714,7 @@ TODO: additional cadence point detail not specified in JMB.
 -}
 plagalOne_Pa_Pentaphone : ModeData
 plagalOne_Pa_Pentaphone =
-    { classification = Classification Plagal ModeOne
+    { classification = Plagal ModeOne
     , genres = [ Sticheraric, Papadic ]
     , scale = Enharmonic
     , dominantTones =
@@ -752,7 +752,7 @@ distinguish from the Pentaphone variant above.
 -}
 plagalOne_Pa_Phrygian : ModeData
 plagalOne_Pa_Phrygian =
-    { classification = Classification Plagal ModeOne
+    { classification = Plagal ModeOne
     , genres = [ Sticheraric, Papadic ]
     , scale = Enharmonic
     , dominantTones =
@@ -790,7 +790,7 @@ minor mode. Transposition of the hard-diatonic Agia onto Pa.
 -}
 plagalOne_Pa_Minor : ModeData
 plagalOne_Pa_Minor =
-    { classification = Classification Plagal ModeOne
+    { classification = Plagal ModeOne
     , genres = [ Sticheraric, Papadic ]
     , scale = Enharmonic
     , dominantTones =
@@ -828,7 +828,7 @@ for expressive colour.
 -}
 plagalTwo_Pa : ModeData
 plagalTwo_Pa =
-    { classification = Classification Plagal ModeTwo
+    { classification = Plagal ModeTwo
     , genres = [ Sticheraric, Papadic ]
     , scale = HardChromatic
     , dominantTones =
@@ -864,7 +864,7 @@ itself. Begins on Ga, moves to Di for intoning, then cadences per the style.
 -}
 plagalThree_Ga : ModeData
 plagalThree_Ga =
-    { classification = Classification Plagal ModeThree
+    { classification = Plagal ModeThree
     , genres = [ Eirmologic, Sticheraric ]
     , scale = Diatonic
     , dominantTones =
@@ -907,7 +907,7 @@ sharpened in Legetos.
 -}
 plagalThree_Zo : ModeData
 plagalThree_Zo =
-    { classification = Classification Plagal ModeThree
+    { classification = Plagal ModeThree
     , genres = [ Sticheraric, Papadic ]
     , scale = Diatonic
     , dominantTones =
@@ -932,7 +932,7 @@ plagalThree_Zo =
 
 {-| Hard-diatonic grave mode on Zo-flat. Almost exclusively papadic and fully
 written out, so the reciting tone is not applicable in the usual sense. Zo-flat
-is expressed via the Enharmonic scale; the base degree is Zo_.
+is expressed via the Enharmonic scale; the base degree is Zo\_.
 
   - TODO: `recitingTone = Zo_` is a structural placeholder only; JMB explicitly
     states the concept is not applicable for this mode.
@@ -941,7 +941,7 @@ is expressed via the Enharmonic scale; the base degree is Zo_.
 -}
 plagalThree_Zo_Hard : ModeData
 plagalThree_Zo_Hard =
-    { classification = Classification Plagal ModeThree
+    { classification = Plagal ModeThree
     , genres = [ Sticheraric, Papadic ]
     , scale = Enharmonic
     , dominantTones =
@@ -972,7 +972,7 @@ the ison to Di or lower Di in anticipation of final cadences.
 -}
 plagalFour_Ni : ModeData
 plagalFour_Ni =
-    { classification = Classification Plagal ModeFour
+    { classification = Plagal ModeFour
     , genres = [ Eirmologic, Sticheraric, Papadic ]
     , scale = Diatonic
     , dominantTones =
@@ -1010,7 +1010,7 @@ standard Neagie; Ke parallels the role of Bou.
 -}
 plagalFour_Ga : ModeData
 plagalFour_Ga =
-    { classification = Classification Plagal ModeFour
+    { classification = Plagal ModeFour
     , genres = [ Eirmologic ]
     , scale = Diatonic
     , dominantTones =
