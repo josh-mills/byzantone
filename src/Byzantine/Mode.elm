@@ -129,12 +129,11 @@ data mode =
   - ison (may also want to include "unison")
   - modal signature (may be more than one)
   - apichima
-  - Genre (list?)
 
 -}
 type alias ModeData =
     { classification : Classification
-    , genre : Genre
+    , genres : List Genre
     , scale : Scale
     , dominantTones : DominantTones
     , isonOptions : List Degree
@@ -178,7 +177,7 @@ type alias Inflection =
 authenticOne_Ke_Papadic : ModeData
 authenticOne_Ke_Papadic =
     { classification = Classification Authentic ModeOne
-    , genre = Papadic
+    , genres = [ Papadic ]
     , scale = Diatonic
     , dominantTones =
         { base = Ke
@@ -208,7 +207,7 @@ authenticOne_Ke_Papadic =
 authenticOne_Pa_Eirmologic : ModeData
 authenticOne_Pa_Eirmologic =
     { classification = Classification Authentic ModeOne
-    , genre = Eirmologic
+    , genres = [ Eirmologic ]
     , scale = Diatonic
     , dominantTones =
         { base = Pa
@@ -244,7 +243,7 @@ Ke as non-cadential melodic focus
 authenticOne_Pa_Sticheraric : ModeData
 authenticOne_Pa_Sticheraric =
     { classification = Classification Authentic ModeOne
-    , genre = Sticheraric
+    , genres = [ Sticheraric ]
     , scale = Diatonic
     , dominantTones =
         { base = Pa
@@ -278,7 +277,7 @@ There are two variants: fast sticheraric will have final of Ke.
 plagalOne_Pa_Sticheraric : ModeData
 plagalOne_Pa_Sticheraric =
     { classification = Classification Plagal ModeOne
-    , genre = Sticheraric
+    , genres = [ Sticheraric ]
     , scale = Diatonic
     , dominantTones =
         { base = Pa
@@ -314,7 +313,7 @@ There are two variants: fast sticheraric will have final of Ke.
 plagalOne_Pa_Papadic : ModeData
 plagalOne_Pa_Papadic =
     { classification = Classification Plagal ModeOne
-    , genre = Papadic
+    , genres = [ Papadic ]
     , scale = Diatonic
     , dominantTones =
         { base = Pa
@@ -344,7 +343,7 @@ plagalOne_Pa_Papadic =
 plagalOne_Ke_Eirmologic : ModeData
 plagalOne_Ke_Eirmologic =
     { classification = Classification Plagal ModeOne
-    , genre = Eirmologic
+    , genres = [ Eirmologic ]
     , scale = Diatonic
     , dominantTones =
         { base = Ke
