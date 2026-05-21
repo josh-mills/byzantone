@@ -35,10 +35,13 @@ checkDateInEastertidePeriod currentDate =
     dateIsInPaschalSeason currentDate easterDate
 
 
+{-| Ascension is 40 days from Pascha, counted inclusively, so the date
+difference check must be less than 39, not 40.
+-}
 dateIsInPaschalSeason : Date -> Date -> Bool
 dateIsInPaschalSeason currentDate paschaDate =
     let
         daysAfterEaster =
             Date.diff Date.Days paschaDate currentDate
     in
-    daysAfterEaster >= 0 && daysAfterEaster < 40
+    daysAfterEaster >= 0 && daysAfterEaster < 39
