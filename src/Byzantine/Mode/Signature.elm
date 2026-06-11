@@ -1,6 +1,6 @@
 module Byzantine.Mode.Signature exposing
     ( Signature
-    , Ichos(..), Indicator(..)
+    , Ichos(..), Indicator(..), indicatorsFor
     , Elements, elements
     , classification
     , all
@@ -26,7 +26,7 @@ cases.
 # Types
 
 @docs Signature
-@docs Ichos, Indicator
+@docs Ichos, Indicator, indicatorsFor
 
 
 ## Elements
@@ -159,6 +159,28 @@ type Indicator
     | VarysZo
     | PlagalFourth
     | ClassificationIndicator Classification
+
+
+indicatorsFor : Ichos -> List Indicator
+indicatorsFor ichos =
+    case ichos of
+        Ichos ->
+            [ First
+            , Second
+            , Third
+            , ThirdNaNa
+            , ClassificationIndicator (Authentic ModeThree)
+            , Fourth
+            , Legetos
+            , Varys
+            , VarysZo
+            ]
+
+        IchosPlagal ->
+            [ PlagalFirst
+            , PlagalSecond
+            , PlagalFourth
+            ]
 
 
 {-| Regular base could probably be modeled as the syllable plus a fthora. We'll

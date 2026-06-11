@@ -6,6 +6,8 @@ module Byzantine.Mode exposing
 
 {-| Data structure to capture modal characteristics.
 
+TODO: verify signatures.
+
 
 # Mode
 
@@ -27,6 +29,7 @@ import Byzantine.Accidental exposing (Accidental(..))
 import Byzantine.Degree exposing (Degree(..))
 import Byzantine.Mode.Classification exposing (Classification(..), Ordinal(..))
 import Byzantine.Mode.Genre exposing (Genre(..))
+import Byzantine.Mode.Signature as Signature exposing (Signature)
 import Byzantine.Scale exposing (Scale(..))
 
 
@@ -230,6 +233,7 @@ data mode =
 type alias ModeData =
     { classification : Classification
     , genres : List Genre
+    , signatures : List Signature
     , scale : Scale
     , dominantTones : DominantTones
     , isonOptions : List Degree
@@ -274,6 +278,7 @@ authenticOne_Ke_Papadic : ModeData
 authenticOne_Ke_Papadic =
     { classification = Authentic ModeOne
     , genres = [ Papadic ]
+    , signatures = [ Signature.authenticOneKe ]
     , scale = Diatonic
     , dominantTones =
         { base = Ke
@@ -304,6 +309,7 @@ authenticOne_Pa_Eirmologic : ModeData
 authenticOne_Pa_Eirmologic =
     { classification = Authentic ModeOne
     , genres = [ Eirmologic ]
+    , signatures = [ Signature.authenticOnePa ]
     , scale = Diatonic
     , dominantTones =
         { base = Pa
@@ -340,6 +346,7 @@ authenticOne_Pa_Sticheraric : ModeData
 authenticOne_Pa_Sticheraric =
     { classification = Authentic ModeOne
     , genres = [ Sticheraric ]
+    , signatures = [ Signature.authenticOnePa ]
     , scale = Diatonic
     , dominantTones =
         { base = Pa
@@ -384,6 +391,7 @@ authenticTwo_Di : ModeData
 authenticTwo_Di =
     { classification = Authentic ModeTwo
     , genres = [ Eirmologic, Sticheraric, Papadic ]
+    , signatures = [ Signature.secondDi, Signature.secondPa, Signature.secondBou ]
     , scale = SoftChromatic
     , dominantTones =
         { base = Di
@@ -424,6 +432,7 @@ authenticThree_Ga_Eirmologic : ModeData
 authenticThree_Ga_Eirmologic =
     { classification = Authentic ModeThree
     , genres = [ Eirmologic, Sticheraric ]
+    , signatures = [ Signature.lowerThirdGa_1, Signature.lowerThirdGa_2, Signature.lowerThirdGa_3 ]
     , scale = Diatonic
     , dominantTones =
         { base = Ga
@@ -460,6 +469,7 @@ authenticThree_Ga_Papadic : ModeData
 authenticThree_Ga_Papadic =
     { classification = Authentic ModeThree
     , genres = [ Papadic ]
+    , signatures = [ Signature.lowerThirdGa_papadic ]
     , scale = Diatonic
     , dominantTones =
         { base = Ga
@@ -497,6 +507,7 @@ authenticFour_Bou_Legetos : ModeData
 authenticFour_Bou_Legetos =
     { classification = Authentic ModeFour
     , genres = [ Eirmologic ]
+    , signatures = [ Signature.medialFourBou_1, Signature.medialFourBou_2 ]
     , scale = Diatonic
     , dominantTones =
         { base = Bou
@@ -538,6 +549,7 @@ authenticFour_Di_Agia : ModeData
 authenticFour_Di_Agia =
     { classification = Authentic ModeFour
     , genres = [ Papadic ]
+    , signatures = [ Signature.authenticFourDi ]
     , scale = Diatonic
     , dominantTones =
         { base = Di
@@ -578,6 +590,7 @@ authenticFour_Pa_Sticheraric : ModeData
 authenticFour_Pa_Sticheraric =
     { classification = Authentic ModeFour
     , genres = [ Sticheraric ]
+    , signatures = [ Signature.paramedialFourPa ]
     , scale = Diatonic
     , dominantTones =
         { base = Bou
@@ -612,6 +625,7 @@ plagalOne_Pa_Sticheraric : ModeData
 plagalOne_Pa_Sticheraric =
     { classification = Plagal ModeOne
     , genres = [ Sticheraric ]
+    , signatures = [ Signature.plagalFirstPa ]
     , scale = Diatonic
     , dominantTones =
         { base = Pa
@@ -648,6 +662,7 @@ plagalOne_Pa_Papadic : ModeData
 plagalOne_Pa_Papadic =
     { classification = Plagal ModeOne
     , genres = [ Papadic ]
+    , signatures = [ Signature.plagalFirstPa ]
     , scale = Diatonic
     , dominantTones =
         { base = Pa
@@ -678,6 +693,7 @@ plagalOne_Ke_Eirmologic : ModeData
 plagalOne_Ke_Eirmologic =
     { classification = Plagal ModeOne
     , genres = [ Eirmologic ]
+    , signatures = [ Signature.plagalFirstKe ]
     , scale = Diatonic
     , dominantTones =
         { base = Ke
@@ -716,6 +732,7 @@ plagalOne_Pa_Pentaphone : ModeData
 plagalOne_Pa_Pentaphone =
     { classification = Plagal ModeOne
     , genres = [ Sticheraric, Papadic ]
+    , signatures = [ Signature.plagalFirstPa_pentaphone ]
     , scale = Enharmonic
     , dominantTones =
         { base = Pa
@@ -754,6 +771,7 @@ plagalOne_Pa_Phrygian : ModeData
 plagalOne_Pa_Phrygian =
     { classification = Plagal ModeOne
     , genres = [ Sticheraric, Papadic ]
+    , signatures = [ Signature.plagalFirstPa_phrygian ]
     , scale = Enharmonic
     , dominantTones =
         { base = Pa
@@ -792,6 +810,7 @@ plagalOne_Pa_Minor : ModeData
 plagalOne_Pa_Minor =
     { classification = Plagal ModeOne
     , genres = [ Sticheraric, Papadic ]
+    , signatures = [ Signature.plagalFirstPa_minor ]
     , scale = Enharmonic
     , dominantTones =
         { base = Pa
@@ -830,6 +849,12 @@ plagalTwo_Pa : ModeData
 plagalTwo_Pa =
     { classification = Plagal ModeTwo
     , genres = [ Sticheraric, Papadic ]
+    , signatures =
+        [ Signature.plagalSecondPa
+        , Signature.plagalSecondBou
+        , Signature.plagalSecondDi_softChromatic
+        , Signature.plagalSecondDi_hardChromatic
+        ]
     , scale = HardChromatic
     , dominantTones =
         { base = Pa
@@ -866,6 +891,7 @@ plagalThree_Ga : ModeData
 plagalThree_Ga =
     { classification = Plagal ModeThree
     , genres = [ Eirmologic, Sticheraric ]
+    , signatures = [ Signature.graveGa ]
     , scale = Diatonic
     , dominantTones =
         { base = Ga
@@ -909,6 +935,7 @@ plagalThree_Zo : ModeData
 plagalThree_Zo =
     { classification = Plagal ModeThree
     , genres = [ Sticheraric, Papadic ]
+    , signatures = [ Signature.graveZo ]
     , scale = Diatonic
     , dominantTones =
         { base = Zo_
@@ -943,6 +970,7 @@ plagalThree_Zo_Hard : ModeData
 plagalThree_Zo_Hard =
     { classification = Plagal ModeThree
     , genres = [ Sticheraric, Papadic ]
+    , signatures = [ Signature.graveZoFlat ]
     , scale = Enharmonic
     , dominantTones =
         { base = Zo_
@@ -974,6 +1002,7 @@ plagalFour_Ni : ModeData
 plagalFour_Ni =
     { classification = Plagal ModeFour
     , genres = [ Eirmologic, Sticheraric, Papadic ]
+    , signatures = [ Signature.plagalFourthNi ]
     , scale = Diatonic
     , dominantTones =
         { base = Ni
@@ -1012,6 +1041,7 @@ plagalFour_Ga : ModeData
 plagalFour_Ga =
     { classification = Plagal ModeFour
     , genres = [ Eirmologic ]
+    , signatures = [ Signature.plagalFourthGa_1, Signature.plagalFourthGa_2 ]
     , scale = Diatonic
     , dominantTones =
         { base = Ga

@@ -1,6 +1,7 @@
 module View.ModeData exposing (view)
 
 import Byzantine.Accidental as Accidental
+import Byzantine.ByzHtml.ModalSignature as ModalSignature
 import Byzantine.Degree as Degree exposing (Degree)
 import Byzantine.Mode as Mode exposing (Mode)
 import Byzantine.Scale as Scale
@@ -8,6 +9,7 @@ import Html exposing (Html, button, div, h3, li, span, text, ul)
 import Html.Attributes exposing (class)
 import Html.Events exposing (onClick)
 import Html.Extra
+import List.Extra
 import Model exposing (Modal(..))
 import Styles
 import Update exposing (Msg(..))
@@ -22,6 +24,8 @@ view mode =
     div []
         [ h3 [ class "font-heading text-xl" ]
             [ text (Mode.toString mode) ]
+        , div [ Styles.flexRowCentered, class "my-2 gap-4" ]
+            (List.map ModalSignature.view modeData.signatures |> intersperseOr)
         , ul [ class "list-disc ps-4 my-2" ]
             [ listItem "Scale"
                 (text (Scale.name modeData.scale))
@@ -53,6 +57,14 @@ view mode =
             ]
             [ text "Back" ]
         ]
+
+
+intersperseOr : List (Html msg) -> List (Html msg)
+intersperseOr items =
+    List.Extra.interweave items
+        (List.repeat (List.length items - 1)
+            (div [] [ text "~ or ~" ])
+        )
 
 
 {-| we'll probably need to think about styling here

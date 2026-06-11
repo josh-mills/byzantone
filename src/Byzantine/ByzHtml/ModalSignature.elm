@@ -1,5 +1,5 @@
 module Byzantine.ByzHtml.ModalSignature exposing
-    ( view
+    ( view, viewDivision
     , modePlagal, modeWordEchos
     , modeFirst, modeSecond, modeThird, modeThirdNana, modeFourth, modeLegetos, modePlagalFirst, modePlagalSecond, modeVarys, modeVarys2, modePlagalFourth, modeWordVarys
     , modeNi, modePa, modeVou, modeGa, modeDi, modeKe, modeZo
@@ -13,7 +13,7 @@ to be built out so we can implement a general `view` function.
 
 # View
 
-@docs view
+@docs view, viewDivision
 
 
 # Components
@@ -45,6 +45,9 @@ to be built out so we can implement a general `view` function.
 
 -}
 
+import Byzantine.ByzHtml.Fthora as Fthora
+import Byzantine.Degree exposing (Degree(..))
+import Byzantine.Fthora exposing (Fthora)
 import Byzantine.Mode.Classification as Classification exposing (Classification(..), Ordinal(..))
 import Byzantine.Mode.Signature as Signature exposing (Elements, Ichos(..), Indicator(..), Signature)
 import Html exposing (Html)
@@ -67,6 +70,7 @@ view modalSignature =
             in
             [ viewDivision elements.ichos
             , [ viewIndicator elements.indicator ]
+            , viewBase signature elements
             ]
                 |> List.concat
                 |> Html.div [ class "text-2xl" ]
@@ -218,6 +222,69 @@ modePlagalFourth =
 modeWordVarys : Html msg
 modeWordVarys =
     Html.node "x-mode-word-varys" [] []
+
+
+
+-- bases with fthora
+
+
+{-| TODO: fill this out
+-}
+viewBase : Signature -> Elements -> List (Html msg)
+viewBase signature elements =
+    case Signature.classification signature of
+        Authentic ModeOne ->
+            modesFirst elements
+
+        Authentic ModeTwo ->
+            []
+
+        Authentic ModeThree ->
+            []
+
+        Authentic ModeFour ->
+            []
+
+        Plagal ModeOne ->
+            []
+
+        Plagal ModeTwo ->
+            []
+
+        Plagal ModeThree ->
+            []
+
+        Plagal ModeFour ->
+            []
+
+
+{-| TODOs:
+
+  - positing from Ke needs fiddling. We'll need a bare position-right fthora wrapper,
+    or a new position variant for the ByzHtml that creates the position adjustment.
+
+-}
+modesFirst : Elements -> List (Html msg)
+modesFirst { baseDegree, fthora, neume } =
+    case ( baseDegree, fthora, neume ) of
+        ( Just Ke, Just fth, Nothing ) ->
+            [ modeKe, bareFthora fth ]
+
+        ( Just Pa, Just fth, Nothing ) ->
+            [ modePa, bareFthora fth ]
+
+        _ ->
+            []
+
+
+{-| Can I use anchor positioning for this I wonder?
+Or a `Degree -> Fthora -> Html msg` helper that handles the inline wrapping?
+We might just bypass the web component node per se and just reach for the glyph
+directly.
+-}
+bareFthora : Fthora -> Html msg
+bareFthora fthora =
+    Html.span [ class "_ml-2" ] [ Fthora.view Fthora.Secondary fthora ]
 
 
 
