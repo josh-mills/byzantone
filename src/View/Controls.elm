@@ -1,6 +1,7 @@
 module View.Controls exposing (view, viewOverlay)
 
 import Byzantine.ByzHtml.Interval as ByzHtmlInterval
+import Byzantine.ByzHtml.ModalSignature as ByzHtmlMode
 import Byzantine.Degree as Degree
 import Byzantine.IntervalCharacter as Character
 import Byzantine.Pitch as Pitch exposing (Pitch)
@@ -15,6 +16,7 @@ import Html.Extra exposing (viewIf)
 import Html.Lazy exposing (..)
 import Icons
 import Maybe.Extra as Maybe
+import ModeBuilder
 import Model.AudioSettings as AudioSettings exposing (AudioSettings, ListenRegister)
 import Model.ControlsMenu as ControlsMenu exposing (MenuOption(..), OpenControlMenus)
 import Model.ModeSettings exposing (ModeSettings)
@@ -38,23 +40,23 @@ viewOverlay openControlMenus =
         )
 
 
-view : AudioSettings -> ModeSettings -> PitchState -> OpenControlMenus -> Html Msg
-view audioSettings modeSettings pitchState openControlMenus =
+view : AudioSettings -> ModeSettings -> PitchState -> OpenControlMenus -> ModeBuilder.Model -> Html Msg
+view audioSettings modeSettings pitchState openControlMenus modeBuilderModel =
     Html.menu
         [ class "w-full lg:w-72"
-        , class "grid grid-cols-5"
+        , class "grid grid-cols-6"
         , class "lg:flex lg:flex-col"
         , class "fixed bottom-0 lg:relative"
         , class "z-20"
         ]
         (List.map
-            (lazy5 item audioSettings modeSettings pitchState openControlMenus)
+            (lazy6 item audioSettings modeSettings pitchState openControlMenus modeBuilderModel)
             ControlsMenu.menuOptions
         )
 
 
-item : AudioSettings -> ModeSettings -> PitchState -> OpenControlMenus -> MenuOption -> Html Msg
-item audioSettings modeSettings pitchState openControlMenus menuOption =
+item : AudioSettings -> ModeSettings -> PitchState -> OpenControlMenus -> ModeBuilder.Model -> MenuOption -> Html Msg
+item audioSettings modeSettings pitchState openControlMenus modeBuilderModel menuOption =
     let
         isOpen =
             ControlsMenu.isOpen openControlMenus menuOption
@@ -66,7 +68,7 @@ item audioSettings modeSettings pitchState openControlMenus menuOption =
     )
         []
         [ lazy3 optionHeader audioSettings isOpen menuOption
-        , optionContent audioSettings modeSettings pitchState isOpen menuOption
+        , optionContent audioSettings modeSettings pitchState modeBuilderModel isOpen menuOption
         ]
 
 
@@ -116,6 +118,11 @@ optionHeader audioSettings isOpen menuOption =
                     [ text "Scale" ]
                     (SvgIcon Icons.music)
 
+            ModeBuilderMenu ->
+                optionHeaderWrapper isOpen
+                    [ text "Mode" ]
+                    (ByzHtmlIcon ByzHtmlMode.modeWordEchos)
+
             VolumeMenu ->
                 optionHeaderWrapper isOpen
                     [ text "Volume" ]
@@ -155,8 +162,8 @@ optionHeaderWrapper isOpen optionHeaderTextNodes icon =
         ]
 
 
-optionContent : AudioSettings -> ModeSettings -> PitchState -> Bool -> MenuOption -> Html Msg
-optionContent audioSettings modeSettings pitchState isOpen menuOption =
+optionContent : AudioSettings -> ModeSettings -> PitchState -> ModeBuilder.Model -> Bool -> MenuOption -> Html Msg
+optionContent audioSettings modeSettings pitchState modeBuilderModel isOpen menuOption =
     let
         wrapper =
             div [ Styles.flexCol, class "max-w-sm mx-auto lg:m-2" ]
@@ -215,6 +222,9 @@ optionContent audioSettings modeSettings pitchState isOpen menuOption =
 
             ScaleMenu ->
                 wrapper [ lazy2 RadioFieldset.view scaleRadioConfig modeSettings.scale ]
+
+            ModeBuilderMenu ->
+                wrapper [ Html.map ModeBuilderMsg (ModeBuilder.view modeBuilderModel) ]
 
             VolumeMenu ->
                 wrapper [ lazy gainInput audioSettings ]

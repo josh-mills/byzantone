@@ -5,6 +5,7 @@ module Byzantine.ByzHtml.ModalSignature exposing
     , modeNi, modePa, modeVou, modeGa, modeDi, modeKe, modeZo
     , modeOligonKentimaAbove, modeOligonYpsili, modeElafron, modeRunningElafron
     , modeAlpha, modeBeta, modeGamma, modeDelta, modeAlphaCapital, modeBetaCapital, modeGammaCapital, modeDeltaCapital
+    , viewIndicator
     )
 
 {-| WIP. The component elements are here, but the underlying type modeling needs

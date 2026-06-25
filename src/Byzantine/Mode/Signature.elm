@@ -12,6 +12,7 @@ module Byzantine.Mode.Signature exposing
     , plagalSecondPa, plagalSecondBou, plagalSecondDi_softChromatic, plagalSecondDi_hardChromatic
     , graveGa, graveZo, graveZoFlat
     , plagalFourthNi, plagalFourthGa_1, plagalFourthGa_2
+    , signaturesFor
     )
 
 {-| WIP.
@@ -319,6 +320,8 @@ secondPa =
         }
 
 
+{-| Verify the fthora
+-}
 secondBou : Signature
 secondBou =
     Regular
@@ -642,3 +645,18 @@ plagalFourthGa_2 =
         , indicator = PlagalFourth
         , base = Base Ga (Fthora.for Diatonic Ni)
         }
+
+
+{-| All signatures matching the given Ichos and Indicator.
+-}
+signaturesFor : Ichos -> Indicator -> List Signature
+signaturesFor ichos indicator =
+    List.filter
+        (\sig ->
+            let
+                e =
+                    elements sig
+            in
+            e.ichos == ichos && e.indicator == indicator
+        )
+        all
