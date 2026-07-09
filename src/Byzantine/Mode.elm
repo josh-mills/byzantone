@@ -50,6 +50,7 @@ type Mode
     | PlagalOne_Pa_Phrygian
     | PlagalOne_Pa_Minor
     | PlagalTwo_Pa
+    | PlagalTwo_Di
     | PlagalThree_Ga
     | PlagalThree_Zo
     | PlagalThree_Zo_Hard
@@ -110,6 +111,9 @@ toString mode =
         PlagalTwo_Pa ->
             "Plagal Mode Two, Hard Chromatic"
 
+        PlagalTwo_Di ->
+            "Plagal Mode Two, Soft Chromatic"
+
         PlagalThree_Ga ->
             "Grave Mode (Eirmologic, Sticheraric)"
 
@@ -144,6 +148,7 @@ all =
     , PlagalOne_Pa_Phrygian
     , PlagalOne_Pa_Minor
     , PlagalTwo_Pa
+    , PlagalTwo_Di
     , PlagalThree_Ga
     , PlagalThree_Zo
     , PlagalThree_Zo_Hard
@@ -206,6 +211,9 @@ data mode =
 
         PlagalTwo_Pa ->
             plagalTwo_Pa
+
+        PlagalTwo_Di ->
+            plagalTwo_Di
 
         PlagalThree_Ga ->
             plagalThree_Ga
@@ -872,6 +880,35 @@ plagalTwo_Pa =
     , possibleInflections =
         [ { degree = Ni, accidentals = [ Sharp2, Sharp4, Sharp6 ] }
         , { degree = Ga, accidentals = [ Flat2 ] }
+        ]
+    }
+
+
+{-| Eirmologic plagal second mode, on Di / Bou.
+-}
+plagalTwo_Di : ModeData
+plagalTwo_Di =
+    { classification = Plagal ModeTwo
+    , genres = [ Eirmologic ]
+    , signatures = [ Signature.plagalSecondDi_softChromatic ]
+    , scale = SoftChromatic
+    , dominantTones =
+        { base = Di
+        , cadencePoints =
+            { final = Di
+            , complete = [ Ni, Bou, Di ]
+            , medial = []
+            , incomplete = [ Di, Zo_ ]
+            }
+        , nonCadentialFoci = []
+        }
+    , isonOptions = [ DI, Ni, Di ]
+    , range = { start = DI, end = Ga_ }
+    , recitingTone = Di
+    , possibleInflections =
+        [ { degree = Pa, accidentals = [ Sharp4, Sharp6 ] }
+        , { degree = Ga, accidentals = [ Sharp2, Sharp4, Sharp6 ] }
+        , { degree = Ke, accidentals = [ Sharp2, Sharp4 ] }
         ]
     }
 
