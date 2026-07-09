@@ -45,6 +45,11 @@
     top: calc(anchor(top) + 12px);
 }
 
+animated-height {
+    display: block;
+    overflow: hidden;
+}
+
 @keyframes slide-in-from-right {
     from {
         transform: translateX(100%);
@@ -66,8 +71,8 @@
     }
 }
 .slide-in-forward {
-    animation: slide-in-from-right 280ms ease-out;
+    animation: slide-in-from-right 300ms ease-out;
 }
 .slide-in-backward {
-    animation: slide-in-from-left 280ms ease-out;
+    animation: slide-in-from-left 300ms ease-out;
 }

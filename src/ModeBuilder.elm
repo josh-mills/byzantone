@@ -296,8 +296,8 @@ view : Model -> Html Msg
 view model =
     div [ Styles.flexCol, class "gap-1" ]
         [ viewNav model
-        , Html.Keyed.node "div"
-            [ class "overflow-hidden" ]
+        , Html.Keyed.node "animated-height"
+            [ Html.Attributes.attribute "duration" "300" ]
             [ ( stepKey model.step
               , div [ class (animationClass model.direction) ]
                     [ viewStep model ]
