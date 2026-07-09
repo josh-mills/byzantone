@@ -76,3 +76,9 @@ animated-height {
 .slide-in-backward {
     animation: slide-in-from-left 300ms ease-out;
 }
+@media (prefers-reduced-motion: reduce) {
+    .slide-in-forward,
+    .slide-in-backward {
+        animation: none;
+    }
+}
