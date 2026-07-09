@@ -20,6 +20,7 @@ import Byzantine.Mode.Classification as Classification exposing (Classification)
 import Byzantine.Mode.Signature as Signature exposing (Ichos(..), Indicator(..), Signature)
 import Byzantine.Pitch as Pitch exposing (Pitch)
 import Byzantine.Scale as Scale exposing (Scale)
+import Components.AnimatedHeight as AnimatedHeight
 import Components.RadioFieldset as RadioFieldset
 import Html exposing (Html, button, div, span, text)
 import Html.Attributes exposing (class)
@@ -296,13 +297,15 @@ view : Model -> Html Msg
 view model =
     div [ Styles.flexCol, class "gap-1" ]
         [ viewNav model
-        , Html.Keyed.node "animated-height"
-            [ Html.Attributes.attribute "duration" "300" ]
-            [ ( stepKey model.step
-              , div [ class (animationClass model.direction) ]
-                    [ viewStep model ]
-              )
-            ]
+        , AnimatedHeight.view
+            (Html.Keyed.node "div"
+                []
+                [ ( stepKey model.step
+                  , div [ class (animationClass model.direction) ]
+                        [ viewStep model ]
+                  )
+                ]
+            )
         ]
 
 

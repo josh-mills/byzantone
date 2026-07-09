@@ -4,7 +4,6 @@ class AnimatedHeight extends HTMLElement {
     private observer: ResizeObserver;
     private lastHeight: number | null = null;
     private currentAnimation: Animation | null = null;
-    private ignoreResizes = false;
     private duration = DEFAULT_DURATION;
 
     static get observedAttributes(): string[] {
@@ -27,7 +26,6 @@ class AnimatedHeight extends HTMLElement {
     constructor() {
         super();
         this.observer = new ResizeObserver((entries) => {
-            if (this.ignoreResizes) return;
             const entry = entries[entries.length - 1];
             const newHeight =
                 entry.borderBoxSize?.[0]?.blockSize ??
@@ -40,13 +38,16 @@ class AnimatedHeight extends HTMLElement {
         this.style.overflow = "hidden";
         this.style.display = "block";
 
-        // Wait one frame for the initial children to be rendered before
-        // recording the baseline height and starting observation. This avoids
-        // an unwanted expand animation on first mount.
+        // Observe the first child rather than this element itself. The child's
+        // height is driven purely by its content and is unaffected by WAAPI
+        // animating this element's height, so no feedback loop is possible.
+        // Waiting one frame lets Elm render the initial child before we begin.
         requestAnimationFrame(() => {
             if (!this.isConnected) return;
-            this.lastHeight = this.getBoundingClientRect().height;
-            this.observer.observe(this);
+            const child = this.firstElementChild;
+            if (!child) return;
+            this.lastHeight = child.getBoundingClientRect().height;
+            this.observer.observe(child);
         });
     }
 
@@ -56,7 +57,6 @@ class AnimatedHeight extends HTMLElement {
             this.currentAnimation.cancel();
             this.currentAnimation = null;
         }
-        this.ignoreResizes = false;
     }
 
     private onContentResize(newHeight: number): void {
@@ -70,18 +70,14 @@ class AnimatedHeight extends HTMLElement {
 
         if (Math.abs(newHeight - fromHeight) < 1) return;
 
-        // If a previous animation is still running, start the new one from
-        // the current visual position rather than jumping back to fromHeight.
+        // If a previous animation is still running, read the current visual
+        // position before cancelling so the new animation starts from there.
         let startHeight = fromHeight;
         if (this.currentAnimation) {
             startHeight = this.getBoundingClientRect().height;
             this.currentAnimation.cancel();
             this.currentAnimation = null;
         }
-
-        // Suppress ResizeObserver callbacks while WAAPI animates the height,
-        // which would otherwise create a feedback loop.
-        this.ignoreResizes = true;
 
         const animation = this.animate(
             [
@@ -103,13 +99,9 @@ class AnimatedHeight extends HTMLElement {
                 // auto value (which equals newHeight at this point).
                 animation.cancel();
                 this.currentAnimation = null;
-                this.ignoreResizes = false;
             })
             .catch(() => {
-                // Animation was cancelled before finishing (e.g. a rapid
-                // second transition or disconnection) — nothing to clean up.
                 this.currentAnimation = null;
-                this.ignoreResizes = false;
             });
     }
 }
