@@ -27,17 +27,11 @@ class AnimatedHeight extends HTMLElement {
         super();
         this.observer = new ResizeObserver((entries) => {
             const entry = entries[entries.length - 1];
-            const newHeight =
-                entry.borderBoxSize?.[0]?.blockSize ??
-                entry.contentRect.height;
-            this.onContentResize(newHeight);
+            this.onContentResize(entry.contentRect.height);
         });
     }
 
     connectedCallback(): void {
-        this.style.overflow = "hidden";
-        this.style.display = "block";
-
         // Observe the first child rather than this element itself. The child's
         // height is driven purely by its content and is unaffected by WAAPI
         // animating this element's height, so no feedback loop is possible.
@@ -70,6 +64,8 @@ class AnimatedHeight extends HTMLElement {
 
         if (Math.abs(newHeight - fromHeight) < 1) return;
 
+        if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
         // If a previous animation is still running, read the current visual
         // position before cancelling so the new animation starts from there.
         let startHeight = fromHeight;
@@ -95,12 +91,14 @@ class AnimatedHeight extends HTMLElement {
 
         animation.finished
             .then(() => {
+                if (this.currentAnimation !== animation) return;
                 // Cancel releases the fill, returning height to its natural
                 // auto value (which equals newHeight at this point).
                 animation.cancel();
                 this.currentAnimation = null;
             })
             .catch(() => {
+                if (this.currentAnimation !== animation) return;
                 this.currentAnimation = null;
             });
     }
