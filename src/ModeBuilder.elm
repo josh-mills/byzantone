@@ -517,6 +517,7 @@ indicatorRadioConfig ichos =
             (Html.Extra.viewMaybe
                 (\ind -> div [ class "text-2xl mt-1" ] [ ByzHtml.viewIndicator ind ])
             )
+        |> RadioFieldset.withLayout RadioFieldset.TwoColumnGrid
 
 
 signatureRadioConfig : Ichos -> Indicator -> RadioFieldset.Config (Maybe Signature) Msg
