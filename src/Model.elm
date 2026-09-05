@@ -47,6 +47,7 @@ type alias Model =
     , calendar : CalendarInfo
     , detectedPitch : Maybe { detectedPitch : DetectedPitch, timestamp : Time.Posix }
     , deviceInfo : DeviceInfo
+    , devMode : Bool
     , headerIsOpen : Bool
     , layoutData : LayoutData
     , menuOpen : Bool
@@ -66,8 +67,8 @@ type alias Remote =
     }
 
 
-init : DeviceInfo -> { width : Float, height : Float } -> Maybe Date -> Model
-init deviceInfo viewportDimensions currentDate =
+init : DeviceInfo -> { width : Float, height : Float } -> Maybe Date -> Bool -> Model
+init deviceInfo viewportDimensions currentDate devMode =
     let
         layoutData =
             LayoutData.init viewportDimensions
@@ -76,6 +77,7 @@ init deviceInfo viewportDimensions currentDate =
     , calendar = CalendarInfo.init currentDate
     , detectedPitch = Nothing
     , deviceInfo = deviceInfo
+    , devMode = devMode
     , headerIsOpen = True
     , layoutData = layoutData
     , menuOpen = False

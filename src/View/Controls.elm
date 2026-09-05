@@ -40,8 +40,12 @@ viewOverlay openControlMenus =
         )
 
 
-view : AudioSettings -> ModeSettings -> PitchState -> OpenControlMenus -> ModeBuilder.Model -> Html Msg
-view audioSettings modeSettings pitchState openControlMenus modeBuilderModel =
+view : Bool -> AudioSettings -> ModeSettings -> PitchState -> OpenControlMenus -> ModeBuilder.Model -> Html Msg
+view devMode audioSettings modeSettings pitchState openControlMenus modeBuilderModel =
+    let
+        lazyItem isOpen menuOption =
+            lazy6 item audioSettings modeSettings pitchState isOpen modeBuilderModel menuOption
+    in
     Html.menu
         [ class "w-full lg:w-72"
         , class "grid grid-cols-6"
@@ -49,18 +53,17 @@ view audioSettings modeSettings pitchState openControlMenus modeBuilderModel =
         , class "fixed bottom-0 lg:relative"
         , class "z-20"
         ]
-        (List.map
-            (lazy6 item audioSettings modeSettings pitchState openControlMenus modeBuilderModel)
-            ControlsMenu.menuOptions
-        )
+        [ lazyItem openControlMenus.audioModeIsOpen AudioModeMenu
+        , lazyItem openControlMenus.audioSettingsMenuIsOpen AudioSettingsMenu
+        , lazyItem openControlMenus.isonMenuIsOpen IsonMenu
+        , lazyItem openControlMenus.scaleMenuIsOpen ScaleMenu
+        , viewIf devMode (lazyItem openControlMenus.modeBuilderMenuIsOpen ModeBuilderMenu)
+        , lazyItem openControlMenus.volumeMenuIsOpen VolumeMenu
+        ]
 
 
-item : AudioSettings -> ModeSettings -> PitchState -> OpenControlMenus -> ModeBuilder.Model -> MenuOption -> Html Msg
-item audioSettings modeSettings pitchState openControlMenus modeBuilderModel menuOption =
-    let
-        isOpen =
-            ControlsMenu.isOpen openControlMenus menuOption
-    in
+item : AudioSettings -> ModeSettings -> PitchState -> Bool -> ModeBuilder.Model -> MenuOption -> Html Msg
+item audioSettings modeSettings pitchState isOpen modeBuilderModel menuOption =
     (Collapsible.isOpen isOpen
         |> Collapsible.withFirstChildTrigger
         |> Collapsible.withTransition Collapsible.TransitionQuick

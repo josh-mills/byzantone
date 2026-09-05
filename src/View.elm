@@ -54,7 +54,7 @@ view model =
         , lazy5 viewModal model.audioSettings model.layoutData model.modeSettings model.remote model.modal
 
         -- , viewIf LayoutData.showSpacing (div [ class "text-center" ] [ text "|" ])
-        , viewIf model.menuOpen menu
+        , viewIf model.menuOpen (menu model.devMode)
         , main_
             [ class "lg:container lg:mx-auto font-serif"
             , case layoutFor model.layoutData of
@@ -73,6 +73,7 @@ view model =
                 model.pitchState
                 model.detectedPitch
             , View.Controls.view
+                model.devMode
                 model.audioSettings
                 model.modeSettings
                 model.pitchState
@@ -185,8 +186,8 @@ header calendarInfo headerIsOpen =
 
 {-| TODO: give this a drawer effect
 -}
-menu : Html Msg
-menu =
+menu : Bool -> Html Msg
+menu devMode =
     let
         menuItem modal =
             Html.li []
@@ -206,7 +207,7 @@ menu =
         , Html.Events.on "keydown" keyDecoder
         ]
         [ menuItem AboutModal
-        , menuItem (ModeModal Nothing)
+        , viewIf devMode (menuItem (ModeModal Nothing))
         , menuItem SettingsModal
         , menuItem (ReleasesModal False)
         ]
