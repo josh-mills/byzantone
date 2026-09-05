@@ -9,7 +9,7 @@
     "build:compile": "npx elm-watch make --optimize && tsc && npx @tailwindcss/cli -i src/main.css -o public/dist/main.css --minify",
     "build:static": "node scripts/parseChangelog.mjs && node scripts/parseAbout.mjs",
     "codegen": "node codegen/run.js",
-    "dev": "npm run dev:clean && concurrently \"npm run tailwind\" \"npm run start\" \"npx elm-watch hot\" \"npm run watch\"",
+    "dev": "npm run dev:clean && concurrently \"npm run tailwind\" \"DEV_MODE=true node server.cjs\" \"npx elm-watch hot\" \"npm run watch\"",
     "dev:clean": "rm -rf public elm-stuff && mkdir public && cp src/index.html public/",
     "review": "elm-format review/src/ --yes && elm-review",
     "review-fix": "elm-format review/src/ --yes && elm-review --fix",

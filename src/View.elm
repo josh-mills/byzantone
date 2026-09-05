@@ -4,6 +4,7 @@ import Byzantine.ByzHtml.Martyria as ByzHtmlMartyria
 import Byzantine.Degree as Degree exposing (Degree(..))
 import Byzantine.Frequency as Frequency exposing (Frequency(..), PitchStandard(..))
 import Byzantine.Martyria as Martyria
+import Byzantine.Mode as Mode exposing (Mode)
 import Byzantine.Pitch as Pitch exposing (Pitch)
 import Byzantine.Scale exposing (Scale(..))
 import Components.Collapsible as Collapsible
@@ -29,6 +30,7 @@ import Update exposing (Msg(..))
 import View.About
 import View.Changelog
 import View.Controls
+import View.ModeData
 import View.PitchSpace as PitchSpace
 
 
@@ -52,7 +54,7 @@ view model =
         , lazy5 viewModal model.audioSettings model.layoutData model.modeSettings model.remote model.modal
 
         -- , viewIf LayoutData.showSpacing (div [ class "text-center" ] [ text "|" ])
-        , viewIf model.menuOpen menu
+        , viewIf model.menuOpen (menu model.devMode)
         , main_
             [ class "lg:container lg:mx-auto font-serif"
             , case layoutFor model.layoutData of
@@ -71,10 +73,12 @@ view model =
                 model.pitchState
                 model.detectedPitch
             , View.Controls.view
+                model.devMode
                 model.audioSettings
                 model.modeSettings
                 model.pitchState
                 model.openControlMenus
+                model.modeBuilder
             , lazy View.Controls.viewOverlay model.openControlMenus
             , lazy2 pitchTracker model.audioSettings model.layoutData
             ]
@@ -182,8 +186,8 @@ header calendarInfo headerIsOpen =
 
 {-| TODO: give this a drawer effect
 -}
-menu : Html Msg
-menu =
+menu : Bool -> Html Msg
+menu devMode =
     let
         menuItem modal =
             Html.li []
@@ -203,6 +207,7 @@ menu =
         , Html.Events.on "keydown" keyDecoder
         ]
         [ menuItem AboutModal
+        , viewIf devMode (menuItem (ModeModal Nothing))
         , menuItem SettingsModal
         , menuItem (ReleasesModal False)
         ]
@@ -230,7 +235,7 @@ viewModal audioSettings layoutData modeSettings remote modal =
                 ]
                 [ h2
                     [ Styles.flexRow
-                    , class "justify-between mb-1"
+                    , class "justify-between items-center mb-1"
                     , class "sticky top-0 bg-white py-4"
                     ]
                     [ span [ class "font-heading text-2xl" ]
@@ -253,6 +258,9 @@ modalContent audioSettings layoutData modeSettings { changelog, aboutCopy } moda
 
         AboutModal ->
             lazy View.About.view aboutCopy
+
+        ModeModal maybeMode ->
+            lazy viewModeModal maybeMode
 
         SettingsModal ->
             lazy3 settings audioSettings layoutData modeSettings
@@ -446,6 +454,26 @@ viewPitchStandard pitchStandard =
         [ span [ class "text-xl relative bottom-1.5" ] [ martyria ]
         , text frequency
         ]
+
+
+viewModeModal : Maybe Mode -> Html Msg
+viewModeModal maybeMode =
+    case maybeMode of
+        Nothing ->
+            RadioFieldset.view modeDataRadioConfig maybeMode
+
+        Just mode ->
+            View.ModeData.view mode
+
+
+modeDataRadioConfig : RadioFieldset.Config (Maybe Mode) Msg
+modeDataRadioConfig =
+    RadioFieldset.baseConfig
+        { itemToString = Maybe.unwrap "" Mode.toString
+        , legendText = "Mode"
+        , onSelect = SelectModal << ModeModal
+        , options = List.map Just Mode.all
+        }
 
 
 pitchTracker : AudioSettings -> LayoutData -> Html Msg
