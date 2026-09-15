@@ -74,12 +74,13 @@ view model =
                 model.detectedPitch
             , View.Controls.view
                 model.devMode
+                (layoutFor model.layoutData)
                 model.audioSettings
                 model.modeSettings
                 model.pitchState
                 model.openControlMenus
                 model.modeBuilder
-            , lazy View.Controls.viewOverlay model.openControlMenus
+            , lazy2 View.Controls.viewOverlay (layoutFor model.layoutData) model.openControlMenus
             , lazy2 pitchTracker model.audioSettings model.layoutData
             ]
         ]

@@ -19,6 +19,7 @@ import Maybe.Extra as Maybe
 import ModeBuilder
 import Model.AudioSettings as AudioSettings exposing (AudioSettings, ListenRegister)
 import Model.ControlsMenu as ControlsMenu exposing (MenuOption(..), OpenControlMenus)
+import Model.LayoutData exposing (Layout(..))
 import Model.ModeSettings exposing (ModeSettings)
 import Model.PitchState as PitchState exposing (IsonStatus, PitchState)
 import Styles
@@ -29,49 +30,55 @@ import Update exposing (Msg(..))
 
 {-| Tap catcher overlay
 -}
-viewOverlay : OpenControlMenus -> Html Msg
-viewOverlay openControlMenus =
+viewOverlay : Layout -> OpenControlMenus -> Html Msg
+viewOverlay layout openControlMenus =
     Html.Extra.viewIf (ControlsMenu.anyOpen openControlMenus)
         (div
-            [ class "fixed left-0 top-0 w-full h-full z-10 bg-slate-400 opacity-40 lg:hidden"
+            [ class "fixed left-0 top-0 w-full h-full z-10 bg-slate-400 opacity-40"
+            , classList [ ( "2xl:hidden", layout == Vertical ) ]
             , onClick CloseControlMenus
             ]
             []
         )
 
 
-view : Bool -> AudioSettings -> ModeSettings -> PitchState -> OpenControlMenus -> ModeBuilder.Model -> Html Msg
-view devMode audioSettings modeSettings pitchState openControlMenus modeBuilderModel =
+view : Bool -> Layout -> AudioSettings -> ModeSettings -> PitchState -> OpenControlMenus -> ModeBuilder.Model -> Html Msg
+view devMode layout audioSettings modeSettings pitchState openControlMenus modeBuilderModel =
     let
-        lazyItem isOpen menuOption =
-            lazy6 item audioSettings modeSettings pitchState isOpen modeBuilderModel menuOption
+        menuItem isOpen menuOption =
+            item layout audioSettings modeSettings pitchState isOpen modeBuilderModel menuOption
     in
     Html.menu
-        [ class "w-full lg:w-72"
-        , class "grid grid-cols-6"
-        , class "lg:flex lg:flex-col"
-        , class "fixed bottom-0 lg:relative"
-        , class "z-20"
-        ]
-        [ lazyItem openControlMenus.audioModeIsOpen AudioModeMenu
-        , lazyItem openControlMenus.audioSettingsMenuIsOpen AudioSettingsMenu
-        , lazyItem openControlMenus.isonMenuIsOpen IsonMenu
-        , lazyItem openControlMenus.scaleMenuIsOpen ScaleMenu
-        , viewIf devMode (lazyItem openControlMenus.modeBuilderMenuIsOpen ModeBuilderMenu)
-        , lazyItem openControlMenus.volumeMenuIsOpen VolumeMenu
+        (case layout of
+            Horizontal ->
+                [ class "w-full grid grid-cols-6 fixed bottom-0 left-0 z-20" ]
+
+            Vertical ->
+                [ class "w-full 2xl:w-72"
+                , class "grid grid-cols-6 2xl:flex 2xl:flex-col"
+                , class "fixed bottom-0 left-0 2xl:relative 2xl:left-auto"
+                , class "z-20"
+                ]
+        )
+        [ menuItem openControlMenus.audioModeIsOpen AudioModeMenu
+        , menuItem openControlMenus.audioSettingsMenuIsOpen AudioSettingsMenu
+        , menuItem openControlMenus.isonMenuIsOpen IsonMenu
+        , menuItem openControlMenus.scaleMenuIsOpen ScaleMenu
+        , viewIf devMode (menuItem openControlMenus.modeBuilderMenuIsOpen ModeBuilderMenu)
+        , menuItem openControlMenus.volumeMenuIsOpen VolumeMenu
         ]
 
 
-item : AudioSettings -> ModeSettings -> PitchState -> Bool -> ModeBuilder.Model -> MenuOption -> Html Msg
-item audioSettings modeSettings pitchState isOpen modeBuilderModel menuOption =
+item : Layout -> AudioSettings -> ModeSettings -> PitchState -> Bool -> ModeBuilder.Model -> MenuOption -> Html Msg
+item layout audioSettings modeSettings pitchState isOpen modeBuilderModel menuOption =
     (Collapsible.isOpen isOpen
         |> Collapsible.withFirstChildTrigger
         |> Collapsible.withTransition Collapsible.TransitionQuick
         |> Collapsible.li
     )
         []
-        [ lazy3 optionHeader audioSettings isOpen menuOption
-        , optionContent audioSettings modeSettings pitchState modeBuilderModel isOpen menuOption
+        [ lazy4 optionHeader layout audioSettings isOpen menuOption
+        , optionContent layout audioSettings modeSettings pitchState modeBuilderModel isOpen menuOption
         ]
 
 
@@ -80,19 +87,27 @@ type IconType msg
     | ByzHtmlIcon (Html msg)
 
 
-optionHeader : AudioSettings -> Bool -> MenuOption -> Html Msg
-optionHeader audioSettings isOpen menuOption =
+optionHeader : Layout -> AudioSettings -> Bool -> MenuOption -> Html Msg
+optionHeader layout audioSettings isOpen menuOption =
     Html.button
-        [ class "w-full min-h-12 lg:max-h-12"
-        , class "py-2 px-3"
-        , class "bg-white lg:bg-gray-200 hover:bg-gray-300"
-        , class "border-t lg:border border-gray-300 lg:rounded-md"
-        , classList [ ( "lg:rounded-b-none", isOpen ) ]
-        , onClick (Update.ToggleControlMenu menuOption)
-        ]
+        ([ class "w-full min-h-12 py-2 px-3 hover:bg-gray-300"
+         , onClick (Update.ToggleControlMenu menuOption)
+         ]
+            ++ (case layout of
+                    Horizontal ->
+                        [ class "bg-white border-t border-gray-300" ]
+
+                    Vertical ->
+                        [ class "bg-white 2xl:bg-gray-200"
+                        , class "border-t 2xl:border border-gray-300 2xl:rounded-md"
+                        , classList [ ( "2xl:rounded-b-none", isOpen ) ]
+                        ]
+               )
+        )
         [ case menuOption of
             AudioModeMenu ->
-                optionHeaderWrapper isOpen
+                optionHeaderWrapper layout
+                    isOpen
                     [ text "Audio"
                     , span [ class "hidden sm:inline" ] [ text " Mode" ]
                     ]
@@ -105,29 +120,34 @@ optionHeader audioSettings isOpen menuOption =
                     )
 
             AudioSettingsMenu ->
-                optionHeaderWrapper isOpen
+                optionHeaderWrapper layout
+                    isOpen
                     [ span [ class "hidden sm:inline" ] [ text "Audio " ]
                     , text "Settings"
                     ]
                     (SvgIcon Icons.sliders)
 
             IsonMenu ->
-                optionHeaderWrapper isOpen
+                optionHeaderWrapper layout
+                    isOpen
                     [ text "Ison" ]
                     (ByzHtmlIcon (ByzHtmlInterval.view Character.Ison))
 
             ScaleMenu ->
-                optionHeaderWrapper isOpen
+                optionHeaderWrapper layout
+                    isOpen
                     [ text "Scale" ]
                     (SvgIcon Icons.music)
 
             ModeBuilderMenu ->
-                optionHeaderWrapper isOpen
+                optionHeaderWrapper layout
+                    isOpen
                     [ text "Mode" ]
                     (ByzHtmlIcon ByzHtmlMode.modeWordEchos)
 
             VolumeMenu ->
-                optionHeaderWrapper isOpen
+                optionHeaderWrapper layout
+                    isOpen
                     [ text "Volume" ]
                     (if audioSettings.gain == 0 then
                         SvgIcon Icons.volumeOff
@@ -141,9 +161,19 @@ optionHeader audioSettings isOpen menuOption =
         ]
 
 
-optionHeaderWrapper : Bool -> List (Html Msg) -> IconType Msg -> Html Msg
-optionHeaderWrapper isOpen optionHeaderTextNodes icon =
-    div [ Styles.flexRow, class "justify-around lg:justify-between" ]
+optionHeaderWrapper : Layout -> Bool -> List (Html Msg) -> IconType Msg -> Html Msg
+optionHeaderWrapper layout isOpen optionHeaderTextNodes icon =
+    div
+        [ Styles.flexRow
+        , class
+            (case layout of
+                Horizontal ->
+                    "justify-around"
+
+                Vertical ->
+                    "justify-around 2xl:justify-between"
+            )
+        ]
         [ div
             [ class "flex flex-col md:flex-row" ]
             [ case icon of
@@ -156,44 +186,67 @@ optionHeaderWrapper isOpen optionHeaderTextNodes icon =
             , div [ class "md:ml-2 text-xs md:text-base" ]
                 optionHeaderTextNodes
             ]
-        , div
-            [ class "hidden lg:block w-6"
-            , Styles.transitionQuick
-            , classList [ ( "rotate-180", isOpen ) ]
-            ]
-            [ Icons.chevronDown [ Svg.fill "grey" ] ]
+        , viewIf (layout == Vertical)
+            (div
+                [ class "hidden 2xl:block w-6"
+                , Styles.transitionQuick
+                , classList [ ( "rotate-180", isOpen ) ]
+                ]
+                [ Icons.chevronDown [ Svg.fill "grey" ] ]
+            )
         ]
 
 
-optionContent : AudioSettings -> ModeSettings -> PitchState -> ModeBuilder.Model -> Bool -> MenuOption -> Html Msg
-optionContent audioSettings modeSettings pitchState modeBuilderModel isOpen menuOption =
+optionContent : Layout -> AudioSettings -> ModeSettings -> PitchState -> ModeBuilder.Model -> Bool -> MenuOption -> Html Msg
+optionContent layout audioSettings modeSettings pitchState modeBuilderModel isOpen menuOption =
     let
         wrapper =
-            div [ Styles.flexCol, class "max-w-sm mx-auto lg:m-2" ]
+            div
+                [ Styles.flexCol
+                , class
+                    (case layout of
+                        Horizontal ->
+                            "max-w-sm mx-auto"
+
+                        Vertical ->
+                            "max-w-sm mx-auto 2xl:m-2 2xl:max-w-none"
+                    )
+                ]
     in
     div
-        [ if isOpen then
+        ([ if isOpen then
             Styles.border
 
-          else
+           else
             Styles.borderTransparent
-        , classList
-            [ ( "lg:mb-2 lg:rounded-b-md", isOpen )
-            , ( "translate-y-full lg:translate-y-0", not isOpen )
-            , ( "translate-y-0", isOpen )
-            ]
-        , class "overflow-hidden"
-        , Styles.transitionQuick
-        , class "fixed lg:static w-full left-0 bottom-0 z-30 bg-white"
-        , class "px-4 py-2 lg:p-0"
-        , Attr.attribute "aria-hidden"
+         , class "overflow-hidden bg-white"
+         , Styles.transitionQuick
+         , Attr.attribute "aria-hidden"
             (if isOpen then
                 "false"
 
              else
                 "true"
             )
-        ]
+         ]
+            ++ (case layout of
+                    Horizontal ->
+                        [ class "fixed w-full left-0 bottom-0 z-30 px-4 py-2"
+                        , classList
+                            [ ( "translate-y-full", not isOpen )
+                            , ( "translate-y-0", isOpen )
+                            ]
+                        ]
+
+                    Vertical ->
+                        [ class "fixed 2xl:static w-full left-0 bottom-0 z-30 px-4 py-2 2xl:p-0"
+                        , classList
+                            [ ( "translate-y-full 2xl:translate-y-0", not isOpen )
+                            , ( "translate-y-0 2xl:mb-2 2xl:rounded-b-md", isOpen )
+                            ]
+                        ]
+               )
+        )
         [ case menuOption of
             AudioModeMenu ->
                 wrapper
