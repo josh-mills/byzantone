@@ -250,7 +250,14 @@ optionContent layout audioSettings modeSettings pitchState modeBuilderModel isOp
         [ case menuOption of
             AudioModeMenu ->
                 wrapper
-                    [ lazy2 RadioFieldset.view audioModeRadioConfig audioSettings.audioMode ]
+                    [ lazy2 RadioFieldset.view audioModeRadioConfig audioSettings.audioMode
+                    , Collapsible.div
+                        (Collapsible.isOpen (audioSettings.audioMode == AudioSettings.Listen))
+                        []
+                        [ div [ class "overflow-hidden" ]
+                            [ lazy2 RadioFieldset.view responsivenessRadioConfig audioSettings.responsiveness ]
+                        ]
+                    ]
 
             AudioSettingsMenu ->
                 wrapper
@@ -259,7 +266,6 @@ optionContent layout audioSettings modeSettings pitchState modeBuilderModel isOp
                             [ lazy2 RadioFieldset.view
                                 (listenRegisterRadioConfig audioSettings)
                                 audioSettings.listenRegister
-                            , lazy2 RadioFieldset.view responsivenessRadioConfig audioSettings.responsiveness
                             , lazy2 RadioFieldset.view pitchFeedbackRadioConfig audioSettings.pitchFeedback
                             ]
 
