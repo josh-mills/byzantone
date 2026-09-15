@@ -1,4 +1,18 @@
-module Byzantine.Degree exposing (Degree(..), baseOctave, fromString, gamut, gamutList, getInterval, indexOf, range, step, text, toString, toStringGreek)
+module Byzantine.Degree exposing
+    ( Degree(..)
+    , baseOctave
+    , fromString
+    , gamut
+    , gamutList
+    , getInterval
+    , indexOf
+    , range
+    , step
+    , text
+    , textOctave
+    , toString
+    , toStringGreek
+    )
 
 import Array exposing (Array)
 import Byzantine.Scale exposing (Scale(..))
@@ -141,6 +155,30 @@ class="font-greek">Δι</span>`. No differentiation for different octaves.
 text : Degree -> Html msg
 text degree =
     Html.span [ class "font-greek" ]
+        [ Html.text (toStringGreek degree) ]
+
+
+{-| Greek text representation of the degree, e.g., `<span
+class="font-greek">Δι</span>`. Lowest octave will be capitalized, upper octave
+will be lowercase.
+-}
+textOctave : Degree -> Html msg
+textOctave degree =
+    let
+        index =
+            indexOf degree
+
+        textTransform =
+            if index >= indexOf Zo_ then
+                "lowercase"
+
+            else if index < indexOf Zo then
+                "uppercase"
+
+            else
+                ""
+    in
+    Html.span [ class "font-greek", class textTransform ]
         [ Html.text (toStringGreek degree) ]
 
 

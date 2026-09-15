@@ -32,11 +32,11 @@ main =
 init : Value -> ( Model, Cmd Msg )
 init flags =
     let
-        { deviceInfo, viewport, currentDate } =
+        { deviceInfo, viewport, currentDate, devMode } =
             Decode.decodeValue flagsDecoder flags
                 |> Result.withDefault defaultFlags
     in
-    ( Model.init deviceInfo viewport currentDate
+    ( Model.init deviceInfo viewport currentDate devMode
     , Task.perform GotViewport Dom.getViewport
     )
 
@@ -63,6 +63,7 @@ type alias Flags =
     { deviceInfo : DeviceInfo
     , viewport : { width : Float, height : Float }
     , currentDate : Maybe Date
+    , devMode : Bool
     }
 
 
@@ -71,15 +72,17 @@ defaultFlags =
     { deviceInfo = DeviceInfo.default
     , viewport = { width = 0, height = 256 }
     , currentDate = Nothing
+    , devMode = False
     }
 
 
 flagsDecoder : Decoder Flags
 flagsDecoder =
-    Decode.map3 Flags
+    Decode.map4 Flags
         (Decode.field "deviceInfo" DeviceInfo.decoder)
         (Decode.field "viewport" viewportDecoder)
         (Decode.field "currentDate" dateDecoder)
+        (Decode.field "devMode" Decode.bool)
 
 
 dateDecoder : Decoder (Maybe Date)

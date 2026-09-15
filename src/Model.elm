@@ -24,8 +24,10 @@ module Model exposing
 -}
 
 import Byzantine.DetectedPitch exposing (DetectedPitch)
+import Byzantine.Mode exposing (Mode)
 import Date exposing (Date)
 import Http
+import ModeBuilder
 import Model.AudioSettings as AudioSettings exposing (AudioSettings)
 import Model.CalendarInfo as CalendarInfo exposing (CalendarInfo)
 import Model.ControlsMenu as ControlsMenu exposing (OpenControlMenus)
@@ -45,10 +47,12 @@ type alias Model =
     , calendar : CalendarInfo
     , detectedPitch : Maybe { detectedPitch : DetectedPitch, timestamp : Time.Posix }
     , deviceInfo : DeviceInfo
+    , devMode : Bool
     , headerIsOpen : Bool
     , layoutData : LayoutData
     , menuOpen : Bool
     , modal : Modal
+    , modeBuilder : ModeBuilder.Model
     , modeSettings : ModeSettings
     , openControlMenus : OpenControlMenus
     , pitchSpaceData : PitchSpaceData
@@ -63,8 +67,8 @@ type alias Remote =
     }
 
 
-init : DeviceInfo -> { width : Float, height : Float } -> Maybe Date -> Model
-init deviceInfo viewportDimensions currentDate =
+init : DeviceInfo -> { width : Float, height : Float } -> Maybe Date -> Bool -> Model
+init deviceInfo viewportDimensions currentDate devMode =
     let
         layoutData =
             LayoutData.init viewportDimensions
@@ -73,10 +77,12 @@ init deviceInfo viewportDimensions currentDate =
     , calendar = CalendarInfo.init currentDate
     , detectedPitch = Nothing
     , deviceInfo = deviceInfo
+    , devMode = devMode
     , headerIsOpen = True
     , layoutData = layoutData
     , menuOpen = False
     , modal = NoModal
+    , modeBuilder = ModeBuilder.init
     , modeSettings = ModeSettings.initialModeSettings
     , openControlMenus = ControlsMenu.init
     , pitchSpaceData =
@@ -99,6 +105,7 @@ init deviceInfo viewportDimensions currentDate =
 type Modal
     = NoModal
     | AboutModal
+    | ModeModal (Maybe Mode)
     | SettingsModal
     | ReleasesModal Bool
 
@@ -111,6 +118,9 @@ modalToString modal =
 
         AboutModal ->
             "About"
+
+        ModeModal _ ->
+            "Mode Info"
 
         SettingsModal ->
             "Settings"

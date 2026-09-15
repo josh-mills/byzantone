@@ -105,7 +105,7 @@ li config attrs contents =
 gridAttr : Config -> Html.Attribute msg
 gridAttr (Config { open, trigger, transition }) =
     classList
-        [ ( "grid transition-[grid-template-rows] ease-in-out", True )
+        [ ( "grid transition-[grid-template-rows] ease-in-out motion-reduce:transition-none", True )
         , ( durationClass transition, True )
         , ( openClass trigger, open )
         , ( closedClass trigger, not open )
