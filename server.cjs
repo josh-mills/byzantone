@@ -4,8 +4,7 @@ const os = require("os");
 const fs = require("fs");
 const path = require("path");
 const port = 3002;
-// TODO: should get proper environment configuration here
-const LOCAL_DEV = false;
+const DEV_MODE = process.env.DEV_MODE === "true";
 
 // Import the changelog parser (using dynamic import for ES modules)
 let parseChangelog;
@@ -71,6 +70,19 @@ if (fs.existsSync("static-content/about.md")) {
     });
 }
 
+// Serve index.html with dev mode flag injected
+app.get("/", (req, res) => {
+    const indexPath = path.resolve("public/index.html");
+    try {
+        let html = fs.readFileSync(indexPath, "utf8");
+        const injection = `<script>window.__DEV_MODE__ = ${DEV_MODE};</script>`;
+        html = html.replace("</head>", `${injection}\n    </head>`);
+        res.send(html);
+    } catch (e) {
+        res.status(500).send("Could not load index.html");
+    }
+});
+
 // Serve static files from the 'public' directory
 app.use(express.static("public"));
 
@@ -120,7 +132,7 @@ function getLocalIP() {
     }
 }
 
-if (LOCAL_DEV) {
+if (DEV_MODE) {
     // Start the server and accept connections from all network interfaces
     app.listen(port, "0.0.0.0", () => {
         console.log(`Server running on http://localhost:${port}`);

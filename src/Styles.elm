@@ -199,11 +199,11 @@ buttonClass =
 -}
 transition : Html.Attribute msg
 transition =
-    class "transition-all duration-800"
+    class "transition-all duration-800 motion-reduce:transition-none"
 
 
 {-| `class "transition-all duration-300"`. For control content animation.
 -}
 transitionQuick : Html.Attribute msg
 transitionQuick =
-    class "transition-all duration-300"
+    class "transition-all duration-300 motion-reduce:transition-none"

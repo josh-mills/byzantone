@@ -12,6 +12,7 @@ import Byzantine.Register exposing (Register)
 import Byzantine.Scale exposing (Scale)
 import Http
 import Maybe.Extra as Maybe
+import ModeBuilder
 import Model exposing (Modal, Model, Remote)
 import Model.AudioSettings as AudioSettings exposing (AudioSettings, ListenRegister, Responsiveness(..))
 import Model.ControlsMenu as ControlsMenu
@@ -38,6 +39,7 @@ type Msg
     | GotViewport Dom.Viewport
     | ViewportResize Int Int
     | Keydown String
+    | ModeBuilderMsg ModeBuilder.Msg
     | NoOp
     | PitchButtonClicked Degree
     | SelectModal Modal
@@ -110,6 +112,15 @@ update msg model =
                 model
                 |> resetPitchSpaceData
             , Task.attempt GotPitchSpaceElement (Dom.getElement "pitch-space")
+            )
+
+        ModeBuilderMsg subMsg ->
+            let
+                ( modeBuilderModel, modeBuilderCmd ) =
+                    ModeBuilder.update subMsg model.modeBuilder
+            in
+            ( { model | modeBuilder = modeBuilderModel }
+            , Cmd.map ModeBuilderMsg modeBuilderCmd
             )
 
         ViewportResize _ _ ->

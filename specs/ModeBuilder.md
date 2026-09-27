@@ -1,0 +1,65 @@
+# Schema
+
+
+# Data
+- Selection Strategy
+  - By Scale
+    - Diatonic
+    - Enharmonic
+    - Soft Chromatic
+    - Hard Chromatic
+  - By Classification
+    - First Mode
+      - Base Pa
+      - Base Ke
+    - Second Mode
+      - Base Pa
+      - Base Bou
+      - Base Di
+    - Third Mode
+      - Base Ga
+    - Fourth Mode
+      - Base Pa
+      - Base Bou
+      - Base Di
+    - Plagal First Mode
+      - Base Pa
+      - Base Ke
+    - Plagal Second Mode
+      - Base Pa
+      - Base Bou
+      - Base Di
+    - Grave Mode
+      - Base Zo-flat
+      - Base Zo
+      - Base Ga
+    - Plagal Fourth Mode
+      - Base Ni
+      - Base Ga
+  - By Signature
+    - Ichos
+      - First
+        - Base Pa, Fhtora Diatonic Pa
+        - Base Ke, Fthora Diatonic Ke
+      - Second
+        - Base Pa, Fthora Hard Chromatic Pa 
+        - Base Bou, Fthora Hard Chromatic Pa (verify this)
+        - Base Di, Fthora Soft Diatonic Di
+      - Third
+        - Base Ga, Fthora Ga
+      - Third Nana
+        - Base Ga, Fthora Diatonic Ni
+        - Base Ga, Fthora Diatonic Ga
+      - Classification: Authentic Mode Three
+        - Base Ga, Fthora Diatonic Ga
+      - Fourth
+        - Base Di, Fthora Diatonic Di
+        - Base Bou, Fthora Diatonic Bou
+          - Descending SynechesElafron
+      - Legetos
+      - Varys
+      - VarysZo
+    - Ichos Plagal
+      - Plagal First
+      - Plagal Second
+      - Plagal Fourth

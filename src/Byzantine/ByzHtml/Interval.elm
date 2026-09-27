@@ -34,25 +34,31 @@ view interval =
                 Skip PetastiOligon ->
                     note "x-p2" maybeAccidental
 
-                Leap Oligon steps ->
+                Ypsili Oligon steps ->
                     note ("x-o" ++ ascendingStepsString steps) maybeAccidental
 
-                Leap Petasti steps ->
+                Ypsili Petasti steps ->
                     note ("x-p" ++ ascendingStepsString steps) maybeAccidental
 
-        Descending steps maybeAccidental ->
-            case steps of
-                DownOne ->
+        Descending char maybeAccidental ->
+            case char of
+                Apostrophos ->
                     note "x-a" maybeAccidental
 
-                DownTwo ->
+                Iporroi ->
+                    note "x-y" maybeAccidental
+
+                Elafron ->
                     note "x-e" maybeAccidental
 
-                DownThree ->
+                SynechesElafron ->
+                    note "x-re" maybeAccidental
+
+                ElafronApostrophos ->
                     note "x-ea" maybeAccidental
 
-                downMore ->
-                    note ("x-ch" ++ descendingStepsString downMore) maybeAccidental
+                Khamili descendingSteps ->
+                    note ("x-ch" ++ descendingStepsString descendingSteps) maybeAccidental
 
         Ison ->
             note "x-i" Nothing

@@ -23,12 +23,13 @@ type MenuOption
     | AudioSettingsMenu
     | IsonMenu
     | ScaleMenu
+    | ModeBuilderMenu
     | VolumeMenu
 
 
 menuOptions : List MenuOption
 menuOptions =
-    [ AudioModeMenu, AudioSettingsMenu, IsonMenu, ScaleMenu, VolumeMenu ]
+    [ AudioModeMenu, AudioSettingsMenu, IsonMenu, ScaleMenu, ModeBuilderMenu, VolumeMenu ]
 
 
 type alias OpenControlMenus =
@@ -36,6 +37,7 @@ type alias OpenControlMenus =
     , audioSettingsMenuIsOpen : Bool
     , isonMenuIsOpen : Bool
     , scaleMenuIsOpen : Bool
+    , modeBuilderMenuIsOpen : Bool
     , volumeMenuIsOpen : Bool
     }
 
@@ -46,6 +48,7 @@ init =
     , audioSettingsMenuIsOpen = False
     , isonMenuIsOpen = False
     , scaleMenuIsOpen = False
+    , modeBuilderMenuIsOpen = False
     , volumeMenuIsOpen = False
     }
 
@@ -70,6 +73,9 @@ isOpen openControlMenus menuOption =
         ScaleMenu ->
             openControlMenus.scaleMenuIsOpen
 
+        ModeBuilderMenu ->
+            openControlMenus.modeBuilderMenuIsOpen
+
         VolumeMenu ->
             openControlMenus.volumeMenuIsOpen
 
@@ -88,6 +94,9 @@ toggle controlMenu openControlMenus =
 
         ScaleMenu ->
             { openControlMenus | scaleMenuIsOpen = not openControlMenus.scaleMenuIsOpen }
+
+        ModeBuilderMenu ->
+            { openControlMenus | modeBuilderMenuIsOpen = not openControlMenus.modeBuilderMenuIsOpen }
 
         VolumeMenu ->
             { openControlMenus | volumeMenuIsOpen = not openControlMenus.volumeMenuIsOpen }

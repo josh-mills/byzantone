@@ -1,6 +1,7 @@
 module Components.RadioFieldset exposing
     ( Config, baseConfig
-    , withCustomSelected, withCustomViewItem, withConditionalPostpend
+    , Layout(..)
+    , withCustomSelected, withCustomViewItem, withConditionalPostpend, withItemToString, withLayout
     , view
     )
 
@@ -10,7 +11,16 @@ module Components.RadioFieldset exposing
 # Config Builder
 
 @docs Config, baseConfig
-@docs withCustomSelected, withCustomViewItem, withConditionalPostpend
+
+
+# Layout
+
+@docs Layout
+
+
+# Config Options
+
+@docs withCustomSelected, withCustomViewItem, withConditionalPostpend, withItemToString, withLayout
 
 
 # View
@@ -29,6 +39,25 @@ import Styles
 
 
 
+-- LAYOUT
+
+
+{-| Controls how radio button options are arranged inside the fieldset.
+
+  - `Column` — the default; options stack vertically.
+  - `FlexRow` — options are laid out in a wrapping horizontal row.
+  - `TwoColumnGrid` — options fill the first column top-to-bottom, then the
+    second column top-to-bottom, split as evenly as possible (the first column
+    gets the extra item when the count is odd).
+
+-}
+type Layout
+    = Column
+    | FlexRow
+    | TwoColumnGrid
+
+
+
 -- CONFIG BUILDER
 
 
@@ -41,6 +70,7 @@ type Config a msg
         , maybeBottomElement : Maybe (a -> Html msg)
         , optionIsSelected : Maybe (a -> a -> Bool)
         , viewItem : Maybe (a -> Html msg)
+        , layout : Layout
         }
 
 
@@ -60,6 +90,7 @@ baseConfig { itemToString, legendText, onSelect, options } =
         , maybeBottomElement = Nothing
         , optionIsSelected = Nothing
         , viewItem = Nothing
+        , layout = Column
         }
 
 
@@ -84,6 +115,23 @@ of the fieldset. The argument will be the selected option.
 withConditionalPostpend : (a -> Html msg) -> Config a msg -> Config a msg
 withConditionalPostpend bottomElement (Config config) =
     Config { config | maybeBottomElement = Just bottomElement }
+
+
+{-| Override the `itemToString` function used to derive element IDs and default
+label text. Useful when two fieldsets share the same option type and would
+otherwise produce identical `id` attributes.
+-}
+withItemToString : (a -> String) -> Config a msg -> Config a msg
+withItemToString fn (Config config) =
+    Config { config | itemToString = fn }
+
+
+{-| Set the layout used to display the radio button options. Defaults to
+`Column` if not specified. See [`Layout`](#Layout) for available options.
+-}
+withLayout : Layout -> Config a msg -> Config a msg
+withLayout layout (Config config) =
+    Config { config | layout = layout }
 
 
 
@@ -120,21 +168,49 @@ getViewItem (Config { itemToString, viewItem }) =
     Maybe.withDefault (text << itemToString) viewItem
 
 
+getLayout : Config a msg -> Layout
+getLayout (Config { layout }) =
+    layout
+
+
 
 -- VIEW
 
 
 view : Config a msg -> a -> Html msg
 view config selected =
-    config
-        |> getOptions
-        |> List.map
-            (\option ->
-                lazy3 radioOption
-                    config
-                    (getOptionIsSelected config option selected)
-                    option
-            )
+    let
+        renderedOptions =
+            config
+                |> getOptions
+                |> List.map
+                    (\option ->
+                        lazy3 radioOption
+                            config
+                            (getOptionIsSelected config option selected)
+                            option
+                    )
+
+        wrappedOptions =
+            case getLayout config of
+                Column ->
+                    renderedOptions
+
+                FlexRow ->
+                    [ div [ Styles.flexRow, class "flex-wrap" ] renderedOptions ]
+
+                TwoColumnGrid ->
+                    let
+                        ( col1, col2 ) =
+                            List.Extra.splitAt
+                                ((List.length renderedOptions + 1) // 2)
+                                renderedOptions
+                    in
+                    [ div [ class "grid grid-cols-2" ]
+                        (List.Extra.interweave col1 col2)
+                    ]
+    in
+    wrappedOptions
         |> addBottomElement config selected
         -- we could include an optional instruction text here, too
         |> (::) (legend [ class "px-1" ] [ text (getLegendText config) ])
