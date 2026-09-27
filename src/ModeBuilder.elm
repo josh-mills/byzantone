@@ -14,7 +14,7 @@ The current terminal selection is queried via `currentResult`.
 
 import Byzantine.Accidental as Accidental
 import Byzantine.ByzHtml.ModalSignature as ByzHtml
-import Byzantine.Degree as Degree exposing (Degree)
+import Byzantine.Degree as Degree
 import Byzantine.Fthora exposing (DiatonicDegree(..), Fthora(..))
 import Byzantine.Mode.Classification as Classification exposing (Classification)
 import Byzantine.Mode.Signature as Signature exposing (Ichos(..), Indicator(..), Signature)
@@ -194,26 +194,9 @@ update msg model =
                     ( model, Cmd.none )
 
                 Just strategy ->
-                    let
-                        nextStep =
-                            case strategy of
-                                SelectByScale ->
-                                    SelectingScale
-
-                                SelectByClassification ->
-                                    SelectingClassification
-
-                                SelectBySignature ->
-                                    SelectingIchos
-                    in
-                    ( { model
-                        | step = nextStep
-                        , history = SelectingStrategy :: model.history
-                        , direction = Just Forward
-                        , selections = { emptySelections | strategy = Just strategy }
-                      }
-                    , Cmd.none
-                    )
+                    advanceTo (stepForStrategy strategy)
+                        { emptySelections | strategy = Just strategy }
+                        model
 
         SelectScale maybeScale ->
             ( { model | selections = { sel | scale = maybeScale } }, Cmd.none )
@@ -224,14 +207,9 @@ update msg model =
                     ( model, Cmd.none )
 
                 Just classification ->
-                    ( { model
-                        | step = SelectingBase classification
-                        , history = model.step :: model.history
-                        , direction = Just Forward
-                        , selections = { sel | classification = Just classification, base = Nothing }
-                      }
-                    , Cmd.none
-                    )
+                    advanceTo (SelectingBase classification)
+                        { sel | classification = Just classification, base = Nothing }
+                        model
 
         SelectBase maybeBase ->
             ( { model | selections = { sel | base = maybeBase } }, Cmd.none )
@@ -242,31 +220,16 @@ update msg model =
                     ( model, Cmd.none )
 
                 Just ichos ->
-                    ( { model
-                        | step = SelectingIndicator ichos
-                        , history = model.step :: model.history
-                        , direction = Just Forward
-                        , selections =
-                            { sel
-                                | ichos = Just ichos
-                                , indicator = Nothing
-                                , signature = Nothing
-                            }
-                      }
-                    , Cmd.none
-                    )
+                    advanceTo (SelectingIndicator ichos)
+                        { sel | ichos = Just ichos, indicator = Nothing, signature = Nothing }
+                        model
 
         SelectIndicator maybeIndicator ->
             case ( maybeIndicator, model.step ) of
                 ( Just indicator, SelectingIndicator ichos ) ->
-                    ( { model
-                        | step = SelectingSignature ichos indicator
-                        , history = model.step :: model.history
-                        , direction = Just Forward
-                        , selections = { sel | indicator = Just indicator, signature = Nothing }
-                      }
-                    , Cmd.none
-                    )
+                    advanceTo (SelectingSignature ichos indicator)
+                        { sel | indicator = Just indicator, signature = Nothing }
+                        model
 
                 _ ->
                     ( model, Cmd.none )
@@ -287,6 +250,40 @@ update msg model =
                       }
                     , Cmd.none
                     )
+
+
+{-| The first step of the wizard branch that each strategy leads into once the
+user has chosen how they want to build their mode.
+-}
+stepForStrategy : Strategy -> Step
+stepForStrategy strategy =
+    case strategy of
+        SelectByScale ->
+            SelectingScale
+
+        SelectByClassification ->
+            SelectingClassification
+
+        SelectBySignature ->
+            SelectingIchos
+
+
+{-| Move the wizard forward to `nextStep`, applying the given selections.
+
+The current step is pushed onto the history stack so `GoBack` can return to it,
+and the direction is set to `Forward` to drive the entrance animation.
+
+-}
+advanceTo : Step -> Selections -> Model -> ( Model, Cmd Msg )
+advanceTo nextStep selections model =
+    ( { model
+        | step = nextStep
+        , history = model.step :: model.history
+        , direction = Just Forward
+        , selections = selections
+      }
+    , Cmd.none
+    )
 
 
 
