@@ -1,5 +1,10 @@
 # Changelog
 
+## v.1.6.0 (2026-09-27)
+### Changed
+ - Preferring mobile-oriented layout of bottom-docked control menus
+ - Move listening sensitivity into audio mode menu
+
 ## v.1.5.0 (2026-04-16)
 ### Added
  - Text description of the range setting (improved feedback for WebKit browsers)
