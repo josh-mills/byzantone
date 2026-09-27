@@ -51,7 +51,13 @@ view devMode layout audioSettings modeSettings pitchState openControlMenus modeB
     Html.menu
         (case layout of
             Horizontal ->
-                [ class "w-full grid grid-cols-6 fixed bottom-0 left-0 z-20" ]
+                [ class "w-full grid"
+                , classList
+                    [ ( "grid-cols-6", devMode )
+                    , ( "grid-cols-5", not devMode )
+                    ]
+                , class "fixed bottom-0 left-0 z-20"
+                ]
 
             Vertical ->
                 [ class "w-full 2xl:w-72"
