@@ -1,6 +1,6 @@
 module NeanesGlyph exposing (Glyph, decoder, glyphFile)
 
-{-| Generates one `Html msg` helper per glyph in the Neanes font, sourced from
+{-| Generates one `List (Attribute msg) -> Html msg` helper per glyph in the Neanes font, sourced from
 the SBMuFL `glyphnames.json` shipped with byzhtml:
 <https://github.com/neanes/byzhtml/blob/master/assets/fonts/sbmufl/glyphnames.json>
 
@@ -11,6 +11,7 @@ markup lives in exactly one place.
 
 import Elm
 import Elm.Annotation as Type
+import Elm.Op
 import Gen.Char
 import Gen.Html
 import Gen.Html.Attributes
@@ -59,21 +60,30 @@ htmlAnnotation =
     Gen.Html.annotation_.html (Type.var "msg")
 
 
-{-| `glyph codepoint = span [ class "font-neanes" ] [ text (String.fromChar (Char.fromCode codepoint)) ]`
+attributesAnnotation : Type.Annotation
+attributesAnnotation =
+    Type.list (Gen.Html.annotation_.attribute (Type.var "msg"))
+
+
+{-| `glyph codepoint attributes = span (class "font-neanes" :: attributes) [ text (String.fromChar (Char.fromCode codepoint)) ]`
 -}
 glyphDeclaration : Elm.Declaration
 glyphDeclaration =
-    Elm.fn ( "codepoint", Just Type.int )
-        (\codepoint ->
-            Gen.Html.span
-                [ Gen.Html.Attributes.class "font-neanes" ]
-                [ Gen.Html.call_.text
-                    (Gen.String.call_.fromChar (Gen.Char.call_.fromCode codepoint))
-                ]
+    Elm.fn2
+        ( "codepoint", Just Type.int )
+        ( "attributes", Just attributesAnnotation )
+        (\codepoint attributes ->
+            Gen.Html.call_.span
+                (Elm.Op.cons (Gen.Html.Attributes.class "font-neanes") attributes)
+                (Elm.list
+                    [ Gen.Html.call_.text
+                        (Gen.String.call_.fromChar (Gen.Char.call_.fromCode codepoint))
+                    ]
+                )
                 |> Elm.withType htmlAnnotation
         )
         |> Elm.declaration "glyph"
-        |> Elm.withDocumentation "Render an arbitrary codepoint in the Neanes font."
+        |> Elm.withDocumentation "Render an arbitrary codepoint in the Neanes font. Attributes are added after the `font-neanes` class."
 
 
 glyphHelper : Glyph -> Maybe Elm.Declaration
@@ -82,7 +92,7 @@ glyphHelper { name, codepoint, alternateCodepoint } =
         |> Maybe.map
             (\code ->
                 Elm.apply (Elm.val "glyph") [ Elm.hex code ]
-                    |> Elm.withType htmlAnnotation
+                    |> Elm.withType (Type.function [ attributesAnnotation ] htmlAnnotation)
                     |> Elm.declaration name
                     |> Elm.withDocumentation (glyphDocs codepoint alternateCodepoint)
             )
