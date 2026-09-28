@@ -12,6 +12,10 @@
     font-family: "Lora", serif;
 }
 
+.font-neanes {
+    font-family: "Neanes";
+}
+
 .pitch-button-wrapper {
     position: relative;
     anchor-scope: --pitch-button-anchor;

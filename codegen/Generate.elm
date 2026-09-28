@@ -7,19 +7,36 @@ import Elm
 import Elm.Annotation as Type
 import Gen.CodeGen.Generate as Generate
 import Gen.Html as Html
+import NeanesGlyph exposing (Glyph)
+import Json.Decode as Decode exposing (Decoder)
 import Martyria
 
 
-main : Program String () ()
+type alias Flags =
+    { neumesList : String
+    , glyphnames : List Glyph
+    }
+
+
+flagsDecoder : Decoder Flags
+flagsDecoder =
+    Decode.map2 Flags
+        (Decode.field "neumesList" Decode.string)
+        (Decode.field "glyphnames" NeanesGlyph.decoder)
+
+
+main : Program Decode.Value () ()
 main =
-    Generate.fromText
-        (\inputText ->
+    Generate.fromJson flagsDecoder
+        (\{ neumesList, glyphnames } ->
             let
                 components =
-                    String.split "\n" inputText
+                    String.split "\n" neumesList
                         |> List.filterMap parseComponent
             in
-            [ Martyria.martyriaFile components ]
+            [ Martyria.martyriaFile components
+            , NeanesGlyph.glyphFile glyphnames
+            ]
         )
 
 
