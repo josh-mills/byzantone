@@ -3,6 +3,7 @@ module Tests exposing (..)
 import Array
 import Byzantine.Accidental as Accidental exposing (Accidental(..))
 import Byzantine.Degree as Degree exposing (Degree(..))
+import Byzantine.Mode as Mode exposing (Mode(..))
 import Byzantine.Pitch as Pitch
 import Byzantine.PitchPosition as PitchPosition
 import Byzantine.Scale as Scale exposing (Scale(..))
@@ -166,6 +167,101 @@ accidentalBuilder =
 
                 Just Sharp8 ->
                     accidentals
+    in
+    next [] |> List.reverse
+
+
+modeTests : Test
+modeTests =
+    describe "Mode Tests"
+        [ test "Mode.all is complete and unique" <|
+            \_ ->
+                Expect.equalLists modeBuilder Mode.all
+        ]
+
+
+{-| Walks through every `Mode` constructor in declaration order. Because the
+`case` expression must be exhaustive, adding a constructor to `Mode` without
+updating this builder is a compile error, which in turn forces `Mode.all` to be
+kept in sync via the test above.
+-}
+modeBuilder : List Mode
+modeBuilder =
+    let
+        next : List Mode -> List Mode
+        next modes =
+            case List.head modes of
+                Nothing ->
+                    AuthenticOne_Ke_Papadic :: modes |> next
+
+                Just AuthenticOne_Ke_Papadic ->
+                    AuthenticOne_Pa_Eirmologic :: modes |> next
+
+                Just AuthenticOne_Pa_Eirmologic ->
+                    AuthenticOne_Pa_Sticheraric :: modes |> next
+
+                Just AuthenticOne_Pa_Sticheraric ->
+                    AuthenticTwo_Di :: modes |> next
+
+                Just AuthenticTwo_Di ->
+                    AuthenticThree_Ga_Eirmologic :: modes |> next
+
+                Just AuthenticThree_Ga_Eirmologic ->
+                    AuthenticThree_Ga_Papadic :: modes |> next
+
+                Just AuthenticThree_Ga_Papadic ->
+                    AuthenticFour_Bou_Legetos :: modes |> next
+
+                Just AuthenticFour_Bou_Legetos ->
+                    AuthenticFour_Di_Agia :: modes |> next
+
+                Just AuthenticFour_Di_Agia ->
+                    AuthenticFour_Pa_Sticheraric :: modes |> next
+
+                Just AuthenticFour_Pa_Sticheraric ->
+                    AuthenticFour_DiBou :: modes |> next
+
+                Just AuthenticFour_DiBou ->
+                    PlagalOne_Pa_Sticheraric :: modes |> next
+
+                Just PlagalOne_Pa_Sticheraric ->
+                    PlagalOne_Pa_Papadic :: modes |> next
+
+                Just PlagalOne_Pa_Papadic ->
+                    PlagalOne_Ke_Eirmologic :: modes |> next
+
+                Just PlagalOne_Ke_Eirmologic ->
+                    PlagalOne_Pa_Pentaphone :: modes |> next
+
+                Just PlagalOne_Pa_Pentaphone ->
+                    PlagalOne_Pa_Phrygian :: modes |> next
+
+                Just PlagalOne_Pa_Phrygian ->
+                    PlagalOne_Pa_Minor :: modes |> next
+
+                Just PlagalOne_Pa_Minor ->
+                    PlagalTwo_Pa :: modes |> next
+
+                Just PlagalTwo_Pa ->
+                    PlagalTwo_Di :: modes |> next
+
+                Just PlagalTwo_Di ->
+                    PlagalThree_Ga :: modes |> next
+
+                Just PlagalThree_Ga ->
+                    PlagalThree_Zo :: modes |> next
+
+                Just PlagalThree_Zo ->
+                    PlagalThree_Zo_Hard :: modes |> next
+
+                Just PlagalThree_Zo_Hard ->
+                    PlagalFour_Ni :: modes |> next
+
+                Just PlagalFour_Ni ->
+                    PlagalFour_Ga :: modes |> next
+
+                Just PlagalFour_Ga ->
+                    modes
     in
     next [] |> List.reverse
 
