@@ -43,6 +43,7 @@ type Mode
     | AuthenticFour_Bou_Legetos
     | AuthenticFour_Di_Agia
     | AuthenticFour_Pa_Sticheraric
+    | AuthenticFour_DiBou
     | PlagalOne_Pa_Sticheraric
     | PlagalOne_Pa_Papadic
     | PlagalOne_Ke_Eirmologic
@@ -89,6 +90,9 @@ toString mode =
 
         AuthenticFour_Pa_Sticheraric ->
             "Fourth-First, Sticheraric Fourth Mode"
+
+        AuthenticFour_DiBou ->
+            "Soft-Chromatic Medial Fourth Mode"
 
         PlagalOne_Pa_Sticheraric ->
             "Plagal Mode One, Sticheraric"
@@ -141,6 +145,7 @@ all =
     , AuthenticFour_Bou_Legetos
     , AuthenticFour_Di_Agia
     , AuthenticFour_Pa_Sticheraric
+    , AuthenticFour_DiBou
     , PlagalOne_Pa_Sticheraric
     , PlagalOne_Pa_Papadic
     , PlagalOne_Ke_Eirmologic
@@ -190,6 +195,9 @@ data mode =
 
         AuthenticFour_Pa_Sticheraric ->
             authenticFour_Pa_Sticheraric
+
+        AuthenticFour_DiBou ->
+            authenticFour_DiBou
 
         PlagalOne_Pa_Sticheraric ->
             plagalOne_Pa_Sticheraric
@@ -618,6 +626,37 @@ authenticFour_Pa_Sticheraric =
         , { degree = Ga, accidentals = [ Sharp2, Sharp4 ] }
         , { degree = Ke, accidentals = [ Flat2, Sharp4 ] }
         , { degree = Zo_, accidentals = [ Flat4, Sharp2, Sharp4 ] }
+        ]
+    }
+
+
+{-| not entirely sure about range. Also, genre is odd. Boyer notes that it's a
+misnomer to refer to this as an eirmologic mode, although many do. But, neither
+does he classify this explicitly as sticheraric.
+-}
+authenticFour_DiBou : ModeData
+authenticFour_DiBou =
+    { classification = Authentic ModeFour
+    , genres = []
+    , signatures = [ Signature.medialFourDi_softChromatic, Signature.medialFourBou_softChromatic ]
+    , scale = SoftChromatic
+    , dominantTones =
+        { base = Di
+        , cadencePoints =
+            { final = Bou
+            , complete = [ Bou, Di ]
+            , medial = []
+            , incomplete = [ Di ]
+            }
+        , nonCadentialFoci = [ Zo_ ]
+        }
+    , isonOptions = [ Di, DI ]
+    , range = { start = Pa, end = Pa_ }
+    , recitingTone = Di
+    , possibleInflections =
+        [ { degree = Ga, accidentals = [ Sharp2, Sharp4, Sharp6 ] }
+        , { degree = Pa, accidentals = [ Sharp4, Sharp6, Sharp8 ] }
+        , { degree = Ke, accidentals = [ Sharp2, Sharp4 ] }
         ]
     }
 
