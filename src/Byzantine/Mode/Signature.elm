@@ -405,7 +405,7 @@ medialFourBou_1 =
     Irregular
         { ichos = Ichos
         , indicator = Fourth
-        , baseDegree = Just Bou
+        , baseDegree = Nothing
         , fthora = Fthora.for Diatonic Bou
         , neume = Just (Descending SynechesElafron Nothing)
         }
@@ -446,7 +446,7 @@ medialFourBou_softChromatic =
         { ichos = Ichos
         , indicator = Fourth
         , baseDegree = Just Bou
-        , fthora = Fthora.for SoftChromatic Bou
+        , fthora = Fthora.for SoftChromatic Di
         , neume = Just (Descending SynechesElafron Nothing)
         }
 
