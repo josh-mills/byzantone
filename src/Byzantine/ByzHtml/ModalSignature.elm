@@ -48,7 +48,7 @@ to be built out so we can implement a general `view` function.
 
 import Byzantine.ByzHtml.Fthora as Fthora
 import Byzantine.Degree exposing (Degree(..))
-import Byzantine.Fthora exposing (Fthora)
+import Byzantine.Fthora as Fthora exposing (Fthora)
 import Byzantine.Mode.Classification as Classification exposing (Classification(..), Ordinal(..))
 import Byzantine.Mode.Signature as Signature exposing (Elements, Ichos(..), Indicator(..), Signature)
 import Html exposing (Html)
@@ -235,13 +235,13 @@ viewBase : Signature -> Elements -> List (Html msg)
 viewBase signature elements =
     case Signature.classification signature of
         Authentic ModeOne ->
-            modesFirst elements
+            basesModesFirst elements
 
         Authentic ModeTwo ->
             []
 
         Authentic ModeThree ->
-            []
+            basesModesThird elements
 
         Authentic ModeFour ->
             []
@@ -259,14 +259,8 @@ viewBase signature elements =
             []
 
 
-{-| TODOs:
-
-  - positing from Ke needs fiddling. We'll need a bare position-right fthora wrapper,
-    or a new position variant for the ByzHtml that creates the position adjustment.
-
--}
-modesFirst : Elements -> List (Html msg)
-modesFirst { baseDegree, fthora, neume } =
+basesModesFirst : Elements -> List (Html msg)
+basesModesFirst { baseDegree, fthora, neume } =
     case ( baseDegree, fthora, neume ) of
         ( Just Ke, Just fth, Nothing ) ->
             [ modeKe, bareFthora fth ]
@@ -278,14 +272,29 @@ modesFirst { baseDegree, fthora, neume } =
             []
 
 
-{-| Can I use anchor positioning for this I wonder?
-Or a `Degree -> Fthora -> Html msg` helper that handles the inline wrapping?
-We might just bypass the web component node per se and just reach for the glyph
-directly.
--}
+basesModesThird : Elements -> List (Html msg)
+basesModesThird { baseDegree, fthora, neume } =
+    case ( baseDegree, fthora, neume ) of
+        ( Just Ga, Just ((Fthora.DiatonicFthora Fthora.D_Ni) as fth), Nothing ) ->
+            [ modeGa, bareFthora fth ]
+
+        ( Just Ga, Just fth, Nothing ) ->
+            [ modeGa, fthoraAbove fth ]
+
+        _ ->
+            []
+
+
 bareFthora : Fthora -> Html msg
 bareFthora fthora =
-    Html.span [ class "_ml-2" ] [ Fthora.view Fthora.Secondary fthora ]
+    Html.span [ class "ms-2 relative top-[0.33em]" ]
+        [ Fthora.view Fthora.Secondary fthora ]
+
+
+fthoraAbove : Fthora -> Html msg
+fthoraAbove fthora =
+    Html.span [ class "relative -top-1" ]
+        [ Fthora.view Fthora.Above fthora ]
 
 
 
