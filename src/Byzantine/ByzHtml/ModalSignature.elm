@@ -47,8 +47,10 @@ to be built out so we can implement a general `view` function.
 -}
 
 import Byzantine.ByzHtml.Fthora as Fthora
+import Byzantine.ByzHtml.Interval as Interval
 import Byzantine.Degree exposing (Degree(..))
 import Byzantine.Fthora as Fthora exposing (Fthora)
+import Byzantine.IntervalCharacter exposing (IntervalCharacter)
 import Byzantine.Mode.Classification as Classification exposing (Classification(..), Ordinal(..))
 import Byzantine.Mode.Signature as Signature exposing (Elements, Ichos(..), Indicator(..), Signature)
 import Html exposing (Html)
@@ -238,13 +240,13 @@ viewBase signature elements =
             basesModesFirst elements
 
         Authentic ModeTwo ->
-            []
+            basesModesSecond elements
 
         Authentic ModeThree ->
             basesModesThird elements
 
         Authentic ModeFour ->
-            []
+            basesModesFourth elements
 
         Plagal ModeOne ->
             []
@@ -259,14 +261,24 @@ viewBase signature elements =
             []
 
 
+{-| TODO: we could dispense with a mode-specific helpers
+if this general pattern repeats with enough regularity.
+-}
 basesModesFirst : Elements -> List (Html msg)
 basesModesFirst { baseDegree, fthora, neume } =
     case ( baseDegree, fthora, neume ) of
-        ( Just Ke, Just fth, Nothing ) ->
-            [ modeKe, bareFthora fth ]
+        ( Just degree, Just fth, Nothing ) ->
+            [ base degree, bareFthora fth ]
 
-        ( Just Pa, Just fth, Nothing ) ->
-            [ modePa, bareFthora fth ]
+        _ ->
+            []
+
+
+basesModesSecond : Elements -> List (Html msg)
+basesModesSecond { baseDegree, fthora, neume } =
+    case ( baseDegree, fthora, neume ) of
+        ( Just degree, Just fth, Nothing ) ->
+            [ base degree, fthoraAbove fth ]
 
         _ ->
             []
@@ -285,12 +297,45 @@ basesModesThird { baseDegree, fthora, neume } =
             []
 
 
+basesModesFourth : Elements -> List (Html msg)
+basesModesFourth { baseDegree, fthora, neume } =
+    case ( baseDegree, fthora, neume ) of
+        ( Just Di, Just fth, Nothing ) ->
+            [ modeDi, fthoraAbove fth ]
+
+        ( Nothing, Just fth, Just intervalChar ) ->
+            [ neumeView intervalChar
+            , Html.span [ class "-ms-2 relative -top-1" ]
+                [ Fthora.view Fthora.Above fth ]
+            ]
+
+        ( Just Bou, Just fth, Nothing ) ->
+            [ modeVou, bareFthora fth ]
+
+        ( Just Pa, Just fth, Nothing ) ->
+            [ modePa, fthoraAbove fth ]
+
+        ( Just Bou, Just fth, Just intervalChar ) ->
+            [ neumeView intervalChar, modeVou, fthoraAbove fth ]
+
+        _ ->
+            []
+
+
+neumeView : IntervalCharacter -> Html msg
+neumeView intervalChar =
+    Html.span [ class "ms-2 relative -top-2" ]
+        [ Interval.view intervalChar ]
+
+
 bareFthora : Fthora -> Html msg
 bareFthora fthora =
     Html.span [ class "ms-2 relative top-[0.33em]" ]
         [ Fthora.view Fthora.Secondary fthora ]
 
 
+{-| nudge slightly to the right? Evaluate once everything is built out.
+-}
 fthoraAbove : Fthora -> Html msg
 fthoraAbove fthora =
     Html.span [ class "relative -top-1" ]
@@ -299,6 +344,55 @@ fthoraAbove fthora =
 
 
 -- bases
+
+
+base : Degree -> Html msg
+base degree =
+    case degree of
+        GA ->
+            modeGa
+
+        DI ->
+            modeDi
+
+        KE ->
+            modeKe
+
+        Zo ->
+            modeZo
+
+        Ni ->
+            modeNi
+
+        Pa ->
+            modePa
+
+        Bou ->
+            modeVou
+
+        Ga ->
+            modeGa
+
+        Di ->
+            modeDi
+
+        Ke ->
+            modeKe
+
+        Zo_ ->
+            modeZo
+
+        Ni_ ->
+            modeNi
+
+        Pa_ ->
+            modePa
+
+        Bou_ ->
+            modeVou
+
+        Ga_ ->
+            modeGa
 
 
 modeNi : Html msg
