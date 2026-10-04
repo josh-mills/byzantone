@@ -268,7 +268,7 @@ basesModesFirst : Elements -> List (Html msg)
 basesModesFirst { baseDegree, fthora, neume } =
     case ( baseDegree, fthora, neume ) of
         ( Just degree, Just fth, Nothing ) ->
-            [ base degree, bareFthora fth ]
+            [ base degree, fthoraRight fth ]
 
         _ ->
             []
@@ -288,7 +288,7 @@ basesModesThird : Elements -> List (Html msg)
 basesModesThird { baseDegree, fthora, neume } =
     case ( baseDegree, fthora, neume ) of
         ( Just Ga, Just ((Fthora.DiatonicFthora Fthora.D_Ni) as fth), Nothing ) ->
-            [ modeGa, bareFthora fth ]
+            [ modeGa, fthoraRight fth ]
 
         ( Just Ga, Just fth, Nothing ) ->
             [ modeGa, fthoraAbove fth ]
@@ -310,7 +310,7 @@ basesModesFourth { baseDegree, fthora, neume } =
             ]
 
         ( Just Bou, Just fth, Nothing ) ->
-            [ modeVou, bareFthora fth ]
+            [ modeVou, fthoraRight fth ]
 
         ( Just Pa, Just fth, Nothing ) ->
             [ modePa, fthoraAbove fth ]
@@ -331,7 +331,7 @@ basesModesPlagalFirst { baseDegree, fthora, neume } =
         ( Just Ke, Just fth, Just intervalChar ) ->
             [ Html.span [ class "mx-2" ]
                 [ intervalOverBase intervalChar modeKe
-                , bareFthora fth
+                , fthoraRight fth
                 ]
             ]
 
@@ -342,7 +342,7 @@ basesModesPlagalFirst { baseDegree, fthora, neume } =
             ]
 
         ( Just Pa, Just fth, Nothing ) ->
-            [ modePa, bareFthora fth ]
+            [ modePa, fthoraRight fth ]
 
         _ ->
             []
@@ -370,8 +370,8 @@ neumeView intervalChar =
         [ Interval.view intervalChar ]
 
 
-bareFthora : Fthora -> Html msg
-bareFthora fthora =
+fthoraRight : Fthora -> Html msg
+fthoraRight fthora =
     Html.span [ class "ms-2 relative top-[0.33em]" ]
         [ Fthora.view Fthora.Secondary fthora ]
 
@@ -380,7 +380,7 @@ bareFthora fthora =
 -}
 fthoraAbove : Fthora -> Html msg
 fthoraAbove fthora =
-    Html.span [ class "relative -top-1" ]
+    Html.span [ class "relative -top-1 left-1" ]
         [ Fthora.view Fthora.Above fthora ]
 
 
