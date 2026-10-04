@@ -249,7 +249,7 @@ viewBase signature elements =
             basesModesFourth elements
 
         Plagal ModeOne ->
-            []
+            basesModesPlagalFirst elements
 
         Plagal ModeTwo ->
             []
@@ -320,6 +320,48 @@ basesModesFourth { baseDegree, fthora, neume } =
 
         _ ->
             []
+
+
+basesModesPlagalFirst : Elements -> List (Html msg)
+basesModesPlagalFirst { baseDegree, fthora, neume } =
+    case ( baseDegree, fthora, neume ) of
+        ( Just Pa, Just ((Fthora.DiatonicFthora Fthora.D_Pa) as fth), Nothing ) ->
+            [ modePa, fthoraAbove fth ]
+
+        ( Just Ke, Just fth, Just intervalChar ) ->
+            [ Html.span [ class "mx-2" ]
+                [ intervalOverBase intervalChar modeKe
+                , bareFthora fth
+                ]
+            ]
+
+        ( Just Pa, Just fth, Just intervalChar ) ->
+            [ modePa
+            , neumeView intervalChar
+            , fthoraAbove fth
+            ]
+
+        ( Just Pa, Just fth, Nothing ) ->
+            [ modePa, bareFthora fth ]
+
+        _ ->
+            []
+
+
+{-| Stack an interval character above a base character. The interval is
+absolutely positioned so it doesn't affect the line's layout, and is centered
+over the base. The interval's line box is anchored to the top of the base, then
+pulled down with a negative `-mb-*` to compensate for the empty space the neume
+font leaves below its glyph. Tune `-mb-*` for vertical spacing (larger pulls the
+interval closer) and add a `translate-x-*` for any horizontal optical nudge.
+-}
+intervalOverBase : IntervalCharacter -> Html msg -> Html msg
+intervalOverBase intervalChar baseChar =
+    Html.span [ class "relative top-[0.2em] me-1 inline-block" ]
+        [ Html.span [ class "absolute bottom-full left-1/2 -mb-[0.8em] -translate-x-1/2" ]
+            [ Interval.view intervalChar ]
+        , Html.span [ class "relative top-[0.2em]" ] [ baseChar ]
+        ]
 
 
 neumeView : IntervalCharacter -> Html msg

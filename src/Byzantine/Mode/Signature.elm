@@ -480,8 +480,8 @@ plagalFirstKe =
         { ichos = IchosPlagal
         , indicator = PlagalFirst
         , baseDegree = Just Ke
-        , fthora = Fthora.for Diatonic Ke
-        , neume = IntervalCharacter.basicInterval 5
+        , fthora = Fthora.for Diatonic Pa
+        , neume = IntervalCharacter.basicInterval 4
         }
 
 
@@ -493,6 +493,9 @@ plagalFirstPa_pentaphone =
         , baseDegree = Just Pa
         , fthora = Fthora.for Enharmonic Zo_
         , neume = IntervalCharacter.basicInterval 5
+
+        -- this interval should probably have an accidental, but data modeling
+        -- doesn't currently support the Ajem as an accidental.
         }
 
 
@@ -506,7 +509,7 @@ plagalFirstPa_phrygian =
         { ichos = IchosPlagal
         , indicator = PlagalFirst
         , baseDegree = Just Pa
-        , fthora = Nothing
+        , fthora = Fthora.for Enharmonic Ke
         , neume = Nothing
         }
 
