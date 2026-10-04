@@ -135,6 +135,20 @@ variants fthora =
             , below = diatonicNiHighBelow
             }
 
+        EnharmonicFthora E_Ga ->
+            { above = diesisGenikiAbove
+            , secondary = diesisGenikiSecondary
+            , tertiary = diesisGenikiTertiary
+            , below = diesisGenikiBelow
+            }
+
+        EnharmonicFthora E_Ke ->
+            { above = yfesisGenikiAbove
+            , secondary = yfesisGenikiSecondary
+            , tertiary = yfesisGenikiTertiary
+            , below = yfesisGenikiBelow
+            }
+
         EnharmonicFthora E_Zo_ ->
             { above = enharmonicAbove
             , secondary = enharmonicSecondary
@@ -461,6 +475,46 @@ softChromaticKeBelow =
 
 
 -- enharmonic
+
+
+diesisGenikiAbove : Html msg
+diesisGenikiAbove =
+    Html.node "x-diesis-geniki-above" [] []
+
+
+diesisGenikiSecondary : Html msg
+diesisGenikiSecondary =
+    Html.node "x-diesis-geniki-secondary" [] []
+
+
+diesisGenikiTertiary : Html msg
+diesisGenikiTertiary =
+    Html.node "x-diesis-geniki-tertiary" [] []
+
+
+diesisGenikiBelow : Html msg
+diesisGenikiBelow =
+    Html.node "x-diesis-geniki-below" [] []
+
+
+yfesisGenikiAbove : Html msg
+yfesisGenikiAbove =
+    Html.node "x-yfesis-geniki-above" [] []
+
+
+yfesisGenikiSecondary : Html msg
+yfesisGenikiSecondary =
+    Html.node "x-yfesis-geniki-secondary" [] []
+
+
+yfesisGenikiTertiary : Html msg
+yfesisGenikiTertiary =
+    Html.node "x-yfesis-geniki-tertiary" [] []
+
+
+yfesisGenikiBelow : Html msg
+yfesisGenikiBelow =
+    Html.node "x-yfesis-geniki-below" [] []
 
 
 enharmonicAbove : Html msg
