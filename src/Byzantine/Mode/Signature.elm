@@ -599,7 +599,7 @@ graveZo =
     Regular
         { ichos = Ichos
         , indicator = Varys
-        , base = Base Zo (Fthora.for Diatonic Zo)
+        , base = Base Zo Nothing
         }
 
 

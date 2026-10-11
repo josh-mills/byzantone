@@ -255,7 +255,7 @@ viewBase signature elements =
             basesModesPlagalSecond elements
 
         Plagal ModeThree ->
-            []
+            basesModesPlagalThird elements
 
         Plagal ModeFour ->
             []
@@ -368,6 +368,22 @@ basesModesPlagalSecond { baseDegree, fthora, neume } =
             , fthoraAbove fth
             , neumeView intervalChar
             ]
+
+        _ ->
+            []
+
+
+basesModesPlagalThird : Elements -> List (Html msg)
+basesModesPlagalThird { baseDegree, fthora, neume } =
+    case ( baseDegree, fthora, neume ) of
+        ( Just Ga, Just fth, Nothing ) ->
+            [ modeGa, fthoraAbove fth ]
+
+        ( Just Zo, Nothing, Nothing ) ->
+            [ modeZo ]
+
+        ( Just Zo, Just fth, Nothing ) ->
+            [ modeZo, fthoraAbove fth ]
 
         _ ->
             []
