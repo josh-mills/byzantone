@@ -52,6 +52,7 @@ type Mode
     | PlagalOne_Pa_Minor
     | PlagalTwo_Pa
     | PlagalTwo_Di
+    | PlagalTwo_Di_Triphone
     | PlagalThree_Ga
     | PlagalThree_Zo
     | PlagalThree_Zo_Hard
@@ -118,6 +119,9 @@ toString mode =
         PlagalTwo_Di ->
             "Plagal Mode Two, Soft Chromatic"
 
+        PlagalTwo_Di_Triphone ->
+            "Plagal Mode Two, Hard Chromatic Triphone"
+
         PlagalThree_Ga ->
             "Grave Mode (Eirmologic, Sticheraric)"
 
@@ -154,6 +158,7 @@ all =
     , PlagalOne_Pa_Minor
     , PlagalTwo_Pa
     , PlagalTwo_Di
+    , PlagalTwo_Di_Triphone
     , PlagalThree_Ga
     , PlagalThree_Zo
     , PlagalThree_Zo_Hard
@@ -223,6 +228,9 @@ data mode =
         PlagalTwo_Di ->
             plagalTwo_Di
 
+        PlagalTwo_Di_Triphone ->
+            plagalTwo_Di_Triphone
+
         PlagalThree_Ga ->
             plagalThree_Ga
 
@@ -244,6 +252,12 @@ data mode =
   - ison (may also want to include "unison")
   - modal signature (may be more than one)
   - apichima
+
+Another possible point to model: mixed-scale modes, e.g.,
+hard chromatic bottom tetrachord, soft diatonic upper tetrachord. `scale : Scale` might be the wrong modeling;
+we may need a tetrachordal structure model that could be either a consistent scale
+or a mixed scale of two different tetrachords.
+E.g., triphone plagal second on Di, Boyer 5-VI, p. 480.
 
 -}
 type alias ModeData =
@@ -896,12 +910,7 @@ plagalTwo_Pa : ModeData
 plagalTwo_Pa =
     { classification = Plagal ModeTwo
     , genres = [ Sticheraric, Papadic ]
-    , signatures =
-        [ Signature.plagalSecondPa
-        , Signature.plagalSecondBou
-        , Signature.plagalSecondDi_softChromatic
-        , Signature.plagalSecondDi_hardChromatic
-        ]
+    , signatures = [ Signature.plagalSecondPa ]
     , scale = HardChromatic
     , dominantTones =
         { base = Pa
@@ -929,7 +938,10 @@ plagalTwo_Di : ModeData
 plagalTwo_Di =
     { classification = Plagal ModeTwo
     , genres = [ Eirmologic ]
-    , signatures = [ Signature.plagalSecondDi_softChromatic ]
+    , signatures =
+        [ Signature.plagalSecondDi_softChromatic
+        , Signature.plagalSecondBou
+        ]
     , scale = SoftChromatic
     , dominantTones =
         { base = Di
@@ -949,6 +961,39 @@ plagalTwo_Di =
         , { degree = Ga, accidentals = [ Sharp2, Sharp4, Sharp6 ] }
         , { degree = Ke, accidentals = [ Sharp2, Sharp4 ] }
         ]
+    }
+
+
+{-| This one is actually mixed: the bottom tetrachord is hard-chromatic,
+but the upper is soft-diatonic Αγια.
+
+TODO: we need to flesh this out. Boyer notes that this is effectively
+a blend of plagal second on Pa with Agia on Di.
+
+Boyer 5-VI, p 480
+
+-}
+plagalTwo_Di_Triphone : ModeData
+plagalTwo_Di_Triphone =
+    { classification = Plagal ModeTwo
+    , genres = [ Papadic ]
+    , signatures = [ Signature.plagalSecondDi_hardChromatic ]
+    , scale = HardChromatic
+    , dominantTones =
+        { base = Di
+        , cadencePoints =
+            { final = Di
+            , complete = [ Di ]
+            , medial = []
+            , incomplete = [ Ke, Pa ]
+            }
+        , nonCadentialFoci = []
+        }
+    , isonOptions = [ Pa, Ke, Di ]
+    , range = { start = DI, end = Pa_ }
+    , recitingTone = Di
+    , possibleInflections =
+        []
     }
 
 

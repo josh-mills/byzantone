@@ -252,7 +252,7 @@ viewBase signature elements =
             basesModesPlagalFirst elements
 
         Plagal ModeTwo ->
-            []
+            basesModesPlagalSecond elements
 
         Plagal ModeThree ->
             []
@@ -343,6 +343,31 @@ basesModesPlagalFirst { baseDegree, fthora, neume } =
 
         ( Just Pa, Just fth, Nothing ) ->
             [ modePa, fthoraRight fth ]
+
+        _ ->
+            []
+
+
+basesModesPlagalSecond : Elements -> List (Html msg)
+basesModesPlagalSecond { baseDegree, fthora, neume } =
+    case ( baseDegree, fthora, neume ) of
+        ( Just Pa, Just fth, Nothing ) ->
+            [ modePa, fthoraAbove fth ]
+
+        ( Just Di, Just fth, Just intervalChar ) ->
+            [ neumeView intervalChar
+            , modeDi
+            , fthoraAbove fth
+            ]
+
+        ( Just Di, Just fth, Nothing ) ->
+            [ modeDi, fthoraAbove fth ]
+
+        ( Just Bou, Just fth, Just intervalChar ) ->
+            [ modeVou
+            , fthoraAbove fth
+            , neumeView intervalChar
+            ]
 
         _ ->
             []
