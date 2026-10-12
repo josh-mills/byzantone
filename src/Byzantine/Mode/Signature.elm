@@ -630,6 +630,12 @@ plagalFourthNi =
         }
 
 
+{-| The interval here isn't strictly correct.
+It should also bear a martyria of nana,
+which isn't something that really fits with the standard interval modeling.
+There may be a modeling gap for the irregular signature,
+which is relevant for only this case.
+-}
 plagalFourthGa_1 : Signature
 plagalFourthGa_1 =
     Irregular

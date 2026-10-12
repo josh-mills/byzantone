@@ -258,7 +258,7 @@ viewBase signature elements =
             basesModesPlagalThird elements
 
         Plagal ModeFour ->
-            []
+            basesModesPlagalFourth elements
 
 
 {-| TODO: we could dispense with a mode-specific helpers
@@ -384,6 +384,25 @@ basesModesPlagalThird { baseDegree, fthora, neume } =
 
         ( Just Zo, Just fth, Nothing ) ->
             [ modeZo, fthoraAbove fth ]
+
+        _ ->
+            []
+
+
+basesModesPlagalFourth : Elements -> List (Html msg)
+basesModesPlagalFourth { baseDegree, fthora, neume } =
+    case ( baseDegree, fthora, neume ) of
+        ( Just Ni, Just fth, Nothing ) ->
+            [ modeNi, fthoraRight fth ]
+
+        ( Nothing, Nothing, Just intervalChar ) ->
+            [ neumeView intervalChar
+            , Html.span [ class "relative -left-[0.7em]" ]
+                [ Html.node "x-martyria-nana-below" [] [] ]
+            ]
+
+        ( Just Ga, Just fth, Nothing ) ->
+            [ modeGa, fthoraRight fth ]
 
         _ ->
             []
