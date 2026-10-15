@@ -1,5 +1,10 @@
 module Byzantine.Accidental exposing (Accidental(..), all, allFlats, allSharps, fromString, lower, moriaAdjustment, raise, toString)
 
+{-| Data modeling gap: it may be better to create a distinction between
+permament and transient accidentals. Permament are currently treated as
+fthora in the view.
+-}
+
 
 type Accidental
     = Sharp2
