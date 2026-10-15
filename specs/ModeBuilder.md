@@ -8,6 +8,10 @@
     - Enharmonic
     - Soft Chromatic
     - Hard Chromatic
+  - By Classification
+    - Classification (First Mode, Second Mode, Third Mode, Fourth Mode, Plagal First Mode, Plagal Second Mode, Grave Mode, Plagal Fourth Mode)
+      - Full Signature, for any signature belonging to that classification (across all Ichos/Indicator variants)
+        - Genre (only when the signature is shared by more than one mode, e.g., Lower Mode One: Eirmologic / Sticheraric)
   - By Signature
     - Ichos
       - First
@@ -35,7 +39,3 @@
       - Plagal First
       - Plagal Second
       - Plagal Fourth
-  - By Classification & Signature
-    - Classification (First Mode, Second Mode, Third Mode, Fourth Mode, Plagal First Mode, Plagal Second Mode, Grave Mode, Plagal Fourth Mode)
-      - Full Signature, for any signature belonging to that classification (across all Ichos/Indicator variants)
-        - Genre (only when the signature is shared by more than one mode, e.g., Lower Mode One: Eirmologic / Sticheraric)

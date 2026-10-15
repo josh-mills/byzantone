@@ -5,13 +5,13 @@ module ModeBuilder exposing (Model, Msg, Result(..), currentResult, init, update
 Three strategies are available:
 
   - **By Scale** — choose one of the four canonical scales directly.
-  - **By Signature** — choose an Ichos, then an indicator, then a specific modal signature.
-  - **By Classification & Signature** — choose an Oktoichos classification, then
+  - **By Classification** — choose an Oktoichos classification, then
     pick from the full modal signatures belonging to that classification. This
     path resolves to a `Mode`. When the chosen signature is shared by several
     modes that differ by genre (e.g., Lower Mode One, Eirmologic vs. Sticheraric),
     a genre selector appears beneath the signatures and must be answered before a
     result is available.
+  - **By Signature** — choose an Ichos, then an indicator, then a specific modal signature.
 
 The current terminal selection is queried via `currentResult`.
 
@@ -50,8 +50,8 @@ import Styles
 
 type Strategy
     = SelectByScale
+    | SelectByClassification
     | SelectBySignature
-    | SelectByClassificationAndSignature
 
 
 strategyToString : Strategy -> String
@@ -60,11 +60,11 @@ strategyToString strategy =
         SelectByScale ->
             "By Scale"
 
+        SelectByClassification ->
+            "By Classification"
+
         SelectBySignature ->
             "By Signature"
-
-        SelectByClassificationAndSignature ->
-            "By Classification & Signature"
 
 
 
@@ -276,11 +276,11 @@ stepForStrategy strategy =
         SelectByScale ->
             SelectingScale
 
+        SelectByClassification ->
+            SelectingClassification
+
         SelectBySignature ->
             SelectingIchos
-
-        SelectByClassificationAndSignature ->
-            SelectingClassification
 
 
 {-| Move the wizard forward to `nextStep`, applying the given selections.
@@ -455,8 +455,8 @@ strategyRadioConfig =
         , options =
             List.map Just
                 [ SelectByScale
+                , SelectByClassification
                 , SelectBySignature
-                , SelectByClassificationAndSignature
                 ]
         }
         |> RadioFieldset.withCustomViewItem
