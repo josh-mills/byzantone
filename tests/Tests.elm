@@ -246,6 +246,9 @@ modeBuilder =
                     PlagalTwo_Di :: modes |> next
 
                 Just PlagalTwo_Di ->
+                    PlagalTwo_Di_Triphone :: modes |> next
+
+                Just PlagalTwo_Di_Triphone ->
                     PlagalThree_Ga :: modes |> next
 
                 Just PlagalThree_Ga ->
