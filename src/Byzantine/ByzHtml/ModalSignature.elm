@@ -1,5 +1,5 @@
 module Byzantine.ByzHtml.ModalSignature exposing
-    ( view, viewDivision
+    ( view, viewDivision, viewClassification
     , modePlagal, modeWordEchos
     , modeFirst, modeSecond, modeThird, modeThirdNana, modeFourth, modeLegetos, modePlagalFirst, modePlagalSecond, modeVarys, modeVarys2, modePlagalFourth, modeWordVarys
     , modeNi, modePa, modeVou, modeGa, modeDi, modeKe, modeZo
@@ -14,7 +14,7 @@ to be built out so we can implement a general `view` function.
 
 # View
 
-@docs view, viewDivision
+@docs view, viewDivision, viewClassification
 
 
 # Components
@@ -46,7 +46,7 @@ to be built out so we can implement a general `view` function.
 
 -}
 
-import Byzantine.ByzHtml.Fthora as Fthora
+import Byzantine.ByzHtml.Fthora as FthoraHtml
 import Byzantine.ByzHtml.Interval as Interval
 import Byzantine.Degree exposing (Degree(..))
 import Byzantine.Fthora as Fthora exposing (Fthora)
@@ -100,6 +100,40 @@ viewDivision ichos =
 
         IchosPlagal ->
             [ modeWordEchos, modePlagal ]
+
+
+{-| A classification on its own, without the "Ichos" word or a base: the capital
+ordinal for authentic modes, the plagal marker followed by the capital ordinal
+for plagal modes, and the word "Varys" for the Grave mode (which is named rather
+than numbered).
+-}
+viewClassification : Classification -> Html msg
+viewClassification classification =
+    case classification of
+        Authentic ordinal ->
+            modeCapital ordinal
+
+        Plagal ModeThree ->
+            modeWordVarys
+
+        Plagal ordinal ->
+            Html.span [] [ modePlagal, modeCapital ordinal ]
+
+
+modeCapital : Ordinal -> Html msg
+modeCapital ordinal =
+    case ordinal of
+        ModeOne ->
+            modeAlphaCapital
+
+        ModeTwo ->
+            modeBetaCapital
+
+        ModeThree ->
+            modeGammaCapital
+
+        ModeFour ->
+            modeDeltaCapital
 
 
 modePlagal : Html msg
@@ -306,7 +340,7 @@ basesModesFourth { baseDegree, fthora, neume } =
         ( Nothing, Just fth, Just intervalChar ) ->
             [ neumeView intervalChar
             , Html.span [ class "-ms-2 relative -top-1" ]
-                [ Fthora.view Fthora.Above fth ]
+                [ FthoraHtml.view FthoraHtml.Above fth ]
             ]
 
         ( Just Bou, Just fth, Nothing ) ->
@@ -433,7 +467,7 @@ neumeView intervalChar =
 fthoraRight : Fthora -> Html msg
 fthoraRight fthora =
     Html.span [ class "ms-2 relative top-[0.33em]" ]
-        [ Fthora.view Fthora.Secondary fthora ]
+        [ FthoraHtml.view FthoraHtml.Secondary fthora ]
 
 
 {-| nudge slightly to the right? Evaluate once everything is built out.
@@ -441,7 +475,7 @@ fthoraRight fthora =
 fthoraAbove : Fthora -> Html msg
 fthoraAbove fthora =
     Html.span [ class "relative -top-1 left-1" ]
-        [ Fthora.view Fthora.Above fthora ]
+        [ FthoraHtml.view FthoraHtml.Above fthora ]
 
 
 

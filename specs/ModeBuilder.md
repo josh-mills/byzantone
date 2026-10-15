@@ -63,3 +63,6 @@
       - Plagal First
       - Plagal Second
       - Plagal Fourth
+  - By Classification & Signature
+    - Classification (First Mode, Second Mode, Third Mode, Fourth Mode, Plagal First Mode, Plagal Second Mode, Grave Mode, Plagal Fourth Mode)
+      - Full Signature, for any signature belonging to that classification (across all Ichos/Indicator variants)

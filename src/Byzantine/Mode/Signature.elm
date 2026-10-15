@@ -12,7 +12,7 @@ module Byzantine.Mode.Signature exposing
     , plagalSecondPa, plagalSecondBou, plagalSecondDi_softChromatic, plagalSecondDi_hardChromatic
     , graveGa, graveZo, graveZoFlat
     , plagalFourthNi, plagalFourthGa_1, plagalFourthGa_2
-    , signaturesFor
+    , signaturesFor, signaturesForClassification
     )
 
 {-| WIP.
@@ -672,3 +672,34 @@ signaturesFor ichos indicator =
             e.ichos == ichos && e.indicator == indicator
         )
         all
+
+
+{-| All signatures belonging to the given Classification, regardless of Ichos or
+Indicator.
+-}
+signaturesForClassification : Classification -> List Signature
+signaturesForClassification classification_ =
+    case classification_ of
+        Authentic ModeOne ->
+            firstModes
+
+        Authentic ModeTwo ->
+            secondModes
+
+        Authentic ModeThree ->
+            thirdModes
+
+        Authentic ModeFour ->
+            fourthModes
+
+        Plagal ModeOne ->
+            plagalFirstModes
+
+        Plagal ModeTwo ->
+            plagalSecondModes
+
+        Plagal ModeThree ->
+            graveModes
+
+        Plagal ModeFour ->
+            plagalFourthModes

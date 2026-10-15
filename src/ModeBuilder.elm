@@ -2,11 +2,17 @@ module ModeBuilder exposing (Model, Msg, Result(..), currentResult, init, update
 
 {-| Decision-tree component for selecting a Byzantine mode or scale.
 
-Three strategies are available:
+Four strategies are available:
 
   - **By Scale** — choose one of the four canonical scales directly.
   - **By Classification** — choose an Oktoichos classification, then a base pitch.
   - **By Signature** — choose an Ichos, then an indicator, then a specific modal signature.
+  - **By Classification & Signature** — choose an Oktoichos classification, then
+    pick from the full modal signatures belonging to that classification. This
+    path resolves to a `Mode`. When the chosen signature is shared by several
+    modes that differ by genre (e.g., Lower Mode One, Eirmologic vs. Sticheraric),
+    a genre selector appears beneath the signatures and must be answered before a
+    result is available.
 
 The current terminal selection is queried via `currentResult`.
 
@@ -15,8 +21,17 @@ The current terminal selection is queried via `currentResult`.
 import Byzantine.Accidental as Accidental
 import Byzantine.ByzHtml.ModalSignature as ByzHtml
 import Byzantine.Degree as Degree
-import Byzantine.Fthora exposing (DiatonicDegree(..), Fthora(..))
+import Byzantine.Fthora
+    exposing
+        ( DiatonicDegree(..)
+        , EnharmonicDegree(..)
+        , Fthora(..)
+        , HardChromaticDegree(..)
+        , SoftChromaticDegree(..)
+        )
+import Byzantine.Mode as Mode exposing (Mode)
 import Byzantine.Mode.Classification as Classification exposing (Classification)
+import Byzantine.Mode.Genre as Genre
 import Byzantine.Mode.Signature as Signature exposing (Ichos(..), Indicator(..), Signature)
 import Byzantine.Pitch as Pitch exposing (Pitch)
 import Byzantine.Scale as Scale exposing (Scale)
@@ -27,6 +42,7 @@ import Html.Attributes exposing (class)
 import Html.Events exposing (onClick)
 import Html.Extra
 import Html.Keyed
+import List.Extra
 import Maybe.Extra
 import Styles
 
@@ -39,6 +55,7 @@ type Strategy
     = SelectByScale
     | SelectByClassification
     | SelectBySignature
+    | SelectByClassificationAndSignature
 
 
 strategyToString : Strategy -> String
@@ -52,6 +69,9 @@ strategyToString strategy =
 
         SelectBySignature ->
             "By Signature"
+
+        SelectByClassificationAndSignature ->
+            "By Classification & Signature"
 
 
 
@@ -68,6 +88,8 @@ type Step
     | SelectingIchos
     | SelectingIndicator Ichos
     | SelectingSignature Ichos Indicator
+    | SelectingClassificationForSignature
+    | SelectingSignatureForClassification Classification
 
 
 
@@ -87,6 +109,7 @@ type Result
     = ByScale Scale
     | ByClassification Classification Pitch
     | BySignature Signature
+    | ByMode Mode
 
 
 
@@ -103,6 +126,7 @@ type alias Selections =
     , ichos : Maybe Ichos
     , indicator : Maybe Indicator
     , signature : Maybe Signature
+    , mode : Maybe Mode -- only used to disambiguate a signature shared by several modes
     }
 
 
@@ -115,6 +139,7 @@ emptySelections =
     , ichos = Nothing
     , indicator = Nothing
     , signature = Nothing
+    , mode = Nothing
     }
 
 
@@ -158,6 +183,11 @@ currentResult { step, selections } =
         SelectingSignature _ _ ->
             Maybe.map BySignature selections.signature
 
+        SelectingSignatureForClassification _ ->
+            selections.signature
+                |> Maybe.andThen (resolveMode selections.mode)
+                |> Maybe.map ByMode
+
         _ ->
             Nothing
 
@@ -174,6 +204,7 @@ type Msg
     | SelectIchos (Maybe Ichos)
     | SelectIndicator (Maybe Indicator)
     | SelectSignature (Maybe Signature)
+    | SelectMode (Maybe Mode)
     | GoBack
 
 
@@ -207,9 +238,7 @@ update msg model =
                     ( model, Cmd.none )
 
                 Just classification ->
-                    advanceTo (SelectingBase classification)
-                        { sel | classification = Just classification, base = Nothing }
-                        model
+                    advanceFromClassification classification model
 
         SelectBase maybeBase ->
             ( { model | selections = { sel | base = maybeBase } }, Cmd.none )
@@ -235,7 +264,10 @@ update msg model =
                     ( model, Cmd.none )
 
         SelectSignature maybeSignature ->
-            ( { model | selections = { sel | signature = maybeSignature } }, Cmd.none )
+            ( { model | selections = { sel | signature = maybeSignature, mode = Nothing } }, Cmd.none )
+
+        SelectMode maybeMode ->
+            ( { model | selections = { sel | mode = maybeMode } }, Cmd.none )
 
         GoBack ->
             case model.history of
@@ -252,6 +284,28 @@ update msg model =
                     )
 
 
+{-| Advance after a classification has been chosen. The next step depends on
+which strategy's classification step the user is on: bases for By
+Classification, full signatures for By Classification & Signature.
+-}
+advanceFromClassification : Classification -> Model -> ( Model, Cmd Msg )
+advanceFromClassification classification model =
+    let
+        sel =
+            model.selections
+    in
+    case model.step of
+        SelectingClassificationForSignature ->
+            advanceTo (SelectingSignatureForClassification classification)
+                { sel | classification = Just classification, signature = Nothing, mode = Nothing }
+                model
+
+        _ ->
+            advanceTo (SelectingBase classification)
+                { sel | classification = Just classification, base = Nothing }
+                model
+
+
 {-| The first step of the wizard branch that each strategy leads into once the
 user has chosen how they want to build their mode.
 -}
@@ -266,6 +320,9 @@ stepForStrategy strategy =
 
         SelectBySignature ->
             SelectingIchos
+
+        SelectByClassificationAndSignature ->
+            SelectingClassificationForSignature
 
 
 {-| Move the wizard forward to `nextStep`, applying the given selections.
@@ -344,6 +401,9 @@ breadcrumbLabel sel step =
         SelectingClassification ->
             Maybe.map Classification.toString sel.classification
 
+        SelectingClassificationForSignature ->
+            Maybe.map Classification.toString sel.classification
+
         SelectingIchos ->
             Maybe.map ichosToString sel.ichos
 
@@ -357,6 +417,9 @@ breadcrumbLabel sel step =
             Nothing
 
         SelectingSignature _ _ ->
+            Nothing
+
+        SelectingSignatureForClassification _ ->
             Nothing
 
 
@@ -383,6 +446,12 @@ stepKey step =
 
         SelectingSignature _ _ ->
             "signature"
+
+        SelectingClassificationForSignature ->
+            "classification-for-signature"
+
+        SelectingSignatureForClassification _ ->
+            "signature-for-classification"
 
 
 animationClass : Maybe Direction -> String
@@ -424,6 +493,17 @@ viewStep model =
         SelectingSignature ichos indicator ->
             RadioFieldset.view (signatureRadioConfig ichos indicator) model.selections.signature
 
+        SelectingClassificationForSignature ->
+            RadioFieldset.view classificationGlyphRadioConfig model.selections.classification
+
+        SelectingSignatureForClassification classification ->
+            div []
+                [ RadioFieldset.view
+                    (classifiedSignatureRadioConfig classification)
+                    model.selections.signature
+                , viewGenreSelector model.selections
+                ]
+
 
 
 -- RADIO CONFIGS
@@ -435,7 +515,13 @@ strategyRadioConfig =
         { itemToString = Maybe.Extra.unwrap "" strategyToString >> (++) "mode-builder-strategy-"
         , legendText = "Selection Strategy"
         , onSelect = SelectStrategy
-        , options = List.map Just [ SelectByScale, SelectByClassification, SelectBySignature ]
+        , options =
+            List.map Just
+                [ SelectByScale
+                , SelectByClassification
+                , SelectBySignature
+                , SelectByClassificationAndSignature
+                ]
         }
         |> RadioFieldset.withCustomViewItem
             (Html.Extra.viewMaybe (text << strategyToString))
@@ -464,6 +550,23 @@ classificationRadioConfig =
         |> RadioFieldset.withCustomViewItem
             (Html.Extra.viewMaybe (text << Classification.toString))
         |> RadioFieldset.withLayout RadioFieldset.TwoColumnGrid
+
+
+{-| The classification options rendered as a Byzantine glyph followed by the
+plain-text name in parentheses.
+-}
+classificationGlyphRadioConfig : RadioFieldset.Config (Maybe Classification) Msg
+classificationGlyphRadioConfig =
+    classificationRadioConfig
+        |> RadioFieldset.withCustomViewItem
+            (Html.Extra.viewMaybe
+                (\classification ->
+                    div [ Styles.flexRow, class "items-center gap-2 mt-1" ]
+                        [ span [ class "text-2xl" ] [ ByzHtml.viewClassification classification ]
+                        , span [] [ text ("(" ++ Classification.toString classification ++ ")") ]
+                        ]
+                )
+            )
 
 
 baseRadioConfig : List Pitch -> RadioFieldset.Config (Maybe Pitch) Msg
@@ -529,6 +632,94 @@ signatureRadioConfig ichos indicator =
             (Html.Extra.viewMaybe
                 (\sig -> div [ class "text-2xl mt-1" ] [ ByzHtml.view sig ])
             )
+
+
+classifiedSignatureRadioConfig : Classification -> RadioFieldset.Config (Maybe Signature) Msg
+classifiedSignatureRadioConfig classification =
+    RadioFieldset.baseConfig
+        { itemToString = Maybe.Extra.unwrap "" signatureTag >> (++) "mode-builder-sig-"
+        , legendText = "Signature"
+        , onSelect = SelectSignature
+        , options = List.map Just (Signature.signaturesForClassification classification)
+        }
+        |> RadioFieldset.withCustomViewItem
+            (Html.Extra.viewMaybe
+                (\sig -> div [ class "text-2xl mt-1" ] [ ByzHtml.view sig ])
+            )
+
+
+genreRadioConfig : List Mode -> RadioFieldset.Config (Maybe Mode) Msg
+genreRadioConfig modes =
+    RadioFieldset.baseConfig
+        { itemToString = Maybe.Extra.unwrap "" modeTag >> (++) "mode-builder-genre-"
+        , legendText = "Genre"
+        , onSelect = SelectMode
+        , options = List.map Just modes
+        }
+        |> RadioFieldset.withCustomViewItem
+            (Html.Extra.viewMaybe (text << genreLabel))
+
+
+{-| The genre selector, shown only once a signature is chosen that is shared by
+more than one mode. Otherwise the signature already determines the mode.
+-}
+viewGenreSelector : Selections -> Html Msg
+viewGenreSelector selections =
+    case Maybe.map modesForSignature selections.signature of
+        Just ((_ :: _ :: _) as modes) ->
+            RadioFieldset.view (genreRadioConfig modes) selections.mode
+
+        _ ->
+            Html.Extra.nothing
+
+
+
+-- HELPERS: MODES
+
+
+{-| All modes that use the given signature.
+-}
+modesForSignature : Signature -> List Mode
+modesForSignature signature =
+    List.filter
+        (\mode -> List.member signature (Mode.data mode).signatures)
+        Mode.all
+
+
+{-| The mode a signature leads to: the only mode that uses it, or, when several
+do, the user's genre choice (if it is one of them).
+-}
+resolveMode : Maybe Mode -> Signature -> Maybe Mode
+resolveMode chosen signature =
+    case modesForSignature signature of
+        [ only ] ->
+            Just only
+
+        modes ->
+            chosen
+                |> Maybe.andThen (\mode -> List.Extra.find ((==) mode) modes)
+
+
+{-| Label for a mode in the genre selector: its genre(s), falling back to the
+mode's full name for modes that don't declare any.
+-}
+genreLabel : Mode -> String
+genreLabel mode =
+    case (Mode.data mode).genres of
+        [] ->
+            Mode.toString mode
+
+        genres ->
+            genres |> List.map Genre.toString |> String.join ", "
+
+
+{-| Element ID fragment, unique per mode.
+-}
+modeTag : Mode -> String
+modeTag mode =
+    List.Extra.elemIndex mode Mode.all
+        |> Maybe.withDefault -1
+        |> String.fromInt
 
 
 
@@ -607,8 +798,9 @@ viewPitch pitch =
 
 -- HELPERS: SIGNATURE ID
 -- Derives a unique string key per signature for use as a radio element ID.
--- The combination of base degree + fthora type is unique within any
--- (Ichos, Indicator)-filtered subset of Signature.all.
+-- The combination of indicator + base degree + fthora is unique within any
+-- Classification-filtered subset of Signature.all (and therefore also within any
+-- (Ichos, Indicator)-filtered subset).
 
 
 signatureTag : Signature -> String
@@ -617,13 +809,18 @@ signatureTag sig =
         e =
             Signature.elements sig
 
+        indicatorStr =
+            indicatorToString e.indicator
+                |> String.toLower
+                |> String.replace " " "-"
+
         degStr =
             Maybe.Extra.unwrap "x" Degree.toString e.baseDegree
 
         fthStr =
             Maybe.Extra.unwrap "x" fthoraTag e.fthora
     in
-    degStr ++ "-" ++ fthStr
+    indicatorStr ++ "-" ++ degStr ++ "-" ++ fthStr
 
 
 fthoraTag : Fthora -> String
@@ -632,14 +829,14 @@ fthoraTag fthora =
         DiatonicFthora d ->
             "d-" ++ diatonicDegTag d
 
-        EnharmonicFthora _ ->
-            "e"
+        EnharmonicFthora d ->
+            "e-" ++ enharmonicDegTag d
 
-        SoftChromaticFthora _ ->
-            "sc"
+        SoftChromaticFthora d ->
+            "sc-" ++ softChromaticDegTag d
 
-        HardChromaticFthora _ ->
-            "hc"
+        HardChromaticFthora d ->
+            "hc-" ++ hardChromaticDegTag d
 
 
 diatonicDegTag : DiatonicDegree -> String
@@ -668,3 +865,36 @@ diatonicDegTag d =
 
         D_Ni_ ->
             "ni-upper"
+
+
+enharmonicDegTag : EnharmonicDegree -> String
+enharmonicDegTag d =
+    case d of
+        E_Ga ->
+            "ga"
+
+        E_Ke ->
+            "ke"
+
+        E_Zo_ ->
+            "zo"
+
+
+softChromaticDegTag : SoftChromaticDegree -> String
+softChromaticDegTag d =
+    case d of
+        SC_Di ->
+            "di"
+
+        SC_Ke ->
+            "ke"
+
+
+hardChromaticDegTag : HardChromaticDegree -> String
+hardChromaticDegTag d =
+    case d of
+        HC_Pa ->
+            "pa"
+
+        HC_Di ->
+            "di"
