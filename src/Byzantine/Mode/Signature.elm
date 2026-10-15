@@ -545,6 +545,9 @@ plagalSecondPa =
         }
 
 
+{-| TODO: this neume is wrong. It's _kentimata_ below, not kentima.
+I don't have this modeled yet.
+-}
 plagalSecondBou : Signature
 plagalSecondBou =
     Irregular
@@ -643,7 +646,7 @@ plagalFourthGa_1 =
         , indicator = PlagalFourth
         , baseDegree = Nothing
         , fthora = Nothing
-        , neume = IntervalCharacter.basicInterval 4
+        , neume = IntervalCharacter.basicInterval 3
         }
 
 
