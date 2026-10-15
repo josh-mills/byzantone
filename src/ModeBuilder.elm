@@ -2,10 +2,9 @@ module ModeBuilder exposing (Model, Msg, Result(..), currentResult, init, update
 
 {-| Decision-tree component for selecting a Byzantine mode or scale.
 
-Four strategies are available:
+Three strategies are available:
 
   - **By Scale** — choose one of the four canonical scales directly.
-  - **By Classification** — choose an Oktoichos classification, then a base pitch.
   - **By Signature** — choose an Ichos, then an indicator, then a specific modal signature.
   - **By Classification & Signature** — choose an Oktoichos classification, then
     pick from the full modal signatures belonging to that classification. This
@@ -18,7 +17,6 @@ The current terminal selection is queried via `currentResult`.
 
 -}
 
-import Byzantine.Accidental as Accidental
 import Byzantine.ByzHtml.ModalSignature as ByzHtml
 import Byzantine.Degree as Degree
 import Byzantine.Fthora
@@ -33,7 +31,6 @@ import Byzantine.Mode as Mode exposing (Mode)
 import Byzantine.Mode.Classification as Classification exposing (Classification)
 import Byzantine.Mode.Genre as Genre
 import Byzantine.Mode.Signature as Signature exposing (Ichos(..), Indicator(..), Signature)
-import Byzantine.Pitch as Pitch exposing (Pitch)
 import Byzantine.Scale as Scale exposing (Scale)
 import Components.AnimatedHeight as AnimatedHeight
 import Components.RadioFieldset as RadioFieldset
@@ -53,7 +50,6 @@ import Styles
 
 type Strategy
     = SelectByScale
-    | SelectByClassification
     | SelectBySignature
     | SelectByClassificationAndSignature
 
@@ -63,9 +59,6 @@ strategyToString strategy =
     case strategy of
         SelectByScale ->
             "By Scale"
-
-        SelectByClassification ->
-            "By Classification"
 
         SelectBySignature ->
             "By Signature"
@@ -84,12 +77,10 @@ type Step
     = SelectingStrategy
     | SelectingScale
     | SelectingClassification
-    | SelectingBase Classification
+    | SelectingSignatureForClassification Classification
     | SelectingIchos
     | SelectingIndicator Ichos
     | SelectingSignature Ichos Indicator
-    | SelectingClassificationForSignature
-    | SelectingSignatureForClassification Classification
 
 
 
@@ -107,7 +98,6 @@ type Direction
 
 type Result
     = ByScale Scale
-    | ByClassification Classification Pitch
     | BySignature Signature
     | ByMode Mode
 
@@ -122,7 +112,6 @@ type alias Selections =
     { strategy : Maybe Strategy
     , scale : Maybe Scale
     , classification : Maybe Classification
-    , base : Maybe Pitch
     , ichos : Maybe Ichos
     , indicator : Maybe Indicator
     , signature : Maybe Signature
@@ -135,7 +124,6 @@ emptySelections =
     { strategy = Nothing
     , scale = Nothing
     , classification = Nothing
-    , base = Nothing
     , ichos = Nothing
     , indicator = Nothing
     , signature = Nothing
@@ -177,9 +165,6 @@ currentResult { step, selections } =
         SelectingScale ->
             Maybe.map ByScale selections.scale
 
-        SelectingBase _ ->
-            Maybe.map2 ByClassification selections.classification selections.base
-
         SelectingSignature _ _ ->
             Maybe.map BySignature selections.signature
 
@@ -200,7 +185,6 @@ type Msg
     = SelectStrategy (Maybe Strategy)
     | SelectScale (Maybe Scale)
     | SelectClassification (Maybe Classification)
-    | SelectBase (Maybe Pitch)
     | SelectIchos (Maybe Ichos)
     | SelectIndicator (Maybe Indicator)
     | SelectSignature (Maybe Signature)
@@ -238,10 +222,9 @@ update msg model =
                     ( model, Cmd.none )
 
                 Just classification ->
-                    advanceFromClassification classification model
-
-        SelectBase maybeBase ->
-            ( { model | selections = { sel | base = maybeBase } }, Cmd.none )
+                    advanceTo (SelectingSignatureForClassification classification)
+                        { sel | classification = Just classification, signature = Nothing, mode = Nothing }
+                        model
 
         SelectIchos maybeIchos ->
             case maybeIchos of
@@ -284,28 +267,6 @@ update msg model =
                     )
 
 
-{-| Advance after a classification has been chosen. The next step depends on
-which strategy's classification step the user is on: bases for By
-Classification, full signatures for By Classification & Signature.
--}
-advanceFromClassification : Classification -> Model -> ( Model, Cmd Msg )
-advanceFromClassification classification model =
-    let
-        sel =
-            model.selections
-    in
-    case model.step of
-        SelectingClassificationForSignature ->
-            advanceTo (SelectingSignatureForClassification classification)
-                { sel | classification = Just classification, signature = Nothing, mode = Nothing }
-                model
-
-        _ ->
-            advanceTo (SelectingBase classification)
-                { sel | classification = Just classification, base = Nothing }
-                model
-
-
 {-| The first step of the wizard branch that each strategy leads into once the
 user has chosen how they want to build their mode.
 -}
@@ -315,14 +276,11 @@ stepForStrategy strategy =
         SelectByScale ->
             SelectingScale
 
-        SelectByClassification ->
-            SelectingClassification
-
         SelectBySignature ->
             SelectingIchos
 
         SelectByClassificationAndSignature ->
-            SelectingClassificationForSignature
+            SelectingClassification
 
 
 {-| Move the wizard forward to `nextStep`, applying the given selections.
@@ -389,8 +347,7 @@ viewBreadcrumb model =
 
 
 {-| Returns the label for the selection made _at_ a given history step,
-used to build the breadcrumb trail. Terminal steps and the Base step
-(whose classification is already shown by its parent) return Nothing.
+used to build the breadcrumb trail. Terminal steps return Nothing.
 -}
 breadcrumbLabel : Selections -> Step -> Maybe String
 breadcrumbLabel sel step =
@@ -401,9 +358,6 @@ breadcrumbLabel sel step =
         SelectingClassification ->
             Maybe.map Classification.toString sel.classification
 
-        SelectingClassificationForSignature ->
-            Maybe.map Classification.toString sel.classification
-
         SelectingIchos ->
             Maybe.map ichosToString sel.ichos
 
@@ -411,9 +365,6 @@ breadcrumbLabel sel step =
             Maybe.map indicatorToString sel.indicator
 
         SelectingScale ->
-            Nothing
-
-        SelectingBase _ ->
             Nothing
 
         SelectingSignature _ _ ->
@@ -435,8 +386,8 @@ stepKey step =
         SelectingClassification ->
             "classification"
 
-        SelectingBase _ ->
-            "base"
+        SelectingSignatureForClassification _ ->
+            "signature-for-classification"
 
         SelectingIchos ->
             "ichos"
@@ -446,12 +397,6 @@ stepKey step =
 
         SelectingSignature _ _ ->
             "signature"
-
-        SelectingClassificationForSignature ->
-            "classification-for-signature"
-
-        SelectingSignatureForClassification _ ->
-            "signature-for-classification"
 
 
 animationClass : Maybe Direction -> String
@@ -479,10 +424,13 @@ viewStep model =
         SelectingClassification ->
             RadioFieldset.view classificationRadioConfig model.selections.classification
 
-        SelectingBase classification ->
-            RadioFieldset.view
-                (baseRadioConfig (Classification.basesFor classification))
-                model.selections.base
+        SelectingSignatureForClassification classification ->
+            div []
+                [ RadioFieldset.view
+                    (classifiedSignatureRadioConfig classification)
+                    model.selections.signature
+                , viewGenreSelector model.selections
+                ]
 
         SelectingIchos ->
             RadioFieldset.view ichosRadioConfig model.selections.ichos
@@ -492,17 +440,6 @@ viewStep model =
 
         SelectingSignature ichos indicator ->
             RadioFieldset.view (signatureRadioConfig ichos indicator) model.selections.signature
-
-        SelectingClassificationForSignature ->
-            RadioFieldset.view classificationGlyphRadioConfig model.selections.classification
-
-        SelectingSignatureForClassification classification ->
-            div []
-                [ RadioFieldset.view
-                    (classifiedSignatureRadioConfig classification)
-                    model.selections.signature
-                , viewGenreSelector model.selections
-                ]
 
 
 
@@ -518,7 +455,6 @@ strategyRadioConfig =
         , options =
             List.map Just
                 [ SelectByScale
-                , SelectByClassification
                 , SelectBySignature
                 , SelectByClassificationAndSignature
                 ]
@@ -539,6 +475,9 @@ scaleRadioConfig =
             (Html.Extra.viewMaybe (text << Scale.name))
 
 
+{-| The classification options rendered as a Byzantine glyph followed by the
+plain-text name in parentheses.
+-}
 classificationRadioConfig : RadioFieldset.Config (Maybe Classification) Msg
 classificationRadioConfig =
     RadioFieldset.baseConfig
@@ -548,17 +487,6 @@ classificationRadioConfig =
         , options = List.map Just Classification.all
         }
         |> RadioFieldset.withCustomViewItem
-            (Html.Extra.viewMaybe (text << Classification.toString))
-        |> RadioFieldset.withLayout RadioFieldset.TwoColumnGrid
-
-
-{-| The classification options rendered as a Byzantine glyph followed by the
-plain-text name in parentheses.
--}
-classificationGlyphRadioConfig : RadioFieldset.Config (Maybe Classification) Msg
-classificationGlyphRadioConfig =
-    classificationRadioConfig
-        |> RadioFieldset.withCustomViewItem
             (Html.Extra.viewMaybe
                 (\classification ->
                     div [ Styles.flexRow, class "items-center gap-2 mt-1" ]
@@ -567,18 +495,7 @@ classificationGlyphRadioConfig =
                         ]
                 )
             )
-
-
-baseRadioConfig : List Pitch -> RadioFieldset.Config (Maybe Pitch) Msg
-baseRadioConfig bases =
-    RadioFieldset.baseConfig
-        { itemToString = Maybe.Extra.unwrap "" Pitch.toString >> (++) "mode-builder-base-"
-        , legendText = "Base"
-        , onSelect = SelectBase
-        , options = List.map Just bases
-        }
-        |> RadioFieldset.withCustomViewItem
-            (Html.Extra.viewMaybe viewPitch)
+        |> RadioFieldset.withLayout RadioFieldset.TwoColumnGrid
 
 
 ichosRadioConfig : RadioFieldset.Config (Maybe Ichos) Msg
@@ -774,25 +691,6 @@ indicatorToString indicator =
 
         ClassificationIndicator c ->
             Classification.toString c
-
-
-viewPitch : Pitch -> Html msg
-viewPitch pitch =
-    case Pitch.unwrapAccidental pitch of
-        Nothing ->
-            Degree.text (Pitch.unwrapDegree pitch)
-
-        Just Accidental.Flat4 ->
-            span []
-                [ Degree.text (Pitch.unwrapDegree pitch)
-                , text "-flat"
-                ]
-
-        Just accidental ->
-            span []
-                [ Degree.text (Pitch.unwrapDegree pitch)
-                , text (" " ++ Accidental.toString accidental)
-                ]
 
 
 
