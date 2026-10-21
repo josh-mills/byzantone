@@ -7,12 +7,14 @@ import Byzantine.Accidental as Accidental
 import Byzantine.ByzHtml.Accidental as ByzHtmlAccidental
 import Byzantine.ByzHtml.Interval as ByzHtmlInterval
 import Byzantine.ByzHtml.Martyria as ByzHtmlMartyria
+import Byzantine.ByzHtml.ModalSignature as ModalSignature
 import Byzantine.Degree as Degree exposing (Degree)
 import Byzantine.DetectedPitch exposing (DetectedPitch)
 import Byzantine.Frequency as Frequency
 import Byzantine.Interval as Interval exposing (Interval)
 import Byzantine.IntervalCharacter as IntervalCharacter
 import Byzantine.Martyria as Martyria
+import Byzantine.Mode as Mode exposing (Mode)
 import Byzantine.Pitch as Pitch exposing (Pitch, PitchString)
 import Byzantine.PitchPosition as PitchPosition
 import Html exposing (Html, button, div, li, span, text)
@@ -70,6 +72,30 @@ view pitchSpaceData audioSettings modeSettings pitchState maybeTimestampedDetect
             (Maybe.map .detectedPitch maybeTimestampedDetectedPitch)
         , Html.Lazy.lazy3 viewPitches pitchSpaceData modeSettings pitchState
         , Html.Lazy.lazy2 viewAccidentalButtons pitchSpaceData.display pitchState.proposedAccidental
+        , signatures
+        ]
+
+
+signatures : Html Msg
+signatures =
+    div [ class "m-6" ]
+        [ Html.h3 [ class "font-heading text-2xl" ]
+            [ text "All Modes and their Signatures" ]
+        , Html.ul [] (List.map viewModeSignatures Mode.all)
+        ]
+
+
+viewModeSignatures : Mode -> Html Msg
+viewModeSignatures mode =
+    li [ class "flex flex-row gap-2 m-2 my-4" ]
+        [ div [ class "font-bold" ]
+            [ Html.text (Mode.toString mode)
+            , text ". "
+            ]
+        , (Mode.data mode).signatures
+            |> List.map ModalSignature.view
+            |> List.intersperse (Html.div [ class "px-2 text-md" ] [ text "~ or ~" ])
+            |> div [ class "flex flex-row" ]
         ]
 
 

@@ -6,12 +6,13 @@ Three strategies are available:
 
   - **By Scale** — choose one of the four canonical scales directly.
   - **By Classification** — choose an Oktoichos classification, then
-    pick from the full modal signatures belonging to that classification. This
-    path resolves to a `Mode`. When the chosen signature is shared by several
-    modes that differ by genre (e.g., Lower Mode One, Eirmologic vs. Sticheraric),
-    a genre selector appears beneath the signatures and must be answered before a
-    result is available.
+    pick from the full modal signatures belonging to that classification.
   - **By Signature** — choose an Ichos, then an indicator, then a specific modal signature.
+
+Both signature-based strategies resolve to a `Mode`. When the chosen signature is
+shared by several modes that differ by genre (e.g., Lower Mode One, Eirmologic
+vs. Sticheraric), a genre selector appears beneath the signatures and must be
+answered before a result is available.
 
 The current terminal selection is queried via `currentResult`.
 
@@ -98,7 +99,6 @@ type Direction
 
 type Result
     = ByScale Scale
-    | BySignature Signature
     | ByMode Mode
 
 
@@ -166,12 +166,10 @@ currentResult { step, selections } =
             Maybe.map ByScale selections.scale
 
         SelectingSignature _ _ ->
-            Maybe.map BySignature selections.signature
+            resolveSelectedMode selections
 
         SelectingSignatureForClassification _ ->
-            selections.signature
-                |> Maybe.andThen (resolveMode selections.mode)
-                |> Maybe.map ByMode
+            resolveSelectedMode selections
 
         _ ->
             Nothing
@@ -233,14 +231,14 @@ update msg model =
 
                 Just ichos ->
                     advanceTo (SelectingIndicator ichos)
-                        { sel | ichos = Just ichos, indicator = Nothing, signature = Nothing }
+                        { sel | ichos = Just ichos, indicator = Nothing, signature = Nothing, mode = Nothing }
                         model
 
         SelectIndicator maybeIndicator ->
             case ( maybeIndicator, model.step ) of
                 ( Just indicator, SelectingIndicator ichos ) ->
                     advanceTo (SelectingSignature ichos indicator)
-                        { sel | indicator = Just indicator, signature = Nothing }
+                        { sel | indicator = Just indicator, signature = Nothing, mode = Nothing }
                         model
 
                 _ ->
@@ -439,7 +437,12 @@ viewStep model =
             RadioFieldset.view (indicatorRadioConfig ichos) model.selections.indicator
 
         SelectingSignature ichos indicator ->
-            RadioFieldset.view (signatureRadioConfig ichos indicator) model.selections.signature
+            div []
+                [ RadioFieldset.view
+                    (signatureRadioConfig ichos indicator)
+                    model.selections.signature
+                , viewGenreSelector model.selections
+                ]
 
 
 
@@ -528,13 +531,23 @@ indicatorRadioConfig ichos =
         { itemToString = Maybe.Extra.unwrap "" indicatorToString >> (++) "mode-builder-indicator-"
         , legendText = "Indicator"
         , onSelect = SelectIndicator
-        , options = List.map Just (Signature.indicatorsFor ichos)
+        , options = List.map Just (indicatorsWithSignatures ichos)
         }
         |> RadioFieldset.withCustomViewItem
             (Html.Extra.viewMaybe
                 (\ind -> div [ class "text-2xl mt-1" ] [ ByzHtml.viewIndicator ind ])
             )
         |> RadioFieldset.withLayout RadioFieldset.TwoColumnGrid
+
+
+{-| The indicators for an Ichos that lead to at least one signature, so the user
+is never sent to a step with nothing to select.
+-}
+indicatorsWithSignatures : Ichos -> List Indicator
+indicatorsWithSignatures ichos =
+    Signature.indicatorsFor ichos
+        |> List.filter
+            (\indicator -> not (List.isEmpty (Signature.signaturesFor ichos indicator)))
 
 
 signatureRadioConfig : Ichos -> Indicator -> RadioFieldset.Config (Maybe Signature) Msg
@@ -601,6 +614,16 @@ modesForSignature signature =
     List.filter
         (\mode -> List.member signature (Mode.data mode).signatures)
         Mode.all
+
+
+{-| The mode the current selections lead to, if the user has chosen a signature
+and, where needed, a genre.
+-}
+resolveSelectedMode : Selections -> Maybe Result
+resolveSelectedMode selections =
+    selections.signature
+        |> Maybe.andThen (resolveMode selections.mode)
+        |> Maybe.map ByMode
 
 
 {-| The mode a signature leads to: the only mode that uses it, or, when several

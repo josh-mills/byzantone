@@ -4,6 +4,7 @@ import Array
 import Byzantine.Accidental as Accidental exposing (Accidental(..))
 import Byzantine.Degree as Degree exposing (Degree(..))
 import Byzantine.Mode as Mode exposing (Mode(..))
+import Byzantine.Mode.Signature as Signature
 import Byzantine.Pitch as Pitch
 import Byzantine.PitchPosition as PitchPosition
 import Byzantine.Scale as Scale exposing (Scale(..))
@@ -177,6 +178,15 @@ modeTests =
         [ test "Mode.all is complete and unique" <|
             \_ ->
                 Expect.equalLists modeBuilder Mode.all
+        , test "every Signature belongs to at least one Mode" <|
+            \_ ->
+                let
+                    modeSignatures =
+                        List.concatMap (Mode.data >> .signatures) Mode.all
+                in
+                Signature.all
+                    |> List.filter (\signature -> not (List.member signature modeSignatures))
+                    |> Expect.equalLists []
         ]
 
 

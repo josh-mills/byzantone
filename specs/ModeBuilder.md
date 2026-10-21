@@ -39,3 +39,4 @@
       - Plagal First
       - Plagal Second
       - Plagal Fourth
+    - Genre (after the signature, only when it is shared by more than one mode, e.g., Lower Mode One: Eirmologic / Sticheraric)
