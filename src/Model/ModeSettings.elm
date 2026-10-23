@@ -7,12 +7,14 @@ built out.
 
 import Byzantine.Degree exposing (Degree(..))
 import Byzantine.Scale exposing (Scale(..))
+import ModeBuilder exposing (Selection)
 
 
 type alias ModeSettings =
     { rangeStart : Degree
     , rangeEnd : Degree
     , scale : Scale
+    , selection : Maybe Selection
     }
 
 
@@ -21,4 +23,5 @@ initialModeSettings =
     { rangeStart = Ni
     , rangeEnd = Pa_
     , scale = Diatonic
+    , selection = Nothing
     }

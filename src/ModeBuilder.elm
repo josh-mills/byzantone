@@ -1,4 +1,4 @@
-module ModeBuilder exposing (Model, Msg, Result(..), currentResult, init, update, view)
+module ModeBuilder exposing (Model, Msg, Selection(..), currentSelection, init, update, view)
 
 {-| Decision-tree component for selecting a Byzantine mode or scale.
 
@@ -12,9 +12,9 @@ Three strategies are available:
 Both signature-based strategies resolve to a `Mode`. When the chosen signature is
 shared by several modes that differ by genre (e.g., Lower Mode One, Eirmologic
 vs. Sticheraric), a genre selector appears beneath the signatures and must be
-answered before a result is available.
+answered before a selection is available.
 
-The current terminal selection is queried via `currentResult`.
+The current terminal selection is queried via `currentSelection`.
 
 -}
 
@@ -94,10 +94,10 @@ type Direction
 
 
 
--- RESULT
+-- SELECTION
 
 
-type Result
+type Selection
     = ByScale Scale
     | ByMode Mode
 
@@ -153,14 +153,14 @@ init =
 
 
 
--- RESULT QUERY
+-- SELECTION QUERY
 
 
 {-| Returns the terminal selection if the user has reached and completed a
 leaf node; Nothing if they are still navigating.
 -}
-currentResult : Model -> Maybe Result
-currentResult { step, selections } =
+currentSelection : Model -> Maybe Selection
+currentSelection { step, selections } =
     case step of
         SelectingScale ->
             Maybe.map ByScale selections.scale
@@ -194,8 +194,20 @@ type Msg
 -- UPDATE
 
 
-update : Msg -> Model -> ( Model, Cmd Msg )
+{-| Handle a `Msg`, returning the new model, any command, and the current
+terminal `Selection` (if the user has completed one).
+-}
+update : Msg -> Model -> ( Model, Cmd Msg, Maybe Selection )
 update msg model =
+    let
+        ( newModel, cmd ) =
+            updateModel msg model
+    in
+    ( newModel, cmd, currentSelection newModel )
+
+
+updateModel : Msg -> Model -> ( Model, Cmd Msg )
+updateModel msg model =
     let
         sel =
             model.selections
@@ -627,7 +639,7 @@ modesForSignature signature =
 {-| The mode the current selections lead to, if the user has chosen a signature
 and, where needed, a genre.
 -}
-resolveSelectedMode : Selections -> Maybe Result
+resolveSelectedMode : Selections -> Maybe Selection
 resolveSelectedMode selections =
     selections.signature
         |> Maybe.andThen (resolveMode selections.mode)

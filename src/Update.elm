@@ -116,10 +116,19 @@ update msg model =
 
         ModeBuilderMsg subMsg ->
             let
-                ( modeBuilderModel, modeBuilderCmd ) =
+                ( modeBuilderModel, modeBuilderCmd, maybeSelection ) =
                     ModeBuilder.update subMsg model.modeBuilder
             in
             ( { model | modeBuilder = modeBuilderModel }
+                |> updateModeSettings
+                    (\modeSettings ->
+                        case maybeSelection of
+                            Just _ ->
+                                { modeSettings | selection = maybeSelection }
+
+                            Nothing ->
+                                modeSettings
+                    )
             , Cmd.map ModeBuilderMsg modeBuilderCmd
             )
 
