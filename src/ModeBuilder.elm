@@ -523,6 +523,7 @@ ichosRadioConfig =
             (Html.Extra.viewMaybe
                 (div [ class "text-2xl mt-1" ] << ByzHtml.viewDivision)
             )
+        |> RadioFieldset.withLayout RadioFieldset.TwoColumnGrid
 
 
 indicatorRadioConfig : Ichos -> RadioFieldset.Config (Maybe Indicator) Msg
@@ -581,6 +582,7 @@ classifiedSignatureRadioConfig classification =
             (Html.Extra.viewMaybe
                 (\sig -> div [ class "text-2xl mt-1" ] [ ByzHtml.view sig ])
             )
+        |> RadioFieldset.withLayout RadioFieldset.TwoColumnGrid
 
 
 genreRadioConfig : List Mode -> RadioFieldset.Config (Maybe Mode) Msg
@@ -593,6 +595,7 @@ genreRadioConfig modes =
         }
         |> RadioFieldset.withCustomViewItem
             (Html.Extra.viewMaybe (text << genreLabel))
+        |> RadioFieldset.withLayout RadioFieldset.TwoColumnGrid
 
 
 {-| The genre selector, shown only once a signature is chosen that is shared by
