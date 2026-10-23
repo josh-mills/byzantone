@@ -72,7 +72,7 @@ view pitchSpaceData audioSettings modeSettings pitchState maybeTimestampedDetect
             (Maybe.map .detectedPitch maybeTimestampedDetectedPitch)
         , Html.Lazy.lazy3 viewPitches pitchSpaceData modeSettings pitchState
         , Html.Lazy.lazy2 viewAccidentalButtons pitchSpaceData.display pitchState.proposedAccidental
-        , signatures
+        , Html.Extra.viewIfLazy False (\_ -> signatures)
         ]
 
 
