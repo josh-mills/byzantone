@@ -305,7 +305,7 @@ advanceTo nextStep selections model =
 
 view : Model -> Html Msg
 view model =
-    div [ Styles.flexCol, class "gap-1" ]
+    div [ Styles.flexCol, class "gap-1 max-w-lg mx-auto" ]
         [ viewNav model
         , AnimatedHeight.view
             (Html.Keyed.node "div"

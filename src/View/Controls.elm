@@ -292,7 +292,7 @@ optionContent layout audioSettings modeSettings pitchState modeBuilderModel isOp
                 wrapper [ lazy2 RadioFieldset.view scaleRadioConfig modeSettings.scale ]
 
             ModeBuilderMenu ->
-                wrapper [ Html.map ModeBuilderMsg (ModeBuilder.view modeBuilderModel) ]
+                Html.map ModeBuilderMsg (ModeBuilder.view modeBuilderModel)
 
             VolumeMenu ->
                 wrapper [ lazy gainInput audioSettings ]
