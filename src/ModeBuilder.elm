@@ -535,7 +535,12 @@ indicatorRadioConfig ichos =
         }
         |> RadioFieldset.withCustomViewItem
             (Html.Extra.viewMaybe
-                (\ind -> div [ class "text-2xl mt-1" ] [ ByzHtml.viewIndicator ind ])
+                (\ind ->
+                    div [ class "text-2xl mt-1" ]
+                        (ByzHtml.viewDivision ichos
+                            ++ [ ByzHtml.viewIndicator ind ]
+                        )
+                )
             )
         |> RadioFieldset.withLayout RadioFieldset.TwoColumnGrid
 
