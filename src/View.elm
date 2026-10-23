@@ -1,6 +1,7 @@
 module View exposing (view)
 
 import Byzantine.ByzHtml.Martyria as ByzHtmlMartyria
+import Byzantine.ByzHtml.ModalSignature as ModalSignature
 import Byzantine.Degree as Degree exposing (Degree(..))
 import Byzantine.Frequency as Frequency exposing (Frequency(..), PitchStandard(..))
 import Byzantine.Martyria as Martyria
@@ -475,6 +476,18 @@ modeDataRadioConfig =
         , onSelect = SelectModal << ModeModal
         , options = List.map Just Mode.all
         }
+        |> RadioFieldset.withCustomViewItem
+            (Html.Extra.viewMaybe
+                (\mode ->
+                    div [ Styles.flexRow, class "gap-4 mb-1 mx-2" ]
+                        [ div [] [ text (Mode.toString mode), text "." ]
+                        , Mode.data mode
+                            |> .signatures
+                            |> List.head
+                            |> Html.Extra.viewMaybe ModalSignature.view
+                        ]
+                )
+            )
 
 
 pitchTracker : AudioSettings -> LayoutData -> Html Msg
