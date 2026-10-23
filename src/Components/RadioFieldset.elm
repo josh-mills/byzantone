@@ -46,9 +46,11 @@ import Styles
 
   - `Column` — the default; options stack vertically.
   - `FlexRow` — options are laid out in a wrapping horizontal row.
-  - `TwoColumnGrid` — options fill the first column top-to-bottom, then the
-    second column top-to-bottom, split as evenly as possible (the first column
-    gets the extra item when the count is odd).
+  - `TwoColumnGrid` — at the `lg` breakpoint and above, options fill the first
+    column top-to-bottom, then the second column top-to-bottom, split as evenly
+    as possible (the first column gets the extra item when the count is odd).
+    Below `lg`, options stack in a single column. The DOM order is always the
+    original option order.
 
 -}
 type Layout
@@ -200,14 +202,11 @@ view config selected =
                     [ div [ Styles.flexRow, class "flex-wrap" ] renderedOptions ]
 
                 TwoColumnGrid ->
-                    let
-                        ( col1, col2 ) =
-                            List.Extra.splitAt
-                                ((List.length renderedOptions + 1) // 2)
-                                renderedOptions
-                    in
-                    [ div [ class "grid grid-cols-2" ]
-                        (List.Extra.interweave col1 col2)
+                    [ div
+                        [ class "grid grid-cols-1 lg:grid-cols-2 lg:grid-flow-col lg:grid-rows-[repeat(var(--rows),auto)]"
+                        , Attr.attribute "style" ("--rows: " ++ String.fromInt ((List.length renderedOptions + 1) // 2))
+                        ]
+                        renderedOptions
                     ]
     in
     wrappedOptions
