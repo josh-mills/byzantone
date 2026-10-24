@@ -61,7 +61,12 @@ view devMode layout audioSettings modeSettings pitchState openControlMenus modeB
 
             Vertical ->
                 [ class "w-full 2xl:w-72"
-                , class "grid grid-cols-6 2xl:flex 2xl:flex-col"
+                , class "grid"
+                , classList
+                    [ ( "grid-cols-6", devMode )
+                    , ( "grid-cols-5", not devMode )
+                    ]
+                , class " 2xl:flex 2xl:flex-col"
                 , class "fixed bottom-0 left-0 2xl:relative 2xl:left-auto"
                 , class "z-20"
                 ]
