@@ -1,4 +1,4 @@
-module Model.ModeSettings exposing (ModeSettings, initialModeSettings, scale)
+module Model.ModeSettings exposing (ModeSettings, initialModeSettings, range, scale)
 
 {-| User-controlled settings for the mode. Minimalist at present, but this will
 expand as the capability to select actual modes (beyond just a base scale) is
@@ -22,6 +22,19 @@ initialModeSettings =
     { range = { start = Ni, end = Pa_ }
     , selection = Nothing
     }
+
+
+{-| The range in effect. A selected mode supplies its own range; otherwise the
+range stored in the settings is used.
+-}
+range : ModeSettings -> Range
+range modeSettings =
+    case modeSettings.selection of
+        Just (ByMode mode) ->
+            (Mode.data mode).range
+
+        _ ->
+            modeSettings.range
 
 
 {-| The scale in effect for the current selection. Defaults to `Diatonic` when

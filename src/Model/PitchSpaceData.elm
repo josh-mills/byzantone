@@ -173,32 +173,39 @@ consider additional limits as well.)
 -}
 calculateVisibleRange : ModeSettings -> PitchState -> VisibleRange
 calculateVisibleRange modeSettings pitchState =
-    case PitchState.currentPitch (ModeSettings.scale modeSettings) pitchState of
+    let
+        scale =
+            ModeSettings.scale modeSettings
+
+        range =
+            ModeSettings.range modeSettings
+    in
+    case PitchState.currentPitch scale pitchState of
         Just currentPitch ->
             let
                 currentDegree =
                     Pitch.unwrapDegree currentPitch
 
                 startPitch =
-                    if Degree.indexOf currentDegree < Degree.indexOf modeSettings.range.start then
+                    if Degree.indexOf currentDegree < Degree.indexOf range.start then
                         currentPitch
 
                     else
-                        Pitch.natural modeSettings.range.start
+                        Pitch.natural range.start
 
                 endPitch =
-                    if Degree.indexOf currentDegree > Degree.indexOf modeSettings.range.end then
+                    if Degree.indexOf currentDegree > Degree.indexOf range.end then
                         currentPitch
 
                     else
-                        Pitch.natural modeSettings.range.end
+                        Pitch.natural range.end
             in
-            constructVisibleRange (ModeSettings.scale modeSettings) startPitch endPitch
+            constructVisibleRange scale startPitch endPitch
 
         Nothing ->
-            constructVisibleRange (ModeSettings.scale modeSettings)
-                (Pitch.natural modeSettings.range.start)
-                (Pitch.natural modeSettings.range.end)
+            constructVisibleRange scale
+                (Pitch.natural range.start)
+                (Pitch.natural range.end)
 
 
 constructVisibleRange : Scale -> Pitch -> Pitch -> VisibleRange
