@@ -6,6 +6,7 @@ import Byzantine.Accidental as Accidental exposing (Accidental)
 import Byzantine.Degree as Degree exposing (Degree(..))
 import Byzantine.DetectedPitch as DetectedPitch
 import Byzantine.Frequency exposing (Frequency, PitchStandard)
+import Byzantine.Mode as Mode
 import Byzantine.Pitch as Pitch exposing (Pitch)
 import Byzantine.PitchPosition as PitchPosition
 import Byzantine.Register exposing (Register)
@@ -128,6 +129,7 @@ update msg model =
                             Nothing ->
                                 modeSettings
                     )
+                |> clearInvalidIson
                 |> resetPitchSpaceData
             , Cmd.map ModeBuilderMsg modeBuilderCmd
             )
@@ -388,6 +390,44 @@ validateMovement model movementWithAccidental fallbackMovement =
                 fallbackMovement
         )
         (PitchState.currentPitch (ModeSettings.scale model.modeSettings) model.pitchState)
+
+
+{-| If a mode is selected, clear the ison when it is not one of the mode's
+`isonOptions`. An ison that is being changed (`SelectingIson`) keeps its
+selecting status, but loses its current degree.
+-}
+clearInvalidIson : Model -> Model
+clearInvalidIson model =
+    case model.modeSettings.selection of
+        Just (ModeBuilder.ByMode mode) ->
+            let
+                isValid degree =
+                    List.member degree (Mode.data mode).isonOptions
+            in
+            updatePitchState
+                (\pitchState ->
+                    case pitchState.ison of
+                        Selected degree ->
+                            if isValid degree then
+                                pitchState
+
+                            else
+                                { pitchState | ison = NoIson }
+
+                        SelectingIson (Just degree) ->
+                            if isValid degree then
+                                pitchState
+
+                            else
+                                { pitchState | ison = SelectingIson Nothing }
+
+                        _ ->
+                            pitchState
+                )
+                model
+
+        _ ->
+            model
 
 
 type RangePointToUpdate

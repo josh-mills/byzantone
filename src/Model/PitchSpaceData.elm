@@ -45,10 +45,12 @@ as a result of model updates.
 
 import Byzantine.Degree as Degree exposing (Degree)
 import Byzantine.Interval as Interval exposing (Interval)
+import Byzantine.Mode as Mode
 import Byzantine.Pitch as Pitch exposing (Pitch)
 import Byzantine.PitchPosition as PitchPosition exposing (PitchPosition)
 import Byzantine.Scale exposing (Scale)
 import Maybe.Extra
+import ModeBuilder exposing (Selection(..))
 import Model.DegreeDataDict as DegreeDataDict exposing (DegreeDataDict)
 import Model.LayoutData as LayoutData exposing (Layout(..), LayoutData)
 import Model.ModeSettings as ModeSettings exposing (ModeSettings)
@@ -149,7 +151,7 @@ init layoutData modeSettings pitchState =
                         degree
     in
     { display = determineDisplay layoutData
-    , isonIndicators = DegreeDataDict.init (isonSelectionIndicator pitchState)
+    , isonIndicators = DegreeDataDict.init (isonSelectionIndicator modeSettings pitchState)
     , pitches =
         DegreeDataDict.init
             (\degree ->
@@ -541,31 +543,35 @@ type IsonSelectionIndicator
     | SelectingNotEligible
 
 
-{-| TODO: we'll need to get modal logic actually built out.
+{-| When a mode is selected, `ModeData.isonOptions` determines which degrees can
+be selected as the ison. Otherwise (no selection, or a scale), any degree is
+eligible when there is already an ison, and degrees up to index 12 are eligible
+when there isn't.
 -}
-isonSelectionIndicator : PitchState -> Degree -> IsonSelectionIndicator
-isonSelectionIndicator pitchState degree =
+isonSelectionIndicator : ModeSettings -> PitchState -> Degree -> IsonSelectionIndicator
+isonSelectionIndicator modeSettings pitchState degree =
     case pitchState.ison of
         PitchState.NoIson ->
             NotIson
 
-        PitchState.SelectingIson (Just currentIson) ->
-            if currentIson == degree then
+        PitchState.SelectingIson maybeCurrentIson ->
+            let
+                degreeIsEligible =
+                    case modeSettings.selection of
+                        Just (ByMode mode) ->
+                            List.member degree (Mode.data mode).isonOptions
+
+                        _ ->
+                            maybeCurrentIson /= Nothing || Degree.indexOf degree <= 12
+            in
+            if not degreeIsEligible then
+                SelectingNotEligible
+
+            else if maybeCurrentIson == Just degree then
                 CanBeSelected_IsCurrent
 
             else
                 CanBeSelected_NotCurrent
-
-        PitchState.SelectingIson Nothing ->
-            let
-                degreeIsEligible =
-                    Degree.indexOf degree <= 12
-            in
-            if degreeIsEligible then
-                CanBeSelected_NotCurrent
-
-            else
-                SelectingNotEligible
 
         PitchState.Selected currentIson ->
             if currentIson == degree then
