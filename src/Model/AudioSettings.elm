@@ -146,7 +146,7 @@ setAutoListenRegister modeSettings audioSettings detectedFrequency =
         Auto Bass ->
             let
                 detectedPitchIsMeaningfullyHigher =
-                    Degree.step modeSettings.rangeEnd 1
+                    Degree.step modeSettings.range.end 1
                         |> Maybe.Extra.unwrap False
                             (\degree ->
                                 PitchPosition.pitchPosition (ModeSettings.scale modeSettings) degree Nothing
@@ -164,7 +164,7 @@ setAutoListenRegister modeSettings audioSettings detectedFrequency =
         Auto Treble ->
             let
                 detectedPitchIsMeaningfullyLower =
-                    Degree.step modeSettings.rangeStart -1
+                    Degree.step modeSettings.range.start -1
                         |> Maybe.Extra.unwrap False
                             (\degree ->
                                 PitchPosition.pitchPosition (ModeSettings.scale modeSettings) degree Nothing

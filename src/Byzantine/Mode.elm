@@ -1,6 +1,6 @@
 module Byzantine.Mode exposing
     ( Mode(..), toString, all
-    , ModeData, data
+    , ModeData, data, Range
     , Inflection
     )
 
@@ -16,7 +16,7 @@ TODO: verify signatures.
 
 # Mode Data
 
-@docs ModeData, data
+@docs ModeData, data, Range
 
 
 ## Melodic Attractions
@@ -267,12 +267,17 @@ type alias ModeData =
     , scale : Scale
     , dominantTones : DominantTones
     , isonOptions : List Degree
-    , range :
-        { start : Degree
-        , end : Degree
-        }
+    , range : Range
     , recitingTone : Degree
     , possibleInflections : List Inflection
+    }
+
+
+{-| The range of degrees, inclusive, over which a mode is sung.
+-}
+type alias Range =
+    { start : Degree
+    , end : Degree
     }
 
 

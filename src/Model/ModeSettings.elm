@@ -6,22 +6,20 @@ built out.
 -}
 
 import Byzantine.Degree exposing (Degree(..))
-import Byzantine.Mode as Mode
+import Byzantine.Mode as Mode exposing (Range)
 import Byzantine.Scale exposing (Scale(..))
 import ModeBuilder exposing (Selection(..))
 
 
 type alias ModeSettings =
-    { rangeStart : Degree
-    , rangeEnd : Degree
+    { range : Range
     , selection : Maybe Selection
     }
 
 
 initialModeSettings : ModeSettings
 initialModeSettings =
-    { rangeStart = Ni
-    , rangeEnd = Pa_
+    { range = { start = Ni, end = Pa_ }
     , selection = Nothing
     }
 

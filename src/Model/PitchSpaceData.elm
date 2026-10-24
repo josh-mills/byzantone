@@ -180,25 +180,25 @@ calculateVisibleRange modeSettings pitchState =
                     Pitch.unwrapDegree currentPitch
 
                 startPitch =
-                    if Degree.indexOf currentDegree < Degree.indexOf modeSettings.rangeStart then
+                    if Degree.indexOf currentDegree < Degree.indexOf modeSettings.range.start then
                         currentPitch
 
                     else
-                        Pitch.natural modeSettings.rangeStart
+                        Pitch.natural modeSettings.range.start
 
                 endPitch =
-                    if Degree.indexOf currentDegree > Degree.indexOf modeSettings.rangeEnd then
+                    if Degree.indexOf currentDegree > Degree.indexOf modeSettings.range.end then
                         currentPitch
 
                     else
-                        Pitch.natural modeSettings.rangeEnd
+                        Pitch.natural modeSettings.range.end
             in
             constructVisibleRange (ModeSettings.scale modeSettings) startPitch endPitch
 
         Nothing ->
             constructVisibleRange (ModeSettings.scale modeSettings)
-                (Pitch.natural modeSettings.rangeStart)
-                (Pitch.natural modeSettings.rangeEnd)
+                (Pitch.natural modeSettings.range.start)
+                (Pitch.natural modeSettings.range.end)
 
 
 constructVisibleRange : Scale -> Pitch -> Pitch -> VisibleRange

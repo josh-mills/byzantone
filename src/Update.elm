@@ -401,17 +401,17 @@ array.
 handleRangeUpdate : RangePointToUpdate -> String -> Model -> Model
 handleRangeUpdate rangePoint rangeValue model =
     updateModeSettings
-        (\modeSettings ->
+        (\({ range } as modeSettings) ->
             String.toInt rangeValue
                 |> Maybe.andThen (\i -> Array.get i Degree.gamut)
                 |> Maybe.map
                     (\degree ->
                         case rangePoint of
                             RangeStart ->
-                                { modeSettings | rangeStart = degree }
+                                { modeSettings | range = { range | start = degree } }
 
                             RangeEnd ->
-                                { modeSettings | rangeEnd = degree }
+                                { modeSettings | range = { range | end = degree } }
                     )
                 |> Maybe.withDefault modeSettings
         )

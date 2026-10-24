@@ -370,13 +370,13 @@ depending on how dynamic we want to be, and on how well we should reflect
 specific modal constraints.
 -}
 rangeFieldset : ModeSettings -> Html Msg
-rangeFieldset { rangeStart, rangeEnd } =
+rangeFieldset { range } =
     let
         maxLowerBound =
-            Degree.step rangeEnd -3 |> Maybe.withDefault rangeStart
+            Degree.step range.end -3 |> Maybe.withDefault range.start
 
         minUpperBound =
-            Degree.step rangeStart 3 |> Maybe.withDefault rangeEnd
+            Degree.step range.start 3 |> Maybe.withDefault range.end
 
         intString degree =
             Degree.indexOf degree |> String.fromInt
@@ -422,12 +422,12 @@ rangeFieldset { rangeStart, rangeEnd } =
         [ Html.legend [ class "px-1" ] [ Html.text "Range" ]
         , p []
             [ span [ class "me-1" ] [ text "Display range" ]
-            , Degree.text rangeStart
+            , Degree.text range.start
             , span [ class "mx-1" ] [ text "to" ]
-            , Degree.text rangeEnd
+            , Degree.text range.end
             ]
-        , row "From:" "range-start" GA maxLowerBound rangeStart SetRangeStart
-        , row "To:" "range-end" minUpperBound Ga_ rangeEnd SetRangeEnd
+        , row "From:" "range-start" GA maxLowerBound range.start SetRangeStart
+        , row "To:" "range-end" minUpperBound Ga_ range.end SetRangeEnd
         ]
 
 
