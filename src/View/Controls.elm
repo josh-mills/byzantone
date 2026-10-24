@@ -6,7 +6,6 @@ import Byzantine.Degree as Degree
 import Byzantine.IntervalCharacter as Character
 import Byzantine.Pitch as Pitch exposing (Pitch)
 import Byzantine.Register as Register exposing (Register)
-import Byzantine.Scale as Scale exposing (Scale)
 import Components.Collapsible as Collapsible
 import Components.RadioFieldset as RadioFieldset
 import Html exposing (Html, button, div, span, text)
@@ -20,7 +19,6 @@ import ModeBuilder
 import Model.AudioSettings as AudioSettings exposing (AudioSettings, ListenRegister)
 import Model.ControlsMenu as ControlsMenu exposing (MenuOption(..), OpenControlMenus)
 import Model.LayoutData exposing (Layout(..))
-import Model.ModeSettings exposing (ModeSettings)
 import Model.PitchState as PitchState exposing (IsonStatus, PitchState)
 import Styles
 import Svg
@@ -42,11 +40,11 @@ viewOverlay layout openControlMenus =
         )
 
 
-view : Bool -> Layout -> AudioSettings -> ModeSettings -> PitchState -> OpenControlMenus -> ModeBuilder.Model -> Html Msg
-view devMode layout audioSettings modeSettings pitchState openControlMenus modeBuilderModel =
+view : Bool -> Layout -> AudioSettings -> PitchState -> OpenControlMenus -> ModeBuilder.Model -> Html Msg
+view devMode layout audioSettings pitchState openControlMenus modeBuilderModel =
     let
         menuItem isOpen menuOption =
-            item layout audioSettings modeSettings pitchState isOpen modeBuilderModel menuOption
+            item layout audioSettings pitchState isOpen modeBuilderModel menuOption
     in
     Html.menu
         (case layout of
@@ -69,14 +67,13 @@ view devMode layout audioSettings modeSettings pitchState openControlMenus modeB
         [ menuItem openControlMenus.audioModeIsOpen AudioModeMenu
         , menuItem openControlMenus.audioSettingsMenuIsOpen AudioSettingsMenu
         , menuItem openControlMenus.isonMenuIsOpen IsonMenu
-        , menuItem openControlMenus.scaleMenuIsOpen ScaleMenu
         , viewIf devMode (menuItem openControlMenus.modeBuilderMenuIsOpen ModeBuilderMenu)
         , menuItem openControlMenus.volumeMenuIsOpen VolumeMenu
         ]
 
 
-item : Layout -> AudioSettings -> ModeSettings -> PitchState -> Bool -> ModeBuilder.Model -> MenuOption -> Html Msg
-item layout audioSettings modeSettings pitchState isOpen modeBuilderModel menuOption =
+item : Layout -> AudioSettings -> PitchState -> Bool -> ModeBuilder.Model -> MenuOption -> Html Msg
+item layout audioSettings pitchState isOpen modeBuilderModel menuOption =
     (Collapsible.isOpen isOpen
         |> Collapsible.withFirstChildTrigger
         |> Collapsible.withTransition Collapsible.TransitionQuick
@@ -84,7 +81,7 @@ item layout audioSettings modeSettings pitchState isOpen modeBuilderModel menuOp
     )
         []
         [ lazy4 optionHeader layout audioSettings isOpen menuOption
-        , optionContent layout audioSettings modeSettings pitchState modeBuilderModel isOpen menuOption
+        , optionContent layout audioSettings pitchState modeBuilderModel isOpen menuOption
         ]
 
 
@@ -138,12 +135,6 @@ optionHeader layout audioSettings isOpen menuOption =
                     isOpen
                     [ text "Ison" ]
                     (ByzHtmlIcon (ByzHtmlInterval.view Character.Ison))
-
-            ScaleMenu ->
-                optionHeaderWrapper layout
-                    isOpen
-                    [ text "Scale" ]
-                    (SvgIcon Icons.music)
 
             ModeBuilderMenu ->
                 optionHeaderWrapper layout
@@ -203,8 +194,8 @@ optionHeaderWrapper layout isOpen optionHeaderTextNodes icon =
         ]
 
 
-optionContent : Layout -> AudioSettings -> ModeSettings -> PitchState -> ModeBuilder.Model -> Bool -> MenuOption -> Html Msg
-optionContent layout audioSettings modeSettings pitchState modeBuilderModel isOpen menuOption =
+optionContent : Layout -> AudioSettings -> PitchState -> ModeBuilder.Model -> Bool -> MenuOption -> Html Msg
+optionContent layout audioSettings pitchState modeBuilderModel isOpen menuOption =
     let
         wrapper =
             div
@@ -287,9 +278,6 @@ optionContent layout audioSettings modeSettings pitchState modeBuilderModel isOp
                     [ lazy isonButton pitchState.ison
                     , lazy viewIsonStatus (PitchState.ison pitchState.ison)
                     ]
-
-            ScaleMenu ->
-                wrapper [ lazy2 RadioFieldset.view scaleRadioConfig modeSettings.scale ]
 
             ModeBuilderMenu ->
                 Html.map ModeBuilderMsg (ModeBuilder.view modeBuilderModel)
@@ -408,16 +396,6 @@ clearIsonButton =
         , onClick (Update.SetIson PitchState.NoIson)
         ]
         [ text "clear" ]
-
-
-scaleRadioConfig : RadioFieldset.Config Scale Msg
-scaleRadioConfig =
-    RadioFieldset.baseConfig
-        { itemToString = Scale.name
-        , legendText = "Select Scale"
-        , onSelect = Update.SetScale
-        , options = Scale.all
-        }
 
 
 gainInput : AudioSettings -> Html Msg

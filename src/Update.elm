@@ -18,7 +18,7 @@ import Model.AudioSettings as AudioSettings exposing (AudioSettings, ListenRegis
 import Model.ControlsMenu as ControlsMenu
 import Model.DegreeDataDict as DegreeDataDict exposing (DegreeDataDict)
 import Model.LayoutData exposing (LayoutData, LayoutSelection)
-import Model.ModeSettings exposing (ModeSettings)
+import Model.ModeSettings as ModeSettings exposing (ModeSettings)
 import Model.PitchSpaceData as PitchSpaceData exposing (PitchSpaceData)
 import Model.PitchState as PitchState exposing (IsonStatus(..), PitchState, ProposedAccidental(..))
 import Movement exposing (Movement)
@@ -58,7 +58,6 @@ type Msg
     | SetListenRegister ListenRegister
     | SetResponsiveness AudioSettings.Responsiveness
     | SetPitchFeedback AudioSettings.PitchFeedbackUnit
-    | SetScale Scale
     | ToggleControlMenu ControlsMenu.MenuOption
     | ToggleHeaderCollapsed
     | ToggleMenu
@@ -129,6 +128,7 @@ update msg model =
                             Nothing ->
                                 modeSettings
                     )
+                |> resetPitchSpaceData
             , Cmd.map ModeBuilderMsg modeBuilderCmd
             )
 
@@ -238,15 +238,6 @@ update msg model =
             ( updateAudioSettings
                 (\audioSettings -> { audioSettings | pitchFeedback = pitchFeedback })
                 model
-            , Cmd.none
-            )
-
-        SetScale scale ->
-            ( updateModeSettings
-                (\modeSettings -> { modeSettings | scale = scale })
-                -- , currentPitch = Nothing -- consider this.
-                model
-                |> resetPitchSpaceData
             , Cmd.none
             )
 
@@ -374,7 +365,7 @@ handleSelectProposedMovement movement model =
 computeMovementWithAccidental : Model -> Movement -> Movement
 computeMovementWithAccidental model movement =
     Movement.applyAccidental
-        model.modeSettings.scale
+        (ModeSettings.scale model.modeSettings)
         (PitchState.unwrapProposedAccidental model.pitchState.proposedAccidental)
         movement
 
@@ -387,7 +378,7 @@ validateMovement model movementWithAccidental fallbackMovement =
     Maybe.unwrap Movement.None
         (\currentPitch ->
             if
-                Movement.isValid model.modeSettings.scale
+                Movement.isValid (ModeSettings.scale model.modeSettings)
                     currentPitch
                     movementWithAccidental
             then
@@ -396,7 +387,7 @@ validateMovement model movementWithAccidental fallbackMovement =
             else
                 fallbackMovement
         )
-        (PitchState.currentPitch model.modeSettings.scale model.pitchState)
+        (PitchState.currentPitch (ModeSettings.scale model.modeSettings) model.pitchState)
 
 
 type RangePointToUpdate
@@ -529,7 +520,7 @@ processPitchButtonClick model degree =
                 (\pitchState ->
                     { pitchState
                         | appliedAccidentals =
-                            applyAccidentalWithValidation model.modeSettings.scale
+                            applyAccidentalWithValidation (ModeSettings.scale model.modeSettings)
                                 model.pitchSpaceData
                                 model.pitchState
                                 degree
@@ -572,7 +563,7 @@ processPitchButtonClick model degree =
                         ( ison, Apply _, True ) ->
                             ( ison
                             , model.pitchState.currentDegree
-                            , applyAccidentalWithValidation model.modeSettings.scale
+                            , applyAccidentalWithValidation (ModeSettings.scale model.modeSettings)
                                 model.pitchSpaceData
                                 model.pitchState
                                 degree
@@ -589,7 +580,7 @@ processPitchButtonClick model degree =
                         ( ison, Apply _, False ) ->
                             ( ison
                             , Just degree
-                            , applyAccidentalWithValidation model.modeSettings.scale
+                            , applyAccidentalWithValidation (ModeSettings.scale model.modeSettings)
                                 model.pitchSpaceData
                                 model.pitchState
                                 degree
@@ -846,7 +837,7 @@ moveAndFocus model interval =
             model.pitchState.currentDegree
                 |> Maybe.andThen (\degree -> Degree.step degree interval)
                 |> Maybe.map
-                    (Pitch.from model.modeSettings.scale
+                    (Pitch.from (ModeSettings.scale model.modeSettings)
                         (PitchState.unwrapProposedAccidental model.pitchState.proposedAccidental)
                     )
     in

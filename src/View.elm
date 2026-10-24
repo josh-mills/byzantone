@@ -23,7 +23,7 @@ import Model exposing (Modal(..), Model, Remote)
 import Model.AudioSettings as AudioSettings exposing (AudioSettings)
 import Model.CalendarInfo exposing (CalendarInfo)
 import Model.LayoutData as LayoutData exposing (Layout(..), LayoutData, LayoutSelection(..), layoutFor)
-import Model.ModeSettings exposing (ModeSettings)
+import Model.ModeSettings as ModeSettings exposing (ModeSettings)
 import Model.PitchState as PitchState
 import Styles
 import Svg.Attributes
@@ -46,8 +46,8 @@ view model =
             (\_ ->
                 lazy4 chantEngineNode
                     model.audioSettings
-                    model.modeSettings.scale
-                    (PitchState.currentPitch model.modeSettings.scale model.pitchState)
+                    (ModeSettings.scale model.modeSettings)
+                    (PitchState.currentPitch (ModeSettings.scale model.modeSettings) model.pitchState)
                     (PitchState.ison model.pitchState.ison)
             )
         , lazy2 backdrop model.menuOpen model.modal
@@ -77,7 +77,6 @@ view model =
                 model.devMode
                 (layoutFor model.layoutData)
                 model.audioSettings
-                model.modeSettings
                 model.pitchState
                 model.openControlMenus
                 model.modeBuilder

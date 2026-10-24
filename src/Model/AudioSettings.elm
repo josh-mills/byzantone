@@ -21,7 +21,7 @@ import Byzantine.Frequency as Frequency exposing (Frequency, PitchStandard(..))
 import Byzantine.PitchPosition as PitchPosition
 import Byzantine.Register as Register exposing (Register(..))
 import Maybe.Extra
-import Model.ModeSettings exposing (ModeSettings)
+import Model.ModeSettings as ModeSettings exposing (ModeSettings)
 
 
 type alias AudioSettings =
@@ -149,7 +149,7 @@ setAutoListenRegister modeSettings audioSettings detectedFrequency =
                     Degree.step modeSettings.rangeEnd 1
                         |> Maybe.Extra.unwrap False
                             (\degree ->
-                                PitchPosition.pitchPosition modeSettings.scale degree Nothing
+                                PitchPosition.pitchPosition (ModeSettings.scale modeSettings) degree Nothing
                                     |> Frequency.frequency audioSettings.pitchStandard Bass
                                     |> Frequency.compare detectedFrequency
                                     |> (==) GT
@@ -167,7 +167,7 @@ setAutoListenRegister modeSettings audioSettings detectedFrequency =
                     Degree.step modeSettings.rangeStart -1
                         |> Maybe.Extra.unwrap False
                             (\degree ->
-                                PitchPosition.pitchPosition modeSettings.scale degree Nothing
+                                PitchPosition.pitchPosition (ModeSettings.scale modeSettings) degree Nothing
                                     |> Frequency.frequency audioSettings.pitchStandard Treble
                                     |> Frequency.compare detectedFrequency
                                     |> (==) LT

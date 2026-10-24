@@ -27,7 +27,7 @@ import Maybe.Extra as Maybe
 import Model.AudioSettings as AudioSettings exposing (AudioSettings, Responsiveness(..))
 import Model.DegreeDataDict as DegreeDataDict
 import Model.LayoutData as LayoutData exposing (Layout(..))
-import Model.ModeSettings exposing (ModeSettings)
+import Model.ModeSettings as ModeSettings exposing (ModeSettings)
 import Model.PitchSpaceData as PitchSpaceData
     exposing
         ( Display
@@ -134,7 +134,7 @@ viewIntervals pitchSpaceData modeSettings pitchState =
             :: listAttributes pitchSpaceData.display
         )
         (List.map (viewInterval pitchSpaceData modeSettings pitchState)
-            (PitchSpaceData.intervalsWithVisibility modeSettings.scale pitchSpaceData pitchState.proposedMovement)
+            (PitchSpaceData.intervalsWithVisibility (ModeSettings.scale modeSettings) pitchSpaceData pitchState.proposedMovement)
         )
 
 
@@ -142,10 +142,10 @@ viewInterval : PitchSpaceData -> ModeSettings -> PitchState -> ( Interval, Posit
 viewInterval pitchSpaceData modeSettings pitchState ( interval, position ) =
     let
         currentPitch =
-            PitchState.currentPitch modeSettings.scale pitchState
+            PitchState.currentPitch (ModeSettings.scale modeSettings) pitchState
 
         currentPitchString =
-            Maybe.unwrap "" (Pitch.encode modeSettings.scale) currentPitch
+            Maybe.unwrap "" (Pitch.encode (ModeSettings.scale modeSettings)) currentPitch
 
         shouldHighlight =
             shouldHighlightInterval currentPitch pitchState.proposedMovement interval
@@ -154,7 +154,7 @@ viewInterval pitchSpaceData modeSettings pitchState ( interval, position ) =
         currentPitchString
         pitchSpaceData.display
         pitchSpaceData.scalingFactor
-        (Interval.encode modeSettings.scale interval)
+        (Interval.encode (ModeSettings.scale modeSettings) interval)
         position
         shouldHighlight
 
@@ -478,7 +478,7 @@ viewPitches : PitchSpaceData -> ModeSettings -> PitchState -> Html Msg
 viewPitches pitchSpaceData modeSettings pitchState =
     let
         currentPitch =
-            PitchState.currentPitch modeSettings.scale pitchState
+            PitchState.currentPitch (ModeSettings.scale modeSettings) pitchState
     in
     Html.ol (listAttributes pitchSpaceData.display)
         (List.map
@@ -494,7 +494,7 @@ viewPitch pitchSpaceData modeSettings pitchState currentPitch degree =
     let
         pitchString =
             DegreeDataDict.get degree pitchSpaceData.pitches
-                |> Pitch.encode modeSettings.scale
+                |> Pitch.encode (ModeSettings.scale modeSettings)
 
         isCurrentDegree =
             Just degree == Maybe.map Pitch.unwrapDegree currentPitch
@@ -509,7 +509,7 @@ viewPitch pitchSpaceData modeSettings pitchState currentPitch degree =
             PitchSpaceData.canBeSelectedAsIson isonStatusIndicator
                 || (case pitchState.proposedAccidental of
                         Apply accidental ->
-                            PitchPosition.isValidInflection modeSettings.scale accidental degree
+                            PitchPosition.isValidInflection (ModeSettings.scale modeSettings) accidental degree
 
                         CancelAccidental ->
                             DegreeDataDict.get degree pitchState.appliedAccidentals

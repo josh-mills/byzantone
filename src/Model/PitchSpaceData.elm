@@ -51,7 +51,7 @@ import Byzantine.Scale exposing (Scale)
 import Maybe.Extra
 import Model.DegreeDataDict as DegreeDataDict exposing (DegreeDataDict)
 import Model.LayoutData as LayoutData exposing (Layout(..), LayoutData)
-import Model.ModeSettings exposing (ModeSettings)
+import Model.ModeSettings as ModeSettings exposing (ModeSettings)
 import Model.PitchState as PitchState exposing (PitchState)
 import Movement exposing (Movement)
 
@@ -134,17 +134,17 @@ init layoutData modeSettings pitchState =
             case proposedMovementTo of
                 Just ( movementToDegree, withAccidental ) ->
                     if degree == movementToDegree then
-                        Pitch.from modeSettings.scale
+                        Pitch.from (ModeSettings.scale modeSettings)
                             (Just withAccidental)
                             degree
 
                     else
-                        Pitch.from modeSettings.scale
+                        Pitch.from (ModeSettings.scale modeSettings)
                             (DegreeDataDict.get degree pitchState.appliedAccidentals)
                             degree
 
                 Nothing ->
-                    Pitch.from modeSettings.scale
+                    Pitch.from (ModeSettings.scale modeSettings)
                         (DegreeDataDict.get degree pitchState.appliedAccidentals)
                         degree
     in
@@ -153,13 +153,13 @@ init layoutData modeSettings pitchState =
     , pitches =
         DegreeDataDict.init
             (\degree ->
-                Pitch.from modeSettings.scale
+                Pitch.from (ModeSettings.scale modeSettings)
                     (DegreeDataDict.get degree pitchState.appliedAccidentals)
                     degree
             )
     , pitchPositions =
         DegreeDataDict.init
-            (Pitch.position modeSettings.scale << pitchWithAccidental)
+            (Pitch.position (ModeSettings.scale modeSettings) << pitchWithAccidental)
     , pitchVisibility = DegreeDataDict.init (visibility visibleRangeData)
     , scalingFactor = 10
     , visibleRange = visibleRangeData
@@ -173,7 +173,7 @@ consider additional limits as well.)
 -}
 calculateVisibleRange : ModeSettings -> PitchState -> VisibleRange
 calculateVisibleRange modeSettings pitchState =
-    case PitchState.currentPitch modeSettings.scale pitchState of
+    case PitchState.currentPitch (ModeSettings.scale modeSettings) pitchState of
         Just currentPitch ->
             let
                 currentDegree =
@@ -193,10 +193,10 @@ calculateVisibleRange modeSettings pitchState =
                     else
                         Pitch.natural modeSettings.rangeEnd
             in
-            constructVisibleRange modeSettings.scale startPitch endPitch
+            constructVisibleRange (ModeSettings.scale modeSettings) startPitch endPitch
 
         Nothing ->
-            constructVisibleRange modeSettings.scale
+            constructVisibleRange (ModeSettings.scale modeSettings)
                 (Pitch.natural modeSettings.rangeStart)
                 (Pitch.natural modeSettings.rangeEnd)
 
