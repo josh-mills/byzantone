@@ -16,27 +16,47 @@ viewWithAttributes attributes martyria =
         ( degree, signature ) =
             Martyria.unwrap martyria
     in
-    if positionDegreeBelow degree then
-        Html.node "x-martyria" attributes [ viewSignature False signature, viewDegree degree ]
+    Html.node "x-martyria"
+        attributes
+        [ viewDegree degree
+        , viewSignature (signaturePlacement degree) signature
+        ]
 
-    else
-        Html.node "x-martyria" attributes [ viewDegree degree, viewSignature True signature ]
+
+{-| Where a modal signature sits relative to its degree.
+-}
+type SignaturePlacement
+    = AboveDegree
+    | BelowDegree
 
 
-positionDegreeBelow : Degree -> Bool
-positionDegreeBelow degree =
+{-| The low-register degrees (GA, DI, KE) take their signature above; all others
+take it below.
+-}
+signaturePlacement : Degree -> SignaturePlacement
+signaturePlacement degree =
     case degree of
         GA ->
-            True
+            AboveDegree
 
         DI ->
-            True
+            AboveDegree
 
         KE ->
-            True
+            AboveDegree
 
         _ ->
-            False
+            BelowDegree
+
+
+placementSuffix : SignaturePlacement -> String
+placementSuffix placement =
+    case placement of
+        AboveDegree ->
+            "-above"
+
+        BelowDegree ->
+            "-below"
 
 
 viewDegree : Degree -> Html msg
@@ -109,26 +129,15 @@ viewDegree degree =
     Pa in the soft is a small circle with a left-to-right upward diagonal slash
     called _nenano_. This is altered with a crossbar on the upper diagonal in
     the soft chromatic. SBMuFL calls these "hardChromaticDi" and
+    these "hardChromaticDi" and
     "softChromaticKe".
 
-Placement of bottom three is off out-of-the-box. e.g., nana-above looks better
-if style={position: relative; left: 12px; bottom: 6px;} It may be that I'm using
-it wrong, or it may be that this is an edge case that the library doesn't really
-support.
-
 -}
-viewSignature : Bool -> ModalSignature -> Html msg
-viewSignature positionBelow signature =
+viewSignature : SignaturePlacement -> ModalSignature -> Html msg
+viewSignature placement signature =
     let
-        position =
-            if positionBelow then
-                "-below"
-
-            else
-                "-above"
-
         node string =
-            Html.node (string ++ position) [] []
+            Html.node (string ++ placementSuffix placement) [] []
     in
     case signature of
         Baris ->

@@ -4,6 +4,7 @@
 ### Fixed
  - Bottom menu layout columns
  - Alignment of Ison menu
+ - Bottom three pitches martyria rendering
 
 ## v.1.6.0 (2026-09-27)
 ### Changed
