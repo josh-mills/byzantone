@@ -504,7 +504,7 @@ classificationRadioConfig =
         |> RadioFieldset.withCustomViewItem
             (Html.Extra.viewMaybe
                 (\classification ->
-                    div [ Styles.flexRow, class "items-center gap-2 mt-1" ]
+                    div [ Styles.flexRow, class "gap-2 mt-2" ]
                         [ span [ class "text-2xl" ] [ ByzHtml.viewClassification classification ]
                         , span [] [ text ("(" ++ Classification.toString classification ++ ")") ]
                         ]
@@ -592,7 +592,7 @@ classifiedSignatureRadioConfig classification =
         }
         |> RadioFieldset.withCustomViewItem
             (Html.Extra.viewMaybe
-                (\sig -> div [ class "text-2xl mt-1" ] [ ByzHtml.view sig ])
+                (\sig -> div [ class "text-2xl mt-2" ] [ ByzHtml.view sig ])
             )
         |> RadioFieldset.withLayout RadioFieldset.TwoColumnGrid
 
