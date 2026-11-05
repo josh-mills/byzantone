@@ -1,5 +1,10 @@
 # Changelog
 
+## v.1.6.1 (2026-11-05)
+### Fixed
+ - Bottom menu layout columns
+ - Alignment of Ison menu
+
 ## v.1.6.0 (2026-09-27)
 ### Changed
  - Preferring mobile-oriented layout of bottom-docked control menus
