@@ -40,8 +40,8 @@ viewOverlay layout openControlMenus =
         )
 
 
-view : Bool -> Layout -> AudioSettings -> PitchState -> OpenControlMenus -> ModeBuilder.Model -> Html Msg
-view devMode layout audioSettings pitchState openControlMenus modeBuilderModel =
+view : Layout -> AudioSettings -> PitchState -> OpenControlMenus -> ModeBuilder.Model -> Html Msg
+view layout audioSettings pitchState openControlMenus modeBuilderModel =
     let
         menuItem isOpen menuOption =
             item layout audioSettings pitchState isOpen modeBuilderModel menuOption
@@ -49,21 +49,13 @@ view devMode layout audioSettings pitchState openControlMenus modeBuilderModel =
     Html.menu
         (case layout of
             Horizontal ->
-                [ class "w-full grid"
-                , classList
-                    [ ( "grid-cols-6", devMode )
-                    , ( "grid-cols-5", not devMode )
-                    ]
+                [ class "w-full grid grid-cols-5"
                 , class "fixed bottom-0 left-0 z-20"
                 ]
 
             Vertical ->
                 [ class "w-full 2xl:w-72"
-                , class "grid"
-                , classList
-                    [ ( "grid-cols-6", devMode )
-                    , ( "grid-cols-5", not devMode )
-                    ]
+                , class "grid grid-cols-5"
                 , class "2xl:flex 2xl:flex-col"
                 , class "fixed bottom-0 left-0 2xl:relative 2xl:left-auto"
                 , class "z-20"
@@ -72,7 +64,7 @@ view devMode layout audioSettings pitchState openControlMenus modeBuilderModel =
         [ menuItem openControlMenus.audioModeIsOpen AudioModeMenu
         , menuItem openControlMenus.audioSettingsMenuIsOpen AudioSettingsMenu
         , menuItem openControlMenus.isonMenuIsOpen IsonMenu
-        , viewIf devMode (menuItem openControlMenus.modeBuilderMenuIsOpen ModeBuilderMenu)
+        , menuItem openControlMenus.modeBuilderMenuIsOpen ModeBuilderMenu
         , menuItem openControlMenus.volumeMenuIsOpen VolumeMenu
         ]
 

@@ -74,7 +74,6 @@ view model =
                 model.pitchState
                 model.detectedPitch
             , View.Controls.view
-                model.devMode
                 (layoutFor model.layoutData)
                 model.audioSettings
                 model.pitchState
