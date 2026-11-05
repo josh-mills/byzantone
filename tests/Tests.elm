@@ -335,16 +335,16 @@ pitchTests =
         [ describe "Scale Encode/Decode Tests"
             [ test "Scale.encode/decode roundtrip for Diatonic" <|
                 \_ ->
-                    Diatonic
+                    SoftDiatonic
                         |> Scale.encode
                         |> Scale.decode
-                        |> Expect.equal (Ok Diatonic)
+                        |> Expect.equal (Ok SoftDiatonic)
             , test "Scale.encode/decode roundtrip for Enharmonic" <|
                 \_ ->
-                    Enharmonic
+                    HardDiatonic
                         |> Scale.encode
                         |> Scale.decode
-                        |> Expect.equal (Ok Enharmonic)
+                        |> Expect.equal (Ok HardDiatonic)
             , test "Scale.encode/decode roundtrip for SoftChromatic" <|
                 \_ ->
                     SoftChromatic
@@ -365,8 +365,8 @@ pitchTests =
             , test "Scale.encode produces the expected string for each scale" <|
                 \_ ->
                     Expect.all
-                        [ \_ -> Expect.equal "ds" (Scale.encode Diatonic)
-                        , \_ -> Expect.equal "dh" (Scale.encode Enharmonic)
+                        [ \_ -> Expect.equal "ds" (Scale.encode SoftDiatonic)
+                        , \_ -> Expect.equal "dh" (Scale.encode HardDiatonic)
                         , \_ -> Expect.equal "cs" (Scale.encode SoftChromatic)
                         , \_ -> Expect.equal "ch" (Scale.encode HardChromatic)
                         ]
@@ -424,7 +424,7 @@ pitchTests =
                 \_ ->
                     let
                         scale =
-                            Diatonic
+                            SoftDiatonic
 
                         pitch =
                             Pitch.natural Degree.Pa

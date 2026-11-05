@@ -50,4 +50,4 @@ scale modeSettings =
             (Mode.data mode).scale
 
         Nothing ->
-            Diatonic
+            SoftDiatonic

@@ -436,17 +436,17 @@ viewPitchStandard pitchStandard =
         ( martyria, frequency ) =
             case pitchStandard of
                 Ni256 ->
-                    ( Martyria.for Diatonic Ni |> ByzHtmlMartyria.view
+                    ( Martyria.for SoftDiatonic Ni |> ByzHtmlMartyria.view
                     , " = 256 Hz"
                     )
 
                 Ke440 ->
-                    ( Martyria.for Diatonic Ke |> ByzHtmlMartyria.view
+                    ( Martyria.for SoftDiatonic Ke |> ByzHtmlMartyria.view
                     , " = 440 Hz"
                     )
 
                 VariableDi _ ->
-                    ( Martyria.for Diatonic Di |> ByzHtmlMartyria.view
+                    ( Martyria.for SoftDiatonic Di |> ByzHtmlMartyria.view
                     , " = Priest’s Special"
                     )
     in

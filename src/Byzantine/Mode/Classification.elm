@@ -136,7 +136,7 @@ basesFor classification =
         Plagal ModeThree ->
             [ Pitch.natural Ga |> Just
             , Pitch.natural Zo_ |> Just
-            , Pitch.inflected Enharmonic Flat4 Zo_ |> Result.toMaybe
+            , Pitch.inflected HardDiatonic Flat4 Zo_ |> Result.toMaybe
             ]
                 |> Maybe.Extra.values
 
