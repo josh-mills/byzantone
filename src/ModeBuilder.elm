@@ -59,13 +59,13 @@ strategyToString : Strategy -> String
 strategyToString strategy =
     case strategy of
         SelectByScale ->
-            "By Scale"
+            "Scale"
 
         SelectByClassification ->
-            "By Classification"
+            "Oktoichos Classification"
 
         SelectBySignature ->
-            "By Signature"
+            "Signature"
 
 
 
@@ -465,7 +465,7 @@ strategyRadioConfig : RadioFieldset.Config (Maybe Strategy) Msg
 strategyRadioConfig =
     RadioFieldset.baseConfig
         { itemToString = Maybe.Extra.unwrap "" strategyToString >> (++) "mode-builder-strategy-"
-        , legendText = "Selection Strategy"
+        , legendText = "Select Modal Structure"
         , onSelect = SelectStrategy
         , options =
             List.map Just
@@ -497,7 +497,7 @@ classificationRadioConfig : RadioFieldset.Config (Maybe Classification) Msg
 classificationRadioConfig =
     RadioFieldset.baseConfig
         { itemToString = Maybe.Extra.unwrap "" Classification.toString >> (++) "mode-builder-class-"
-        , legendText = "Classification"
+        , legendText = "Oktoichos Classification"
         , onSelect = SelectClassification
         , options = List.map Just Classification.all
         }
@@ -531,9 +531,10 @@ ichosRadioConfig =
         , onSelect = SelectIchos
         , options = [ Just Ichos, Just IchosPlagal ]
         }
+        |> RadioFieldset.withHiddenLegend
         |> RadioFieldset.withCustomViewItem
             (Html.Extra.viewMaybe
-                (div [ class "text-2xl mt-1" ] << ByzHtml.viewDivision)
+                (div [ class "text-2xl mt-2" ] << ByzHtml.viewDivision)
             )
         |> RadioFieldset.withLayout RadioFieldset.TwoColumnGrid
 
@@ -546,10 +547,11 @@ indicatorRadioConfig ichos =
         , onSelect = SelectIndicator
         , options = List.map Just (indicatorsWithSignatures ichos)
         }
+        |> RadioFieldset.withHiddenLegend
         |> RadioFieldset.withCustomViewItem
             (Html.Extra.viewMaybe
                 (\ind ->
-                    div [ class "text-2xl mt-1" ]
+                    div [ class "text-2xl mt-2" ]
                         (ByzHtml.viewDivision ichos
                             ++ [ ByzHtml.viewIndicator ind ]
                         )
@@ -572,13 +574,13 @@ signatureRadioConfig : Ichos -> Indicator -> RadioFieldset.Config (Maybe Signatu
 signatureRadioConfig ichos indicator =
     RadioFieldset.baseConfig
         { itemToString = Maybe.Extra.unwrap "" signatureTag >> (++) "mode-builder-sig-"
-        , legendText = "Signature"
+        , legendText = "Modal Signature"
         , onSelect = SelectSignature
         , options = List.map Just (Signature.signaturesFor ichos indicator)
         }
         |> RadioFieldset.withCustomViewItem
             (Html.Extra.viewMaybe
-                (\sig -> div [ class "text-2xl mt-1" ] [ ByzHtml.view sig ])
+                (\sig -> div [ class "text-2xl mt-2" ] [ ByzHtml.view sig ])
             )
 
 
@@ -586,7 +588,7 @@ classifiedSignatureRadioConfig : Classification -> RadioFieldset.Config (Maybe S
 classifiedSignatureRadioConfig classification =
     RadioFieldset.baseConfig
         { itemToString = Maybe.Extra.unwrap "" signatureTag >> (++) "mode-builder-sig-"
-        , legendText = "Signature"
+        , legendText = "Modal Signature"
         , onSelect = SelectSignature
         , options = List.map Just (Signature.signaturesForClassification classification)
         }
