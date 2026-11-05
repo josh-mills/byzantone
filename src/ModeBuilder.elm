@@ -475,7 +475,7 @@ strategyRadioConfig =
                 ]
         }
         |> RadioFieldset.withCustomViewItem
-            (Html.Extra.viewMaybe (text << strategyToString))
+            (Html.Extra.viewMaybe (text << (++) "Select by " << strategyToString))
 
 
 scaleRadioConfig : RadioFieldset.Config (Maybe Scale) Msg
