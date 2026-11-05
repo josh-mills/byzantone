@@ -61,7 +61,12 @@ view devMode layout audioSettings modeSettings pitchState openControlMenus modeB
 
             Vertical ->
                 [ class "w-full 2xl:w-72"
-                , class "grid grid-cols-6 2xl:flex 2xl:flex-col"
+                , class "grid"
+                , classList
+                    [ ( "grid-cols-6", devMode )
+                    , ( "grid-cols-5", not devMode )
+                    ]
+                , class "2xl:flex 2xl:flex-col"
                 , class "fixed bottom-0 left-0 2xl:relative 2xl:left-auto"
                 , class "z-20"
                 ]
@@ -189,7 +194,7 @@ optionHeaderWrapper layout isOpen optionHeaderTextNodes icon =
 
                 ByzHtmlIcon html ->
                     div [ class "text-neutral-500 self-center" ] [ html ]
-            , div [ class "md:ml-2 text-xs md:text-base" ]
+            , div [ class "md:ml-2 text-xs md:text-base self-center" ]
                 optionHeaderTextNodes
             ]
         , viewIf (layout == Vertical)
