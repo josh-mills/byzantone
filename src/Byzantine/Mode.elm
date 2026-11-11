@@ -31,6 +31,7 @@ import Byzantine.Mode.Classification exposing (Classification(..), Ordinal(..))
 import Byzantine.Mode.Genre exposing (Genre(..))
 import Byzantine.Mode.Signature as Signature exposing (Signature)
 import Byzantine.Scale exposing (Scale(..))
+import Model.DegreeDataDict as DegreeDataDict exposing (DegreeDataDict)
 
 
 type Mode
@@ -269,7 +270,7 @@ type alias ModeData =
     , isonOptions : List Degree
     , range : Range
     , recitingTone : Degree
-    , possibleInflections : List Inflection
+    , possibleInflections : DegreeDataDict (Maybe Inflection)
     }
 
 
@@ -296,13 +297,29 @@ type alias CadencePoints =
     }
 
 
-{-| This will need to be expanded to capture additional musical details, namely,
+{-| The melodic attractions available at a single degree. Stored in a
+`DegreeDataDict`, so `degree` is redundant with the dict key; it is kept so an
+`Inflection` remains self-describing.
+
+This will need to be expanded to capture additional musical details, namely,
 context, and whether or not the inflection is discretionary or forced.
+
 -}
 type alias Inflection =
     { degree : Degree
     , accidentals : List Accidental
     }
+
+
+{-| Build a mode's inflections from a sparse list. Each inflection is stored
+under its own `degree`; every unlisted degree is `Nothing`. If a degree
+is listed more than once, the last entry wins.
+-}
+inflections : List Inflection -> DegreeDataDict (Maybe Inflection)
+inflections =
+    List.foldl
+        (\inflection -> DegreeDataDict.set inflection.degree (Just inflection))
+        (DegreeDataDict.init (\_ -> Nothing))
 
 
 
@@ -332,11 +349,12 @@ authenticOne_Ke_Papadic =
         }
     , recitingTone = Ke
     , possibleInflections =
-        [ { degree = Zo_, accidentals = [ Sharp2 ] }
-        , { degree = Pa_, accidentals = [ Flat2, Flat4 ] }
-        , { degree = Ni_, accidentals = [ Sharp2, Sharp4 ] }
-        , { degree = Ga, accidentals = [ Sharp4, Sharp6 ] }
-        ]
+        inflections
+            [ { degree = Zo_, accidentals = [ Sharp2 ] }
+            , { degree = Pa_, accidentals = [ Flat2, Flat4 ] }
+            , { degree = Ni_, accidentals = [ Sharp2, Sharp4 ] }
+            , { degree = Ga, accidentals = [ Sharp4, Sharp6 ] }
+            ]
     }
 
 
@@ -363,11 +381,12 @@ authenticOne_Pa_Eirmologic =
         }
     , recitingTone = Di
     , possibleInflections =
-        [ { degree = Ga, accidentals = [ Sharp2, Sharp4 ] }
-        , { degree = Bou, accidentals = [ Sharp2 ] }
-        , { degree = Di, accidentals = [ Flat4 ] }
-        , { degree = Zo_, accidentals = [ Flat4 ] }
-        ]
+        inflections
+            [ { degree = Ga, accidentals = [ Sharp2, Sharp4 ] }
+            , { degree = Bou, accidentals = [ Sharp2 ] }
+            , { degree = Di, accidentals = [ Flat4 ] }
+            , { degree = Zo_, accidentals = [ Flat4 ] }
+            ]
     }
 
 
@@ -397,11 +416,12 @@ authenticOne_Pa_Sticheraric =
     , range = { start = DI, end = Pa_ }
     , recitingTone = Pa
     , possibleInflections =
-        [ { degree = Bou, accidentals = [ Sharp2, Sharp4 ] }
-        , { degree = Di, accidentals = [ Flat2, Flat4, Flat6 ] }
-        , { degree = Ga, accidentals = [ Sharp2, Sharp4 ] }
-        , { degree = Zo_, accidentals = [ Flat4 ] }
-        ]
+        inflections
+            [ { degree = Bou, accidentals = [ Sharp2, Sharp4 ] }
+            , { degree = Di, accidentals = [ Flat2, Flat4, Flat6 ] }
+            , { degree = Ga, accidentals = [ Sharp2, Sharp4 ] }
+            , { degree = Zo_, accidentals = [ Flat4 ] }
+            ]
     }
 
 
@@ -442,11 +462,12 @@ authenticTwo_Di =
     , range = { start = Ni, end = Ga_ }
     , recitingTone = Di
     , possibleInflections =
-        [ { degree = Ga, accidentals = [ Sharp2, Sharp4, Sharp6 ] }
-        , { degree = Pa, accidentals = [ Sharp4, Sharp6 ] }
-        , { degree = Ke, accidentals = [ Sharp2, Sharp4 ] }
-        , { degree = Zo_, accidentals = [ Sharp2, Sharp4 ] }
-        ]
+        inflections
+            [ { degree = Ga, accidentals = [ Sharp2, Sharp4, Sharp6 ] }
+            , { degree = Pa, accidentals = [ Sharp4, Sharp6 ] }
+            , { degree = Ke, accidentals = [ Sharp2, Sharp4 ] }
+            , { degree = Zo_, accidentals = [ Sharp2, Sharp4 ] }
+            ]
     }
 
 
@@ -483,11 +504,12 @@ authenticThree_Ga_Eirmologic =
     , range = { start = Ni, end = Ga_ }
     , recitingTone = Ke
     , possibleInflections =
-        [ { degree = Bou, accidentals = [ Sharp2, Sharp4 ] }
-        , { degree = Di, accidentals = [ Sharp2, Sharp4 ] }
-        , { degree = Zo_, accidentals = [ Flat4 ] }
-        , { degree = Pa, accidentals = [ Sharp4 ] }
-        ]
+        inflections
+            [ { degree = Bou, accidentals = [ Sharp2, Sharp4 ] }
+            , { degree = Di, accidentals = [ Sharp2, Sharp4 ] }
+            , { degree = Zo_, accidentals = [ Flat4 ] }
+            , { degree = Pa, accidentals = [ Sharp4 ] }
+            ]
     }
 
 
@@ -520,9 +542,10 @@ authenticThree_Ga_Papadic =
     , range = { start = Ni, end = Ga_ }
     , recitingTone = Ke
     , possibleInflections =
-        [ { degree = Ke, accidentals = [ Sharp2 ] }
-        , { degree = Bou_, accidentals = [ Flat4 ] }
-        ]
+        inflections
+            [ { degree = Ke, accidentals = [ Sharp2 ] }
+            , { degree = Bou_, accidentals = [ Flat4 ] }
+            ]
     }
 
 
@@ -558,11 +581,12 @@ authenticFour_Bou_Legetos =
     , range = { start = DI, end = Pa_ }
     , recitingTone = Di
     , possibleInflections =
-        [ { degree = Pa, accidentals = [ Sharp2, Sharp4, Sharp6 ] }
-        , { degree = Ga, accidentals = [ Sharp2, Sharp4 ] }
-        , { degree = Ke, accidentals = [ Flat2, Sharp4 ] }
-        , { degree = Zo_, accidentals = [ Flat4 ] }
-        ]
+        inflections
+            [ { degree = Pa, accidentals = [ Sharp2, Sharp4, Sharp6 ] }
+            , { degree = Ga, accidentals = [ Sharp2, Sharp4 ] }
+            , { degree = Ke, accidentals = [ Flat2, Sharp4 ] }
+            , { degree = Zo_, accidentals = [ Flat4 ] }
+            ]
     }
 
 
@@ -600,11 +624,12 @@ authenticFour_Di_Agia =
     , range = { start = Zo, end = Pa_ }
     , recitingTone = Zo_
     , possibleInflections =
-        [ { degree = Ga, accidentals = [ Sharp2, Sharp4, Sharp6 ] }
-        , { degree = Ke, accidentals = [ Sharp2, Sharp4 ] }
-        , { degree = Zo_, accidentals = [ Flat4, Sharp2, Sharp4 ] }
-        , { degree = Ni_, accidentals = [ Sharp4, Sharp6 ] }
-        ]
+        inflections
+            [ { degree = Ga, accidentals = [ Sharp2, Sharp4, Sharp6 ] }
+            , { degree = Ke, accidentals = [ Sharp2, Sharp4 ] }
+            , { degree = Zo_, accidentals = [ Flat4, Sharp2, Sharp4 ] }
+            , { degree = Ni_, accidentals = [ Sharp4, Sharp6 ] }
+            ]
     }
 
 
@@ -641,11 +666,12 @@ authenticFour_Pa_Sticheraric =
     , range = { start = DI, end = Ni_ }
     , recitingTone = Pa
     , possibleInflections =
-        [ { degree = Pa, accidentals = [ Sharp2, Sharp4 ] }
-        , { degree = Ga, accidentals = [ Sharp2, Sharp4 ] }
-        , { degree = Ke, accidentals = [ Flat2, Sharp4 ] }
-        , { degree = Zo_, accidentals = [ Flat4, Sharp2, Sharp4 ] }
-        ]
+        inflections
+            [ { degree = Pa, accidentals = [ Sharp2, Sharp4 ] }
+            , { degree = Ga, accidentals = [ Sharp2, Sharp4 ] }
+            , { degree = Ke, accidentals = [ Flat2, Sharp4 ] }
+            , { degree = Zo_, accidentals = [ Flat4, Sharp2, Sharp4 ] }
+            ]
     }
 
 
@@ -673,10 +699,11 @@ authenticFour_DiBou =
     , range = { start = Pa, end = Pa_ }
     , recitingTone = Di
     , possibleInflections =
-        [ { degree = Ga, accidentals = [ Sharp2, Sharp4, Sharp6 ] }
-        , { degree = Pa, accidentals = [ Sharp4, Sharp6, Sharp8 ] }
-        , { degree = Ke, accidentals = [ Sharp2, Sharp4 ] }
-        ]
+        inflections
+            [ { degree = Ga, accidentals = [ Sharp2, Sharp4, Sharp6 ] }
+            , { degree = Pa, accidentals = [ Sharp4, Sharp6, Sharp8 ] }
+            , { degree = Ke, accidentals = [ Sharp2, Sharp4 ] }
+            ]
     }
 
 
@@ -710,9 +737,10 @@ plagalOne_Pa_Sticheraric =
         }
     , recitingTone = Di
     , possibleInflections =
-        [ { degree = Ga, accidentals = [ Sharp2, Sharp4, Sharp6 ] }
-        , { degree = Zo_, accidentals = [ Flat4 ] }
-        ]
+        inflections
+            [ { degree = Ga, accidentals = [ Sharp2, Sharp4, Sharp6 ] }
+            , { degree = Zo_, accidentals = [ Flat4 ] }
+            ]
     }
 
 
@@ -747,11 +775,12 @@ plagalOne_Pa_Papadic =
         }
     , recitingTone = Di
     , possibleInflections =
-        [ { degree = Bou, accidentals = [ Sharp2 ] }
-        , { degree = Ga, accidentals = [ Sharp2, Sharp4, Sharp6 ] }
-        , { degree = Di, accidentals = [ Flat4 ] }
-        , { degree = Zo_, accidentals = [ Flat4 ] }
-        ]
+        inflections
+            [ { degree = Bou, accidentals = [ Sharp2 ] }
+            , { degree = Ga, accidentals = [ Sharp2, Sharp4, Sharp6 ] }
+            , { degree = Di, accidentals = [ Flat4 ] }
+            , { degree = Zo_, accidentals = [ Flat4 ] }
+            ]
     }
 
 
@@ -778,11 +807,12 @@ plagalOne_Ke_Eirmologic =
         }
     , recitingTone = Ke
     , possibleInflections =
-        [ { degree = Zo_, accidentals = [ Sharp2 ] }
-        , { degree = Pa_, accidentals = [ Flat2, Flat4 ] }
-        , { degree = Ni_, accidentals = [ Sharp2, Sharp4 ] }
-        , { degree = Ga_, accidentals = [ Flat4 ] }
-        ]
+        inflections
+            [ { degree = Zo_, accidentals = [ Sharp2 ] }
+            , { degree = Pa_, accidentals = [ Flat2, Flat4 ] }
+            , { degree = Ni_, accidentals = [ Sharp2, Sharp4 ] }
+            , { degree = Ga_, accidentals = [ Flat4 ] }
+            ]
     }
 
 
@@ -814,8 +844,9 @@ plagalOne_Pa_Pentaphone =
     , range = { start = KE, end = Pa_ }
     , recitingTone = Di
     , possibleInflections =
-        [ { degree = Zo_, accidentals = [ Flat4 ] }
-        ]
+        inflections
+            [ { degree = Zo_, accidentals = [ Flat4 ] }
+            ]
     }
 
 
@@ -853,10 +884,11 @@ plagalOne_Pa_Phrygian =
     , range = { start = KE, end = Pa_ }
     , recitingTone = Di
     , possibleInflections =
-        [ { degree = Ke, accidentals = [ Sharp2, Sharp4 ] }
-        , { degree = Zo_, accidentals = [ Flat4 ] }
-        , { degree = Ga, accidentals = [ Sharp4, Sharp6 ] }
-        ]
+        inflections
+            [ { degree = Ke, accidentals = [ Sharp2, Sharp4 ] }
+            , { degree = Zo_, accidentals = [ Flat4 ] }
+            , { degree = Ga, accidentals = [ Sharp4, Sharp6 ] }
+            ]
     }
 
 
@@ -892,9 +924,10 @@ plagalOne_Pa_Minor =
     , range = { start = KE, end = Pa_ }
     , recitingTone = Di
     , possibleInflections =
-        [ { degree = Ni, accidentals = [ Sharp6 ] }
-        , { degree = Di, accidentals = [ Sharp2 ] }
-        ]
+        inflections
+            [ { degree = Ni, accidentals = [ Sharp6 ] }
+            , { degree = Di, accidentals = [ Sharp2 ] }
+            ]
     }
 
 
@@ -931,9 +964,10 @@ plagalTwo_Pa =
     , range = { start = DI, end = Pa_ }
     , recitingTone = Di
     , possibleInflections =
-        [ { degree = Ni, accidentals = [ Sharp2, Sharp4, Sharp6 ] }
-        , { degree = Ga, accidentals = [ Flat2 ] }
-        ]
+        inflections
+            [ { degree = Ni, accidentals = [ Sharp2, Sharp4, Sharp6 ] }
+            , { degree = Ga, accidentals = [ Flat2 ] }
+            ]
     }
 
 
@@ -962,10 +996,11 @@ plagalTwo_Di =
     , range = { start = DI, end = Ga_ }
     , recitingTone = Di
     , possibleInflections =
-        [ { degree = Pa, accidentals = [ Sharp4, Sharp6 ] }
-        , { degree = Ga, accidentals = [ Sharp2, Sharp4, Sharp6 ] }
-        , { degree = Ke, accidentals = [ Sharp2, Sharp4 ] }
-        ]
+        inflections
+            [ { degree = Pa, accidentals = [ Sharp4, Sharp6 ] }
+            , { degree = Ga, accidentals = [ Sharp2, Sharp4, Sharp6 ] }
+            , { degree = Ke, accidentals = [ Sharp2, Sharp4 ] }
+            ]
     }
 
 
@@ -998,7 +1033,7 @@ plagalTwo_Di_Triphone =
     , range = { start = DI, end = Pa_ }
     , recitingTone = Di
     , possibleInflections =
-        []
+        inflections []
     }
 
 
@@ -1033,10 +1068,11 @@ plagalThree_Ga =
     , range = { start = Ni, end = Ga_ }
     , recitingTone = Di
     , possibleInflections =
-        [ { degree = Bou, accidentals = [ Sharp2, Sharp4 ] }
-        , { degree = Pa, accidentals = [ Sharp2, Sharp4 ] }
-        , { degree = Di, accidentals = [ Sharp2, Sharp4 ] }
-        ]
+        inflections
+            [ { degree = Bou, accidentals = [ Sharp2, Sharp4 ] }
+            , { degree = Pa, accidentals = [ Sharp2, Sharp4 ] }
+            , { degree = Di, accidentals = [ Sharp2, Sharp4 ] }
+            ]
     }
 
 
@@ -1077,9 +1113,10 @@ plagalThree_Zo =
     , range = { start = Di, end = Pa_ }
     , recitingTone = Ga
     , possibleInflections =
-        [ { degree = Ke, accidentals = [ Sharp4, Sharp6 ] }
-        , { degree = Ga, accidentals = [ Sharp2 ] }
-        ]
+        inflections
+            [ { degree = Ke, accidentals = [ Sharp4, Sharp6 ] }
+            , { degree = Ga, accidentals = [ Sharp2 ] }
+            ]
     }
 
 
@@ -1112,10 +1149,11 @@ plagalThree_Zo_Hard =
     , range = { start = DI, end = Ni_ }
     , recitingTone = Zo_
     , possibleInflections =
-        [ { degree = Ke, accidentals = [ Sharp2, Sharp4 ] }
-        , { degree = Di, accidentals = [ Sharp4 ] }
-        , { degree = Ga, accidentals = [ Sharp4, Sharp6 ] }
-        ]
+        inflections
+            [ { degree = Ke, accidentals = [ Sharp2, Sharp4 ] }
+            , { degree = Di, accidentals = [ Sharp4 ] }
+            , { degree = Ga, accidentals = [ Sharp4, Sharp6 ] }
+            ]
     }
 
 
@@ -1144,11 +1182,12 @@ plagalFour_Ni =
     , range = { start = GA, end = Ni_ }
     , recitingTone = Di
     , possibleInflections =
-        [ { degree = Zo, accidentals = [ Sharp2, Sharp4 ] }
-        , { degree = Pa, accidentals = [ Sharp2, Sharp4 ] }
-        , { degree = Ga, accidentals = [ Sharp2, Sharp4 ] }
-        , { degree = Zo_, accidentals = [ Flat4 ] }
-        ]
+        inflections
+            [ { degree = Zo, accidentals = [ Sharp2, Sharp4 ] }
+            , { degree = Pa, accidentals = [ Sharp2, Sharp4 ] }
+            , { degree = Ga, accidentals = [ Sharp2, Sharp4 ] }
+            , { degree = Zo_, accidentals = [ Flat4 ] }
+            ]
     }
 
 
@@ -1183,8 +1222,9 @@ plagalFour_Ga =
     , range = { start = Ni, end = Ga_ }
     , recitingTone = Ga
     , possibleInflections =
-        [ { degree = Bou, accidentals = [ Sharp2, Sharp4 ] }
-        , { degree = Di, accidentals = [ Sharp2, Sharp4 ] }
-        , { degree = Pa, accidentals = [ Sharp2, Sharp4 ] }
-        ]
+        inflections
+            [ { degree = Bou, accidentals = [ Sharp2, Sharp4 ] }
+            , { degree = Di, accidentals = [ Sharp2, Sharp4 ] }
+            , { degree = Pa, accidentals = [ Sharp2, Sharp4 ] }
+            ]
     }
