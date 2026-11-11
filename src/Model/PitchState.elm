@@ -20,8 +20,8 @@ module Model.PitchState exposing
 import Byzantine.Accidental exposing (Accidental)
 import Byzantine.Degree exposing (Degree)
 import Byzantine.Pitch as Pitch exposing (Pitch)
-import Byzantine.Scale exposing (Scale)
 import Model.DegreeDataDict as DegreeDataDict exposing (DegreeDataDict)
+import Model.ModeSettings as ModeSettings exposing (ModeSettings)
 import Movement exposing (Movement)
 
 
@@ -72,11 +72,11 @@ ison isonStatus =
 {-| Evaluate the current pitch as a function of the current degree with
 reference to the applied accidentals.
 -}
-currentPitch : Scale -> PitchState -> Maybe Pitch
-currentPitch scale pitchState =
+currentPitch : ModeSettings -> PitchState -> Maybe Pitch
+currentPitch modeSettings pitchState =
     Maybe.map
         (\degree ->
-            Pitch.from scale
+            ModeSettings.pitchFrom modeSettings
                 (DegreeDataDict.get degree pitchState.appliedAccidentals)
                 degree
         )

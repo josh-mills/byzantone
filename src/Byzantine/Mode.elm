@@ -1,7 +1,7 @@
 module Byzantine.Mode exposing
     ( Mode(..), toString, all
     , ModeData, data, Range
-    , Inflection
+    , Inflection, isValidInflection, pitchFrom
     )
 
 {-| Data structure to capture modal characteristics.
@@ -21,7 +21,7 @@ TODO: verify signatures.
 
 ## Melodic Attractions
 
-@docs Inflection
+@docs Inflection, isValidInflection, pitchFrom
 
 -}
 
@@ -30,6 +30,8 @@ import Byzantine.Degree exposing (Degree(..))
 import Byzantine.Mode.Classification exposing (Classification(..), Ordinal(..))
 import Byzantine.Mode.Genre exposing (Genre(..))
 import Byzantine.Mode.Signature as Signature exposing (Signature)
+import Byzantine.Pitch as Pitch exposing (Pitch)
+import Byzantine.PitchPosition as PitchPosition
 import Byzantine.Scale exposing (Scale(..))
 import Model.DegreeDataDict as DegreeDataDict exposing (DegreeDataDict)
 
@@ -309,6 +311,43 @@ type alias Inflection =
     { degree : Degree
     , accidentals : List Accidental
     }
+
+
+{-| Can the accidental be applied to the degree within the mode? The accidental
+must be one of the mode's possible inflections for that degree, and it must also
+be a valid inflection within the mode's scale.
+-}
+isValidInflection : Mode -> Accidental -> Degree -> Bool
+isValidInflection mode accidental degree =
+    let
+        modeData =
+            data mode
+    in
+    PitchPosition.isValidInflection modeData.scale accidental degree
+        && (DegreeDataDict.get degree modeData.possibleInflections
+                |> Maybe.map (\inflection -> List.member accidental inflection.accidentals)
+                |> Maybe.withDefault False
+           )
+
+
+{-| Construct a pitch for a degree within the mode. If the accidental is not
+valid for the degree within the mode (see `isValidInflection`), or is `Nothing`,
+the pitch is natural.
+-}
+pitchFrom : Mode -> Maybe Accidental -> Degree -> Pitch
+pitchFrom mode maybeAccidental degree =
+    Pitch.from (data mode).scale
+        (maybeAccidental
+            |> Maybe.andThen
+                (\accidental ->
+                    if isValidInflection mode accidental degree then
+                        Just accidental
+
+                    else
+                        Nothing
+                )
+        )
+        degree
 
 
 {-| Build a mode's inflections from a sparse list. Each inflection is stored

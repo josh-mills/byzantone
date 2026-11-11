@@ -136,17 +136,17 @@ init layoutData modeSettings pitchState =
             case proposedMovementTo of
                 Just ( movementToDegree, withAccidental ) ->
                     if degree == movementToDegree then
-                        Pitch.from (ModeSettings.scale modeSettings)
+                        ModeSettings.pitchFrom modeSettings
                             (Just withAccidental)
                             degree
 
                     else
-                        Pitch.from (ModeSettings.scale modeSettings)
+                        ModeSettings.pitchFrom modeSettings
                             (DegreeDataDict.get degree pitchState.appliedAccidentals)
                             degree
 
                 Nothing ->
-                    Pitch.from (ModeSettings.scale modeSettings)
+                    ModeSettings.pitchFrom modeSettings
                         (DegreeDataDict.get degree pitchState.appliedAccidentals)
                         degree
     in
@@ -155,7 +155,7 @@ init layoutData modeSettings pitchState =
     , pitches =
         DegreeDataDict.init
             (\degree ->
-                Pitch.from (ModeSettings.scale modeSettings)
+                ModeSettings.pitchFrom modeSettings
                     (DegreeDataDict.get degree pitchState.appliedAccidentals)
                     degree
             )
@@ -182,7 +182,7 @@ calculateVisibleRange modeSettings pitchState =
         range =
             ModeSettings.range modeSettings
     in
-    case PitchState.currentPitch scale pitchState of
+    case PitchState.currentPitch modeSettings pitchState of
         Just currentPitch ->
             let
                 currentDegree =

@@ -47,7 +47,7 @@ view model =
                 lazy4 chantEngineNode
                     model.audioSettings
                     (ModeSettings.scale model.modeSettings)
-                    (PitchState.currentPitch (ModeSettings.scale model.modeSettings) model.pitchState)
+                    (PitchState.currentPitch model.modeSettings model.pitchState)
                     (PitchState.ison model.pitchState.ison)
             )
         , lazy2 backdrop model.menuOpen model.modal

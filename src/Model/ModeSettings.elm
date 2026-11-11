@@ -1,12 +1,14 @@
-module Model.ModeSettings exposing (ModeSettings, initialModeSettings, range, scale)
+module Model.ModeSettings exposing (ModeSettings, initialModeSettings, mode, pitchFrom, range, scale)
 
 {-| User-controlled settings for the mode. Minimalist at present, but this will
 expand as the capability to select actual modes (beyond just a base scale) is
 built out.
 -}
 
+import Byzantine.Accidental exposing (Accidental)
 import Byzantine.Degree exposing (Degree(..))
-import Byzantine.Mode as Mode exposing (Range)
+import Byzantine.Mode as Mode exposing (Mode, Range)
+import Byzantine.Pitch as Pitch exposing (Pitch)
 import Byzantine.Scale exposing (Scale(..))
 import ModeBuilder exposing (Selection(..))
 
@@ -29,11 +31,11 @@ range stored in the settings is used.
 -}
 range : ModeSettings -> Range
 range modeSettings =
-    case modeSettings.selection of
-        Just (ByMode mode) ->
-            (Mode.data mode).range
+    case mode modeSettings of
+        Just selectedMode ->
+            (Mode.data selectedMode).range
 
-        _ ->
+        Nothing ->
             modeSettings.range
 
 
@@ -46,8 +48,35 @@ scale modeSettings =
         Just (ByScale selectedScale) ->
             selectedScale
 
-        Just (ByMode mode) ->
-            (Mode.data mode).scale
+        Just (ByMode selectedMode) ->
+            (Mode.data selectedMode).scale
 
         Nothing ->
             SoftDiatonic
+
+
+{-| The selected mode, if a defined mode (rather than only a scale) has been
+selected.
+-}
+mode : ModeSettings -> Maybe Mode
+mode modeSettings =
+    case modeSettings.selection of
+        Just (ByMode selectedMode) ->
+            Just selectedMode
+
+        _ ->
+            Nothing
+
+
+{-| Construct a pitch for a degree with an optional accidental. If a defined mode
+is selected, the mode determines whether the accidental is valid for the degree
+(see `Mode.pitchFrom`); otherwise the scale in effect does (see `Pitch.from`).
+-}
+pitchFrom : ModeSettings -> Maybe Accidental -> Degree -> Pitch
+pitchFrom modeSettings =
+    case mode modeSettings of
+        Just selectedMode ->
+            Mode.pitchFrom selectedMode
+
+        Nothing ->
+            Pitch.from (scale modeSettings)

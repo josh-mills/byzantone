@@ -10,7 +10,6 @@ import Byzantine.Mode as Mode
 import Byzantine.Pitch as Pitch exposing (Pitch)
 import Byzantine.PitchPosition as PitchPosition
 import Byzantine.Register exposing (Register)
-import Byzantine.Scale exposing (Scale)
 import Http
 import Maybe.Extra as Maybe
 import ModeBuilder
@@ -367,7 +366,7 @@ handleSelectProposedMovement movement model =
 computeMovementWithAccidental : Model -> Movement -> Movement
 computeMovementWithAccidental model movement =
     Movement.applyAccidental
-        (ModeSettings.scale model.modeSettings)
+        (ModeSettings.pitchFrom model.modeSettings)
         (PitchState.unwrapProposedAccidental model.pitchState.proposedAccidental)
         movement
 
@@ -389,7 +388,7 @@ validateMovement model movementWithAccidental fallbackMovement =
             else
                 fallbackMovement
         )
-        (PitchState.currentPitch (ModeSettings.scale model.modeSettings) model.pitchState)
+        (PitchState.currentPitch model.modeSettings model.pitchState)
 
 
 {-| If a mode is selected, clear the ison when it is not one of the mode's
@@ -560,7 +559,7 @@ processPitchButtonClick model degree =
                 (\pitchState ->
                     { pitchState
                         | appliedAccidentals =
-                            applyAccidentalWithValidation (ModeSettings.scale model.modeSettings)
+                            applyAccidentalWithValidation model.modeSettings
                                 model.pitchSpaceData
                                 model.pitchState
                                 degree
@@ -603,7 +602,7 @@ processPitchButtonClick model degree =
                         ( ison, Apply _, True ) ->
                             ( ison
                             , model.pitchState.currentDegree
-                            , applyAccidentalWithValidation (ModeSettings.scale model.modeSettings)
+                            , applyAccidentalWithValidation model.modeSettings
                                 model.pitchSpaceData
                                 model.pitchState
                                 degree
@@ -620,7 +619,7 @@ processPitchButtonClick model degree =
                         ( ison, Apply _, False ) ->
                             ( ison
                             , Just degree
-                            , applyAccidentalWithValidation (ModeSettings.scale model.modeSettings)
+                            , applyAccidentalWithValidation model.modeSettings
                                 model.pitchSpaceData
                                 model.pitchState
                                 degree
@@ -652,13 +651,18 @@ processPitchButtonClick model degree =
                 |> resetPitchSpaceData
 
 
-applyAccidentalWithValidation : Scale -> PitchSpaceData -> PitchState -> Degree -> DegreeDataDict (Maybe Accidental)
-applyAccidentalWithValidation scale { pitchPositions } pitchState degree =
+applyAccidentalWithValidation : ModeSettings -> PitchSpaceData -> PitchState -> Degree -> DegreeDataDict (Maybe Accidental)
+applyAccidentalWithValidation modeSettings { pitchPositions } pitchState degree =
     case pitchState.proposedAccidental of
         Apply accidental ->
             let
                 isValidInflection =
-                    PitchPosition.isValidInflection scale accidental degree
+                    case ModeSettings.mode modeSettings of
+                        Just mode ->
+                            Mode.isValidInflection mode accidental degree
+
+                        Nothing ->
+                            PitchPosition.isValidInflection (ModeSettings.scale modeSettings) accidental degree
 
                 positonWithInflection =
                     PitchPosition.inflect (DegreeDataDict.get degree pitchPositions) accidental
@@ -877,7 +881,7 @@ moveAndFocus model interval =
             model.pitchState.currentDegree
                 |> Maybe.andThen (\degree -> Degree.step degree interval)
                 |> Maybe.map
-                    (Pitch.from (ModeSettings.scale model.modeSettings)
+                    (ModeSettings.pitchFrom model.modeSettings
                         (PitchState.unwrapProposedAccidental model.pitchState.proposedAccidental)
                     )
     in

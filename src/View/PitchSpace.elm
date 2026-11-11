@@ -142,7 +142,7 @@ viewInterval : PitchSpaceData -> ModeSettings -> PitchState -> ( Interval, Posit
 viewInterval pitchSpaceData modeSettings pitchState ( interval, position ) =
     let
         currentPitch =
-            PitchState.currentPitch (ModeSettings.scale modeSettings) pitchState
+            PitchState.currentPitch modeSettings pitchState
 
         currentPitchString =
             Maybe.unwrap "" (Pitch.encode (ModeSettings.scale modeSettings)) currentPitch
@@ -478,7 +478,7 @@ viewPitches : PitchSpaceData -> ModeSettings -> PitchState -> Html Msg
 viewPitches pitchSpaceData modeSettings pitchState =
     let
         currentPitch =
-            PitchState.currentPitch (ModeSettings.scale modeSettings) pitchState
+            PitchState.currentPitch modeSettings pitchState
     in
     Html.ol (listAttributes pitchSpaceData.display)
         (List.map
@@ -507,17 +507,7 @@ viewPitch pitchSpaceData modeSettings pitchState currentPitch degree =
 
         shouldHighlight =
             PitchSpaceData.canBeSelectedAsIson isonStatusIndicator
-                || (case pitchState.proposedAccidental of
-                        Apply accidental ->
-                            PitchPosition.isValidInflection (ModeSettings.scale modeSettings) accidental degree
-
-                        CancelAccidental ->
-                            DegreeDataDict.get degree pitchState.appliedAccidentals
-                                |> Maybe.isJust
-
-                        NoProposedAccidental ->
-                            False
-                   )
+                || shouldHighlightForProposedAccidental modeSettings pitchState degree
 
         positionWithinRange =
             DegreeDataDict.get degree pitchSpaceData.pitchVisibility
@@ -531,6 +521,31 @@ viewPitch pitchSpaceData modeSettings pitchState currentPitch degree =
         shouldHighlight
         positionWithinRange
         pitchSpaceData.scalingFactor
+
+
+{-| Whether a degree should be highlighted given the proposed accidental.
+
+When a defined mode is selected, validity is determined by the mode; otherwise
+by the scale.
+
+-}
+shouldHighlightForProposedAccidental : ModeSettings -> PitchState -> Degree -> Bool
+shouldHighlightForProposedAccidental modeSettings pitchState degree =
+    case pitchState.proposedAccidental of
+        Apply accidental ->
+            case ModeSettings.mode modeSettings of
+                Just mode ->
+                    Mode.isValidInflection mode accidental degree
+
+                Nothing ->
+                    PitchPosition.isValidInflection (ModeSettings.scale modeSettings) accidental degree
+
+        CancelAccidental ->
+            DegreeDataDict.get degree pitchState.appliedAccidentals
+                |> Maybe.isJust
+
+        NoProposedAccidental ->
+            False
 
 
 viewPitchLazy :
