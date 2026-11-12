@@ -3,7 +3,7 @@ module View.PitchSpace exposing (view)
 {-| View logic for pitch space (i.e., the intervalic space and positioned pitches)
 -}
 
-import Byzantine.Accidental as Accidental exposing (Accidental)
+import Byzantine.Accidental as Accidental
 import Byzantine.ByzHtml.Accidental as ByzHtmlAccidental
 import Byzantine.ByzHtml.Interval as ByzHtmlInterval
 import Byzantine.ByzHtml.Martyria as ByzHtmlMartyria
@@ -71,9 +71,10 @@ view pitchSpaceData audioSettings modeSettings pitchState maybeTimestampedDetect
             audioSettings
             (Maybe.map .detectedPitch maybeTimestampedDetectedPitch)
         , Html.Lazy.lazy3 viewPitches pitchSpaceData modeSettings pitchState
-        , Html.Lazy.lazy3 viewAccidentalButtons
+        , Html.Lazy.lazy4 viewAccidentalButtons
             pitchSpaceData.display
             modeSettings
+            (PitchState.hasAppliedAccidentals pitchState)
             pitchState.proposedAccidental
         , Html.Extra.viewIfLazy False (\_ -> signatures)
         ]
@@ -857,14 +858,27 @@ pitchElementPosition target display pitchPositions positionWithinRange scalingFa
 -- ACCIDENTAL BUTTONS
 
 
-viewAccidentalButtons : Display -> ModeSettings -> ProposedAccidental -> Html Msg
-viewAccidentalButtons display modeSettings proposedAccidental =
+viewAccidentalButtons : Display -> ModeSettings -> Bool -> ProposedAccidental -> Html Msg
+viewAccidentalButtons display modeSettings hasAppliedAccidentals proposedAccidental =
     let
         relevantAccidentals =
             ModeSettings.relevantAccidentals modeSettings
 
-        viewButton =
-            viewAccidentalButton (\accidental -> List.member accidental relevantAccidentals) proposedAccidental
+        isEnabled buttonProposedAccidental =
+            case buttonProposedAccidental of
+                Apply accidental ->
+                    List.member accidental relevantAccidentals
+
+                CancelAccidental ->
+                    hasAppliedAccidentals
+
+                NoProposedAccidental ->
+                    True
+
+        viewButton buttonProposedAccidental =
+            viewAccidentalButton (isEnabled buttonProposedAccidental)
+                proposedAccidental
+                buttonProposedAccidental
     in
     div
         (if PitchSpaceData.isVertical display then
@@ -895,19 +909,17 @@ viewAccidentalButtons display modeSettings proposedAccidental =
         ]
 
 
-viewAccidentalButton : (Accidental -> Bool) -> ProposedAccidental -> ProposedAccidental -> Html Msg
-viewAccidentalButton isRelevant currentProposedAccidental buttonProposedAccidental =
+{-| A button that is not enabled is disabled, unless it is the current proposal,
+so that a proposal that has since become unavailable can still be toggled off.
+-}
+viewAccidentalButton : Bool -> ProposedAccidental -> ProposedAccidental -> Html Msg
+viewAccidentalButton isEnabled currentProposedAccidental buttonProposedAccidental =
     let
         isCurrent =
             currentProposedAccidental == buttonProposedAccidental
 
         isDisabled =
-            case buttonProposedAccidental of
-                Apply accidental ->
-                    not (isRelevant accidental)
-
-                _ ->
-                    False
+            not isEnabled && not isCurrent
 
         buttonContent =
             case buttonProposedAccidental of

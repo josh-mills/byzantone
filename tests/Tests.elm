@@ -11,6 +11,7 @@ import Byzantine.Scale as Scale exposing (Scale(..))
 import Expect
 import List.Extra
 import Model.DegreeDataDict as DegreeDataDict
+import Model.PitchState as PitchState
 import Test exposing (Test, describe, test)
 
 
@@ -170,6 +171,28 @@ accidentalBuilder =
                     accidentals
     in
     next [] |> List.reverse
+
+
+pitchStateTests : Test
+pitchStateTests =
+    describe "PitchState Tests"
+        [ test "hasAppliedAccidentals is False initially" <|
+            \_ ->
+                PitchState.hasAppliedAccidentals PitchState.initialPitchState
+                    |> Expect.equal False
+        , test "hasAppliedAccidentals is True when any degree has an accidental" <|
+            \_ ->
+                let
+                    pitchState =
+                        PitchState.initialPitchState
+                in
+                { pitchState
+                    | appliedAccidentals =
+                        DegreeDataDict.set Zo_ (Just Sharp2) pitchState.appliedAccidentals
+                }
+                    |> PitchState.hasAppliedAccidentals
+                    |> Expect.equal True
+        ]
 
 
 modeTests : Test

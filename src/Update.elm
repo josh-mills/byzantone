@@ -286,6 +286,10 @@ Only accidentals relevant to the current selection (see
 buttons that are enabled. Irrelevant accidentals are stepped over; if there is no
 relevant default to start from, the proposal is left unchanged.
 
+Likewise, `CancelAccidental` is only proposed when there is an applied accidental
+to cancel (see `PitchState.hasAppliedAccidentals`); otherwise stepping past the
+last accidental clears the proposal.
+
 -}
 handleAccidentalKey : (Accidental -> Maybe Accidental) -> Accidental -> Model -> Model
 handleAccidentalKey transformAccidental defaultAccidental model =
@@ -312,7 +316,11 @@ handleAccidentalKey transformAccidental defaultAccidental model =
                                     Apply transformedAccidental
 
                                 Nothing ->
-                                    CancelAccidental
+                                    if PitchState.hasAppliedAccidentals pitchState then
+                                        CancelAccidental
+
+                                    else
+                                        NoProposedAccidental
 
                         _ ->
                             case firstRelevantFrom defaultAccidental of
