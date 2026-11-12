@@ -1,9 +1,11 @@
-module Byzantine.Accidental exposing (Accidental(..), all, allFlats, allSharps, fromString, lower, moriaAdjustment, raise, toString)
+module Byzantine.Accidental exposing (Accidental(..), all, allFlats, allSharps, fromString, lowerWithin, moriaAdjustment, raiseWithin, toString)
 
 {-| Data modeling gap: it may be better to create a distinction between
 permament and transient accidentals. Permament are currently treated as
 fthora in the view.
 -}
+
+import List.Extra
 
 
 type Accidental
@@ -39,60 +41,44 @@ allSharps =
     [ Sharp2, Sharp4, Sharp6, Sharp8 ]
 
 
-raise : Accidental -> Maybe Accidental
-raise accidental =
-    case accidental of
-        Sharp2 ->
-            Just Sharp4
-
-        Sharp4 ->
-            Just Sharp6
-
-        Sharp6 ->
-            Just Sharp8
-
-        Sharp8 ->
-            Nothing
-
-        Flat2 ->
-            Nothing
-
-        Flat4 ->
-            Just Flat2
-
-        Flat6 ->
-            Just Flat4
-
-        Flat8 ->
-            Just Flat6
+{-| The nearest of the candidates that is higher than the given accidental,
+without crossing natural: a flat only raises to a less-flat candidate, never to a
+sharp. `Nothing` stands for natural, so it raises to the least sharp candidate.
+Candidates need not be sorted.
+-}
+raiseWithin : List Accidental -> Maybe Accidental -> Maybe Accidental
+raiseWithin candidates from =
+    stepWithin 1 candidates from
 
 
-lower : Accidental -> Maybe Accidental
-lower accidental =
-    case accidental of
-        Sharp2 ->
-            Nothing
+{-| The nearest of the candidates that is lower than the given accidental,
+without crossing natural: a sharp only lowers to a less-sharp candidate, never to
+a flat. `Nothing` stands for natural, so it lowers to the least flat candidate.
+Candidates need not be sorted.
+-}
+lowerWithin : List Accidental -> Maybe Accidental -> Maybe Accidental
+lowerWithin candidates from =
+    stepWithin -1 candidates from
 
-        Sharp4 ->
-            Just Sharp2
 
-        Sharp6 ->
-            Just Sharp4
+{-| Step in a direction: `1` is up (toward sharper), `-1` is down.
+-}
+stepWithin : Int -> List Accidental -> Maybe Accidental -> Maybe Accidental
+stepWithin direction candidates from =
+    let
+        start =
+            Maybe.map moriaAdjustment from |> Maybe.withDefault 0
 
-        Sharp8 ->
-            Just Sharp6
-
-        Flat2 ->
-            Just Flat4
-
-        Flat4 ->
-            Just Flat6
-
-        Flat6 ->
-            Just Flat8
-
-        Flat8 ->
-            Nothing
+        isAhead candidate =
+            let
+                adjustment =
+                    moriaAdjustment candidate
+            in
+            direction * (adjustment - start) > 0 && (start == 0 || (adjustment < 0) == (start < 0))
+    in
+    candidates
+        |> List.filter isAhead
+        |> List.Extra.minimumBy (\candidate -> direction * moriaAdjustment candidate)
 
 
 moriaAdjustment : Accidental -> Int

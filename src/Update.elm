@@ -278,60 +278,48 @@ update msg model =
             handleKeydown key model
 
 
-{-| Applies accidental transformations (flat/sharp). Uses defaultAccidental if none
-applied, or transforms existing accidental, cancelling if transformation fails.
-
-Only accidentals relevant to the current selection (see
-`ModeSettings.relevantAccidentals`) can be proposed, mirroring the accidental
-buttons that are enabled. Irrelevant accidentals are stepped over; if there is no
-relevant default to start from, the proposal is left unchanged.
-
-Likewise, `CancelAccidental` is only proposed when there is an applied accidental
-to cancel (see `PitchState.hasAppliedAccidentals`); otherwise stepping past the
-last accidental clears the proposal.
-
+{-| Steps the proposed accidental (flat/sharp) with the given function, e.g.,
+`Accidental.raiseWithin`. The step is taken within the accidentals relevant to the
+current selection (see `ModeSettings.relevantAccidentals`), mirroring the
+accidental buttons that are enabled.
 -}
-handleAccidentalKey : (Accidental -> Maybe Accidental) -> Accidental -> Model -> Model
-handleAccidentalKey transformAccidental defaultAccidental model =
+handleAccidentalKey : (List Accidental -> Maybe Accidental -> Maybe Accidental) -> Model -> Model
+handleAccidentalKey stepWithin model =
     let
-        relevantAccidentals =
-            ModeSettings.relevantAccidentals model.modeSettings
-
-        firstRelevantFrom : Accidental -> Maybe Accidental
-        firstRelevantFrom accidental =
-            if List.member accidental relevantAccidentals then
-                Just accidental
-
-            else
-                transformAccidental accidental |> Maybe.andThen firstRelevantFrom
+        step =
+            stepWithin (ModeSettings.relevantAccidentals model.modeSettings)
     in
     updatePitchState
-        (\pitchState ->
-            { pitchState
-                | proposedAccidental =
-                    case pitchState.proposedAccidental of
-                        Apply accidental ->
-                            case transformAccidental accidental |> Maybe.andThen firstRelevantFrom of
-                                Just transformedAccidental ->
-                                    Apply transformedAccidental
-
-                                Nothing ->
-                                    if PitchState.hasAppliedAccidentals pitchState then
-                                        CancelAccidental
-
-                                    else
-                                        NoProposedAccidental
-
-                        _ ->
-                            case firstRelevantFrom defaultAccidental of
-                                Just relevantDefault ->
-                                    Apply relevantDefault
-
-                                Nothing ->
-                                    pitchState.proposedAccidental
-            }
-        )
+        (\pitchState -> { pitchState | proposedAccidental = nextProposedAccidental step pitchState })
         model
+
+
+{-| The next proposal after stepping. With no accidental proposed, this starts
+from natural, and is left unchanged if there is nowhere to step. Stepping past the
+last accidental proposes `CancelAccidental`, but only if there is an applied
+accidental to cancel; otherwise the proposal is cleared.
+-}
+nextProposedAccidental : (Maybe Accidental -> Maybe Accidental) -> PitchState -> ProposedAccidental
+nextProposedAccidental step pitchState =
+    case pitchState.proposedAccidental of
+        Apply accidental ->
+            step (Just accidental)
+                |> Maybe.map Apply
+                |> Maybe.withDefault (cancelOrClear pitchState)
+
+        _ ->
+            step Nothing
+                |> Maybe.map Apply
+                |> Maybe.withDefault pitchState.proposedAccidental
+
+
+cancelOrClear : PitchState -> ProposedAccidental
+cancelOrClear pitchState =
+    if PitchState.hasAppliedAccidentals pitchState then
+        CancelAccidental
+
+    else
+        NoProposedAccidental
 
 
 handleSelectPitch : Maybe Pitch -> Maybe Movement -> Model -> Model
@@ -846,10 +834,10 @@ handleKeydown key model =
             handleIsonToggle model
 
         "f" ->
-            ( handleAccidentalKey Accidental.lower Accidental.Flat2 model, Cmd.none )
+            ( handleAccidentalKey Accidental.lowerWithin model, Cmd.none )
 
         "s" ->
-            ( handleAccidentalKey Accidental.raise Accidental.Sharp2 model, Cmd.none )
+            ( handleAccidentalKey Accidental.raiseWithin model, Cmd.none )
 
         _ ->
             ( model, Cmd.none )

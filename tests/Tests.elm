@@ -173,6 +173,46 @@ accidentalBuilder =
     next [] |> List.reverse
 
 
+accidentalSteppingTests : Test
+accidentalSteppingTests =
+    let
+        stepCase name step candidates from expected =
+            test name <|
+                \_ -> Expect.equal expected (step candidates from)
+    in
+    describe "Accidental stepping"
+        [ describe "over every accidental, steps one at a time without crossing natural"
+            [ stepCase "raise from natural" Accidental.raiseWithin Accidental.all Nothing (Just Sharp2)
+            , stepCase "raise Sharp2" Accidental.raiseWithin Accidental.all (Just Sharp2) (Just Sharp4)
+            , stepCase "raise Sharp6" Accidental.raiseWithin Accidental.all (Just Sharp6) (Just Sharp8)
+            , stepCase "raise Sharp8" Accidental.raiseWithin Accidental.all (Just Sharp8) Nothing
+            , stepCase "raise Flat8" Accidental.raiseWithin Accidental.all (Just Flat8) (Just Flat6)
+            , stepCase "raise Flat4" Accidental.raiseWithin Accidental.all (Just Flat4) (Just Flat2)
+            , stepCase "raise Flat2 does not cross to a sharp" Accidental.raiseWithin Accidental.all (Just Flat2) Nothing
+            , stepCase "lower from natural" Accidental.lowerWithin Accidental.all Nothing (Just Flat2)
+            , stepCase "lower Flat2" Accidental.lowerWithin Accidental.all (Just Flat2) (Just Flat4)
+            , stepCase "lower Flat6" Accidental.lowerWithin Accidental.all (Just Flat6) (Just Flat8)
+            , stepCase "lower Flat8" Accidental.lowerWithin Accidental.all (Just Flat8) Nothing
+            , stepCase "lower Sharp8" Accidental.lowerWithin Accidental.all (Just Sharp8) (Just Sharp6)
+            , stepCase "lower Sharp4" Accidental.lowerWithin Accidental.all (Just Sharp4) (Just Sharp2)
+            , stepCase "lower Sharp2 does not cross to a flat" Accidental.lowerWithin Accidental.all (Just Sharp2) Nothing
+            ]
+        , describe "within a subset of candidates"
+            [ stepCase "raise from natural skips irrelevant accidentals" Accidental.raiseWithin [ Sharp4, Sharp8 ] Nothing (Just Sharp4)
+            , stepCase "raise skips over an irrelevant accidental" Accidental.raiseWithin [ Sharp4, Sharp8 ] (Just Sharp4) (Just Sharp8)
+            , stepCase "raise from an accidental that is not itself a candidate" Accidental.raiseWithin [ Sharp4, Sharp8 ] (Just Sharp6) (Just Sharp8)
+            , stepCase "raise from natural ignores flat candidates" Accidental.raiseWithin [ Flat2, Flat4 ] Nothing Nothing
+            , stepCase "raise from a flat ignores sharp candidates" Accidental.raiseWithin [ Sharp4 ] (Just Flat2) Nothing
+            , stepCase "raise picks the nearest candidate regardless of order" Accidental.raiseWithin [ Sharp6, Sharp2 ] Nothing (Just Sharp2)
+            , stepCase "lower from natural skips irrelevant accidentals" Accidental.lowerWithin [ Flat4, Flat8 ] Nothing (Just Flat4)
+            , stepCase "lower skips over an irrelevant accidental" Accidental.lowerWithin [ Flat4, Flat8 ] (Just Flat4) (Just Flat8)
+            , stepCase "lower from natural ignores sharp candidates" Accidental.lowerWithin [ Sharp2 ] Nothing Nothing
+            , stepCase "lower picks the nearest candidate regardless of order" Accidental.lowerWithin [ Flat6, Flat2 ] Nothing (Just Flat2)
+            , stepCase "no candidates" Accidental.raiseWithin [] Nothing Nothing
+            ]
+        ]
+
+
 pitchStateTests : Test
 pitchStateTests =
     describe "PitchState Tests"
