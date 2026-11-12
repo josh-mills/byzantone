@@ -1,7 +1,7 @@
 module Byzantine.Mode exposing
     ( Mode(..), toString, all
     , ModeData, data, Range
-    , Inflection, isValidInflection, pitchFrom
+    , Inflection, isValidInflection, relevantAccidentals, pitchFrom
     )
 
 {-| Data structure to capture modal characteristics.
@@ -21,18 +21,19 @@ TODO: verify signatures.
 
 ## Melodic Attractions
 
-@docs Inflection, isValidInflection, pitchFrom
+@docs Inflection, isValidInflection, relevantAccidentals, pitchFrom
 
 -}
 
-import Byzantine.Accidental exposing (Accidental(..))
-import Byzantine.Degree exposing (Degree(..))
+import Byzantine.Accidental as Accidental exposing (Accidental(..))
+import Byzantine.Degree as Degree exposing (Degree(..))
 import Byzantine.Mode.Classification exposing (Classification(..), Ordinal(..))
 import Byzantine.Mode.Genre exposing (Genre(..))
 import Byzantine.Mode.Signature as Signature exposing (Signature)
 import Byzantine.Pitch as Pitch exposing (Pitch)
 import Byzantine.PitchPosition as PitchPosition
 import Byzantine.Scale exposing (Scale(..))
+import List.Extra
 import Model.DegreeDataDict as DegreeDataDict exposing (DegreeDataDict)
 
 
@@ -328,6 +329,23 @@ isValidInflection mode accidental degree =
                 |> Maybe.map (\inflection -> List.member accidental inflection.accidentals)
                 |> Maybe.withDefault False
            )
+
+
+{-| Every accidental that appears among the mode's possible inflections at any
+degree, without duplicates, sorted by moria adjustment (most flat to most
+sharp).
+-}
+relevantAccidentals : Mode -> List Accidental
+relevantAccidentals mode =
+    let
+        possibleInflections =
+            (data mode).possibleInflections
+    in
+    Degree.gamutList
+        |> List.filterMap (\degree -> DegreeDataDict.get degree possibleInflections)
+        |> List.concatMap .accidentals
+        |> List.Extra.unique
+        |> List.sortBy Accidental.moriaAdjustment
 
 
 {-| Construct a pitch for a degree within the mode. If the accidental is not
