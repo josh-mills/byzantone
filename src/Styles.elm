@@ -184,11 +184,11 @@ borderRounded =
 -- TAILWIND CLASSES: MISC
 
 
-{-| `class "bg-gray-200 hover:bg-gray-300 py-1 px-3 rounded-md cursor-pointer"`
+{-| `class "bg-gray-200 hover:bg-gray-300 py-1 px-3 rounded-md cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-gray-200"`
 -}
 buttonClass : Html.Attribute msg
 buttonClass =
-    class "bg-gray-200 hover:bg-gray-300 py-1 px-3 rounded-md cursor-pointer"
+    class "bg-gray-200 hover:bg-gray-300 py-1 px-3 rounded-md cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-gray-200"
 
 
 
