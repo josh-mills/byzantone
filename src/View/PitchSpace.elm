@@ -3,7 +3,7 @@ module View.PitchSpace exposing (view)
 {-| View logic for pitch space (i.e., the intervalic space and positioned pitches)
 -}
 
-import Byzantine.Accidental as Accidental
+import Byzantine.Accidental as Accidental exposing (Accidental)
 import Byzantine.ByzHtml.Accidental as ByzHtmlAccidental
 import Byzantine.ByzHtml.Interval as ByzHtmlInterval
 import Byzantine.ByzHtml.Martyria as ByzHtmlMartyria
@@ -71,7 +71,10 @@ view pitchSpaceData audioSettings modeSettings pitchState maybeTimestampedDetect
             audioSettings
             (Maybe.map .detectedPitch maybeTimestampedDetectedPitch)
         , Html.Lazy.lazy3 viewPitches pitchSpaceData modeSettings pitchState
-        , Html.Lazy.lazy2 viewAccidentalButtons pitchSpaceData.display pitchState.proposedAccidental
+        , Html.Lazy.lazy3 viewAccidentalButtons
+            pitchSpaceData.display
+            modeSettings
+            pitchState.proposedAccidental
         , Html.Extra.viewIfLazy False (\_ -> signatures)
         ]
 
@@ -854,8 +857,12 @@ pitchElementPosition target display pitchPositions positionWithinRange scalingFa
 -- ACCIDENTAL BUTTONS
 
 
-viewAccidentalButtons : Display -> ProposedAccidental -> Html Msg
-viewAccidentalButtons display proposedAccidental =
+viewAccidentalButtons : Display -> ModeSettings -> ProposedAccidental -> Html Msg
+viewAccidentalButtons display modeSettings proposedAccidental =
+    let
+        viewButton =
+            viewAccidentalButton (isAccidentalRelevant (ModeSettings.mode modeSettings)) proposedAccidental
+    in
     div
         (if PitchSpaceData.isVertical display then
             [ Styles.flexCol, class "justify-center me-4" ]
@@ -876,20 +883,46 @@ viewAccidentalButtons display proposedAccidental =
             (Html.legend [ class "px-1" ] [ Html.text "Accidental" ]
                 :: List.concat
                     [ Accidental.allFlats
-                        |> List.map (viewAccidentalButton proposedAccidental << Apply)
-                    , [ viewAccidentalButton proposedAccidental CancelAccidental ]
+                        |> List.map (viewButton << Apply)
+                    , [ viewButton CancelAccidental ]
                     , Accidental.allSharps
-                        |> List.map (viewAccidentalButton proposedAccidental << Apply)
+                        |> List.map (viewButton << Apply)
                     ]
             )
         ]
 
 
-viewAccidentalButton : ProposedAccidental -> ProposedAccidental -> Html Msg
-viewAccidentalButton currentProposedAccidental buttonProposedAccidental =
+{-| Whether an accidental is relevant to the given mode (see
+`Mode.relevantAccidentals`). When no mode is selected, every accidental is
+considered relevant.
+-}
+isAccidentalRelevant : Maybe Mode -> Accidental -> Bool
+isAccidentalRelevant maybeMode =
+    case maybeMode of
+        Just mode ->
+            let
+                relevantAccidentals =
+                    Mode.relevantAccidentals mode
+            in
+            \accidental -> List.member accidental relevantAccidentals
+
+        Nothing ->
+            always True
+
+
+viewAccidentalButton : (Accidental -> Bool) -> ProposedAccidental -> ProposedAccidental -> Html Msg
+viewAccidentalButton isRelevant currentProposedAccidental buttonProposedAccidental =
     let
         isCurrent =
             currentProposedAccidental == buttonProposedAccidental
+
+        isDisabled =
+            case buttonProposedAccidental of
+                Apply accidental ->
+                    not (isRelevant accidental)
+
+                _ ->
+                    False
 
         buttonContent =
             case buttonProposedAccidental of
@@ -906,6 +939,7 @@ viewAccidentalButton currentProposedAccidental buttonProposedAccidental =
         [ Styles.buttonClass
         , Styles.transition
         , class "text-2xl sm:text-3xl min-w-8 sm:min-w-12 max-w-14 m-1"
+        , Attr.disabled isDisabled
         , classList
             [ ( "text-blue-700 border-2 border-blue-700", isCurrent )
             , ( "border-2 border-transparent", not isCurrent )
