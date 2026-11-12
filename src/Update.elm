@@ -280,16 +280,34 @@ update msg model =
 
 {-| Applies accidental transformations (flat/sharp). Uses defaultAccidental if none
 applied, or transforms existing accidental, cancelling if transformation fails.
+
+Only accidentals relevant to the current selection (see
+`ModeSettings.relevantAccidentals`) can be proposed, mirroring the accidental
+buttons that are enabled. Irrelevant accidentals are stepped over; if there is no
+relevant default to start from, the proposal is left unchanged.
+
 -}
 handleAccidentalKey : (Accidental -> Maybe Accidental) -> Accidental -> Model -> Model
 handleAccidentalKey transformAccidental defaultAccidental model =
+    let
+        relevantAccidentals =
+            ModeSettings.relevantAccidentals model.modeSettings
+
+        firstRelevantFrom : Accidental -> Maybe Accidental
+        firstRelevantFrom accidental =
+            if List.member accidental relevantAccidentals then
+                Just accidental
+
+            else
+                transformAccidental accidental |> Maybe.andThen firstRelevantFrom
+    in
     updatePitchState
         (\pitchState ->
             { pitchState
                 | proposedAccidental =
                     case pitchState.proposedAccidental of
                         Apply accidental ->
-                            case transformAccidental accidental of
+                            case transformAccidental accidental |> Maybe.andThen firstRelevantFrom of
                                 Just transformedAccidental ->
                                     Apply transformedAccidental
 
@@ -297,7 +315,12 @@ handleAccidentalKey transformAccidental defaultAccidental model =
                                     CancelAccidental
 
                         _ ->
-                            Apply defaultAccidental
+                            case firstRelevantFrom defaultAccidental of
+                                Just relevantDefault ->
+                                    Apply relevantDefault
+
+                                Nothing ->
+                                    pitchState.proposedAccidental
             }
         )
         model

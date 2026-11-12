@@ -1,11 +1,11 @@
-module Model.ModeSettings exposing (ModeSettings, initialModeSettings, mode, pitchFrom, range, scale)
+module Model.ModeSettings exposing (ModeSettings, initialModeSettings, mode, pitchFrom, range, relevantAccidentals, scale)
 
 {-| User-controlled settings for the mode. Minimalist at present, but this will
 expand as the capability to select actual modes (beyond just a base scale) is
 built out.
 -}
 
-import Byzantine.Accidental exposing (Accidental)
+import Byzantine.Accidental as Accidental exposing (Accidental)
 import Byzantine.Degree exposing (Degree(..))
 import Byzantine.Mode as Mode exposing (Mode, Range)
 import Byzantine.Pitch as Pitch exposing (Pitch)
@@ -66,6 +66,20 @@ mode modeSettings =
 
         _ ->
             Nothing
+
+
+{-| The accidentals that are relevant to the current selection, sorted by moria
+adjustment. A selected mode supplies its own (see `Mode.relevantAccidentals`);
+otherwise every accidental is relevant.
+-}
+relevantAccidentals : ModeSettings -> List Accidental
+relevantAccidentals modeSettings =
+    case mode modeSettings of
+        Just selectedMode ->
+            Mode.relevantAccidentals selectedMode
+
+        Nothing ->
+            Accidental.all
 
 
 {-| Construct a pitch for a degree with an optional accidental. If a defined mode

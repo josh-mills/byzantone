@@ -860,8 +860,11 @@ pitchElementPosition target display pitchPositions positionWithinRange scalingFa
 viewAccidentalButtons : Display -> ModeSettings -> ProposedAccidental -> Html Msg
 viewAccidentalButtons display modeSettings proposedAccidental =
     let
+        relevantAccidentals =
+            ModeSettings.relevantAccidentals modeSettings
+
         viewButton =
-            viewAccidentalButton (isAccidentalRelevant (ModeSettings.mode modeSettings)) proposedAccidental
+            viewAccidentalButton (\accidental -> List.member accidental relevantAccidentals) proposedAccidental
     in
     div
         (if PitchSpaceData.isVertical display then
@@ -890,24 +893,6 @@ viewAccidentalButtons display modeSettings proposedAccidental =
                     ]
             )
         ]
-
-
-{-| Whether an accidental is relevant to the given mode (see
-`Mode.relevantAccidentals`). When no mode is selected, every accidental is
-considered relevant.
--}
-isAccidentalRelevant : Maybe Mode -> Accidental -> Bool
-isAccidentalRelevant maybeMode =
-    case maybeMode of
-        Just mode ->
-            let
-                relevantAccidentals =
-                    Mode.relevantAccidentals mode
-            in
-            \accidental -> List.member accidental relevantAccidentals
-
-        Nothing ->
-            always True
 
 
 viewAccidentalButton : (Accidental -> Bool) -> ProposedAccidental -> ProposedAccidental -> Html Msg
