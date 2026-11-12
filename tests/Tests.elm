@@ -187,6 +187,30 @@ modeTests =
                 Signature.all
                     |> List.filter (\signature -> not (List.member signature modeSignatures))
                     |> Expect.equalLists []
+        , test "relevantAccidentals collects each possible accidental once, sorted by moria adjustment" <|
+            \_ ->
+                Mode.relevantAccidentals AuthenticOne_Ke_Papadic
+                    |> Expect.equalLists [ Flat4, Flat2, Sharp2, Sharp4, Sharp6 ]
+        , test "relevantAccidentals is unique and covers every possible inflection for every Mode" <|
+            \_ ->
+                Mode.all
+                    |> List.filter
+                        (\mode ->
+                            let
+                                relevant =
+                                    Mode.relevantAccidentals mode
+                            in
+                            relevant
+                                /= List.Extra.unique relevant
+                                || List.any
+                                    (\degree ->
+                                        DegreeDataDict.get degree (Mode.data mode).possibleInflections
+                                            |> Maybe.map (.accidentals >> List.all (\accidental -> List.member accidental relevant) >> not)
+                                            |> Maybe.withDefault False
+                                    )
+                                    Degree.gamutList
+                        )
+                    |> Expect.equalLists []
         ]
 
 
