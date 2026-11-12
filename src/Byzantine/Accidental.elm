@@ -1,13 +1,39 @@
-module Byzantine.Accidental exposing (Accidental(..), all, allFlats, allSharps, fromString, lowerWithin, moriaAdjustment, raiseWithin, toString)
+module Byzantine.Accidental exposing
+    ( Accidental(..), all, allFlats, allSharps
+    , raiseWithin, lowerWithin
+    , moriaAdjustment, toString, fromString
+    )
 
-{-| Data modeling gap: it may be better to create a distinction between
+{-| Accidentals: the sharps and flats that inflect a pitch, each by a number of
+moria.
+
+Data modeling gap: it may be better to create a distinction between
 permament and transient accidentals. Permament are currently treated as
 fthora in the view.
+
+
+# Accidental
+
+@docs Accidental, all, allFlats, allSharps
+
+
+# Stepping
+
+@docs raiseWithin, lowerWithin
+
+
+# Conversion
+
+@docs moriaAdjustment, toString, fromString
+
 -}
 
 import List.Extra
 
 
+{-| A sharp (raises a pitch) or flat (lowers a pitch), named for its size in
+moria.
+-}
 type Accidental
     = Sharp2
     | Sharp4
@@ -81,6 +107,9 @@ stepWithin direction candidates from =
         |> List.Extra.minimumBy (\candidate -> direction * moriaAdjustment candidate)
 
 
+{-| The signed number of moria an accidental adjusts a pitch by: positive for
+sharps, negative for flats.
+-}
 moriaAdjustment : Accidental -> Int
 moriaAdjustment accidental =
     case accidental of
@@ -109,6 +138,9 @@ moriaAdjustment accidental =
             -8
 
 
+{-| The moria adjustment as a signed string, e.g., `"+2"` or `"-4"`. The inverse
+of `fromString`.
+-}
 toString : Accidental -> String
 toString accidental =
     let
