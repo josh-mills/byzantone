@@ -110,14 +110,33 @@ sine from the speakers will dominate or contaminate detection, especially when
 the singer is at or near the ison. Mitigation is phased.
 
 **Phase 1, baseline (ships with the feature):**
-- Recommend headphones (UI hint near the ison control in Listen mode).
-- Set explicit `getUserMedia` constraints in `pitch_tracker.ts` `init()`
-  instead of `{ audio: true }`, for example
-  `{ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: false } }`.
-  Evaluate empirically; browser behavior varies and noise suppression can
-  distort voice.
+- Recommend headphones (UI hint near the ison control in Listen mode). *Not yet
+  done.*
+- Request the mic with `echoCancellation`, `noiseSuppression`, and
+  `autoGainControl` all `false` in `pitch_tracker.ts` `init()`. *Done.* This was
+  originally planned as "echo cancellation on", but testing showed the opposite
+  is needed (see Findings).
 
-**Phase 2, only if Phase 1 is insufficient on speakers:**
+**Findings (`sandbox/ison_click.html`, MacBook speakers):**
+
+| Browser | Clicks in the ison when the mic opens/closes |
+| --- | --- |
+| Chrome | Only with default constraints (`audio: true`), including when the mic is fed into the ison's own context. None with echo cancellation / noise suppression / AGC off, and none from an extra `AudioContext` alone. |
+| Safari | Once, on the first open with default constraints. Otherwise clean. |
+| Firefox | With every mic scenario, including processing off. None from an extra `AudioContext` alone. |
+
+Consequences:
+- Disabling mic processing fixes Chrome. It also gives the pitch detector an
+  unprocessed signal.
+- Firefox clicks on any mic open/close regardless of constraints, so avoiding it
+  requires avoiding mic churn or masking it (see Open Questions).
+- With echo cancellation off, the browser no longer attenuates the ison at the
+  mic, so Phase 2 (in-worklet ison cancellation) becomes more important for
+  speaker use.
+
+**Phase 2, implemented after testing showed ison bleed on MacBook speakers
+(wrongly detecting the ison during silence, and disturbing a fifth above it;
+no problem on AirPods):**
 - Elm passes the ison frequency to `<pitch-tracker>` as an `ison` attribute
   (Hz, omitted when there is no ison).
 - In `pitch_tracker.ts`, insert an `AudioWorklet` between the mic source and
@@ -135,12 +154,84 @@ the singer is at or near the ison. Mitigation is phased.
   separate `AudioContext`s. `mu` controls cancellation bandwidth versus
   convergence time; tune so a singer at unison with natural vibrato is mostly
   preserved.
-- A simpler stopgap is a `BiquadFilterNode` notch at the ison frequency, with
-  the known drawback that it removes the singer's fundamental at unison and
-  octaves.
+- **Opt-in:** the canceller is controlled by `AudioSettings.filterIsonFromMic`
+  (default `False`), shown in the Audio Settings menu in Listen mode as a
+  "Speakers" fieldset with an "I'm listening through speakers" checkbox
+  (helper text: "Keeps the drone from being mistaken for your voice. Leave off
+  when using headphones."). The wording is deliberately user-facing rather than
+  describing the filter mechanism. Elm only emits the `ison` attribute on `<pitch-tracker>`
+  when the setting is on, so no JS changes were needed: with no `ison`
+  attribute the worklet passes the mic signal through unchanged. Rationale:
+  headphone users don't need it and shouldn't pay its costs (below). The
+  setting is not persisted (neither are the other audio settings).
+- Implementation notes:
+  - The worklet source lives in `pitch_tracker.ts` as a string loaded from a
+    Blob URL, so no separate worklet file needs building, hashing
+    (`scripts/applyHash.mjs`), or serving. If `AudioWorklet` is unavailable or
+    fails to load, the tracker falls back to analyzing the mic directly.
+  - Elm passes the ison via the same `playbackFrequencyString` used for
+    `<chant-engine>`, so both sides use identical frequencies.
+  - Tunables are in `ISON_CANCELLER_CONFIG`: steady-state notch width
+    (`bandwidthHz`, 1 Hz), a wider notch for `acquireSeconds` after the ison
+    changes, and `harmonics` (1 = fundamental only; raise to 2 if small
+    speakers radiate a distorted 2nd harmonic that still bleeds through).
+  - `sandbox/canceller_check.mjs` runs the worklet offline against synthetic
+    signals (`npx tsc && node sandbox/canceller_check.mjs`). Results at 48 kHz:
+    bleed alone is removed to ~0 within ~0.5 s; a voice a fifth above the ison
+    (330 Hz vs 220 Hz) is preserved at full amplitude with the ison residual
+    ~0; a voice 3 Hz sharp of the ison is preserved (~99%); a retuned ison is
+    re-acquired within ~0.1 s; with no ison the signal passes through
+    unchanged.
+  - Known cost: a voice within about ±1 Hz of the ison (at unison and nearly
+    perfectly in tune) is partially cancelled, and a voice with wide vibrato
+    centred on the ison loses roughly 40% of its amplitude (synthetic test).
+    The spectrum visualization also shows a notch at the ison, since it reads
+    from the post-cancellation signal.
+- A simpler stopgap would have been a `BiquadFilterNode` notch at the ison
+  frequency, which unconditionally removes the singer's fundamental at unison.
+  The adaptive canceller is narrower.
 
 **Phase 3, optional:** extract a shared `AudioContext` module used by both
 elements (one clock, fewer system resources).
+
+## Performance
+
+Measured offline with `sandbox/perf_check.mjs` (`npx tsc && node sandbox/perf_check.mjs`;
+node/V8 on a development machine, so use the ratios, not absolute numbers):
+
+| Work | Cost |
+| --- | --- |
+| Worklet, no ison (passthrough, i.e. filter off) | ~0.03 ms per second of audio (negligible) |
+| Worklet, filter on, 1 harmonic | ~5 ms per second of audio (~0.5% of a core); ~14 µs per 2667 µs render quantum |
+| Worklet, 2 / 3 harmonics | ~11 / ~16 ms per second of audio |
+| `autoCorrelate` (pre-existing), 2048-sample window | ~2.3 ms per call; at 60 fps ~140 ms per second (~14% of a core, ~14% of each frame), on the main thread |
+
+The canceller is ~25x cheaper than the pitch detector it feeds, so it is not a
+concern even at a 5-10x slower phone CPU. The pre-existing `autoCorrelate`
+(O(N²) per animation frame, plus per-frame array allocations) is the main
+CPU cost in Listen mode and the likelier problem on weak phones (more so on
+120 Hz displays). Possible optimizations if needed: decimate the signal before
+autocorrelating, limit the lag range to the expected pitch range, or run
+detection at a lower rate (note the smoothing counters are frame-based).
+
+**Follow-up to explore: downsampling in `autoCorrelate`.** Decimating the mic
+signal (e.g. by 4, after a simple low-pass/averaging step) before
+autocorrelating would cut the O(N²) work roughly 16x. Voice fundamentals are
+well under 1 kHz, so the detectable range should be unaffected. To explore:
+- Verify accuracy against the current implementation using the offline harness
+  (synthetic voice-like signals across the full register range, plus recorded
+  singing if available), paying attention to the sub-cent precision that the
+  parabolic interpolation currently provides (it operates on lag, which becomes
+  coarser after decimation, so interpolation matters more).
+- Check the lowest (Bass register) frequencies still get at least two periods
+  in the analysis window.
+- Re-measure with `sandbox/perf_check.mjs` and, ideally, on a real low-end
+  phone.
+- Consider combining with a bounded lag range for further savings.
+
+In Listen mode there is now also a second, always-mounted `AudioContext`
+(`chant-engine`) even when no tone is sounding; suspending it while idle is a
+possible follow-up (not measured).
 
 ## Implementation Order
 
@@ -180,7 +271,12 @@ Listen-branch ison selection in `processPitchButtonClick` is not unit-tested
 
 ## Risks and Open Questions
 
-- **Mic bleed on speakers** may make Phase 1 insufficient (see §6).
+- **Mic bleed on speakers**: mitigated by the Phase 2 canceller; needs
+  on-device confirmation in Chrome, Safari, and Firefox (see §6).
+- **Residual clicks on mic open/close in Firefox, and once in Safari.** Options:
+  keep the mic stream open and pause analysis instead of tearing it down (the
+  browser's mic-in-use indicator then stays on in Play mode; could tear down
+  after an idle timeout), or briefly duck the ison around the transition.
 - **iOS audio session.** With the mic active, iOS uses a play-and-record
   session; ison playback may be quieter or route to the earpiece. Not fixable
   from Web Audio; needs on-device testing.

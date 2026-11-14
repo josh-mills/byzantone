@@ -58,6 +58,7 @@ type Msg
     | SetListenRegister ListenRegister
     | SetResponsiveness AudioSettings.Responsiveness
     | SetPitchFeedback AudioSettings.PitchFeedbackUnit
+    | SetFilterIsonFromMic Bool
     | SetScale Scale
     | ToggleControlMenu ControlsMenu.MenuOption
     | ToggleHeaderCollapsed
@@ -228,6 +229,13 @@ update msg model =
         SetPitchFeedback pitchFeedback ->
             ( updateAudioSettings
                 (\audioSettings -> { audioSettings | pitchFeedback = pitchFeedback })
+                model
+            , Cmd.none
+            )
+
+        SetFilterIsonFromMic filterIsonFromMic ->
+            ( updateAudioSettings
+                (\audioSettings -> { audioSettings | filterIsonFromMic = filterIsonFromMic })
                 model
             , Cmd.none
             )
