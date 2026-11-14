@@ -173,10 +173,19 @@ update msg model =
             )
 
         SetIson ison ->
-            ( updatePitchState
-                (\pitchState -> { pitchState | ison = ison })
-                model
-                |> resetPitchSpaceData
+            let
+                updatedModel =
+                    updatePitchState
+                        (\pitchState -> { pitchState | ison = ison })
+                        model
+                        |> resetPitchSpaceData
+            in
+            ( case ison of
+                PitchState.SelectingIson _ ->
+                    { updatedModel | openControlMenus = ControlsMenu.init }
+
+                _ ->
+                    updatedModel
             , Cmd.none
             )
 
