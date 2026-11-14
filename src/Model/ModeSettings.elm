@@ -1,4 +1,4 @@
-module Model.ModeSettings exposing (ModeSettings, initialModeSettings, mode, pitchFrom, range, relevantAccidentals, scale)
+module Model.ModeSettings exposing (ModeSettings, initialModeSettings, mode, pitchFrom, range, relevantAccidentals, scale, signature)
 
 {-| User-controlled settings for the mode. Minimalist at present, but this will
 expand as the capability to select actual modes (beyond just a base scale) is
@@ -8,6 +8,7 @@ built out.
 import Byzantine.Accidental as Accidental exposing (Accidental)
 import Byzantine.Degree exposing (Degree(..))
 import Byzantine.Mode as Mode exposing (Mode, Range)
+import Byzantine.Mode.Signature exposing (Signature)
 import Byzantine.Pitch as Pitch exposing (Pitch)
 import Byzantine.Scale exposing (Scale(..))
 import ModeBuilder exposing (Selection(..))
@@ -48,8 +49,8 @@ scale modeSettings =
         Just (ByScale selectedScale) ->
             selectedScale
 
-        Just (ByMode selectedMode) ->
-            (Mode.data selectedMode).scale
+        Just (ByMode selected) ->
+            (Mode.data selected.mode).scale
 
         Nothing ->
             SoftDiatonic
@@ -61,8 +62,21 @@ selected.
 mode : ModeSettings -> Maybe Mode
 mode modeSettings =
     case modeSettings.selection of
-        Just (ByMode selectedMode) ->
-            Just selectedMode
+        Just (ByMode selected) ->
+            Just selected.mode
+
+        _ ->
+            Nothing
+
+
+{-| The signature the user selected, if a defined mode (rather than only a scale)
+has been selected.
+-}
+signature : ModeSettings -> Maybe Signature
+signature modeSettings =
+    case modeSettings.selection of
+        Just (ByMode selected) ->
+            Just selected.signature
 
         _ ->
             Nothing

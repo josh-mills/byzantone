@@ -417,10 +417,10 @@ selecting status, but loses its current degree.
 clearInvalidIson : Model -> Model
 clearInvalidIson model =
     case model.modeSettings.selection of
-        Just (ModeBuilder.ByMode mode) ->
+        Just (ModeBuilder.ByMode selected) ->
             let
                 isValid degree =
-                    List.member degree (Mode.data mode).isonOptions
+                    List.member degree (Mode.data selected.mode).isonOptions
             in
             updatePitchState
                 (\pitchState ->

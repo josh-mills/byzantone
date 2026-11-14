@@ -99,7 +99,7 @@ type Direction
 
 type Selection
     = ByScale Scale
-    | ByMode Mode
+    | ByMode { mode : Mode, signature : Signature }
 
 
 
@@ -638,14 +638,17 @@ modesForSignature signature =
         Mode.all
 
 
-{-| The mode the current selections lead to, if the user has chosen a signature
-and, where needed, a genre.
+{-| The mode and signature the current selections lead to, if the user has chosen
+a signature and, where needed, a genre.
 -}
 resolveSelectedMode : Selections -> Maybe Selection
 resolveSelectedMode selections =
     selections.signature
-        |> Maybe.andThen (resolveMode selections.mode)
-        |> Maybe.map ByMode
+        |> Maybe.andThen
+            (\signature ->
+                resolveMode selections.mode signature
+                    |> Maybe.map (\mode -> ByMode { mode = mode, signature = signature })
+            )
 
 
 {-| The mode a signature leads to: the only mode that uses it, or, when several

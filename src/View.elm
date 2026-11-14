@@ -7,7 +7,7 @@ import Byzantine.Frequency as Frequency exposing (Frequency(..), PitchStandard(.
 import Byzantine.Martyria as Martyria
 import Byzantine.Mode as Mode exposing (Mode)
 import Byzantine.Pitch as Pitch exposing (Pitch)
-import Byzantine.Scale exposing (Scale(..))
+import Byzantine.Scale as Scale exposing (Scale(..))
 import Components.Collapsible as Collapsible
 import Components.RadioFieldset as RadioFieldset
 import Html exposing (Html, button, datalist, div, h1, h2, main_, p, span, text)
@@ -51,7 +51,7 @@ view model =
                     (PitchState.ison model.pitchState.ison)
             )
         , lazy2 backdrop model.menuOpen model.modal
-        , lazy2 header model.calendar model.headerIsOpen
+        , lazy3 header model.calendar model.modeSettings model.headerIsOpen
         , lazy5 viewModal model.audioSettings model.layoutData model.modeSettings model.remote model.modal
 
         -- , viewIf LayoutData.showSpacing (div [ class "text-center" ] [ text "|" ])
@@ -131,9 +131,13 @@ chantEngineNode audioSettings scale currentPitch currentIson =
 
 Caret points down when expanded, rotates 180° when collapsed.
 
+The mode heading sits outside the collapsible title block, so it appears beneath
+the title when the header is open and between the caret and the menu button when
+the header is collapsed.
+
 -}
-header : CalendarInfo -> Bool -> Html Msg
-header calendarInfo headerIsOpen =
+header : CalendarInfo -> ModeSettings -> Bool -> Html Msg
+header calendarInfo modeSettings headerIsOpen =
     Html.header
         [ Styles.flexRowCentered
         , Styles.transition
@@ -143,7 +147,7 @@ header calendarInfo headerIsOpen =
             , ( "py-4", headerIsOpen )
             ]
         ]
-        [ div [ class "w-7" ]
+        [ div [ class "w-7 mt-2 self-start" ]
             [ button
                 [ class "w-full lg:hidden"
                 , Styles.transition
@@ -153,28 +157,31 @@ header calendarInfo headerIsOpen =
                 [ Icons.caretDown [ Svg.Attributes.class "w-6 h-6" ]
                 ]
             ]
-        , Collapsible.div
-            (Collapsible.isOpen headerIsOpen)
-            [ class "flex-1 mx-4" ]
-            [ div
-                [ class "overflow-hidden"
-                , Styles.flexCol
-                , class "mb-4"
-                ]
-                [ h1 [ class "font-heading text-4xl text-center" ]
-                    [ text "ByzanTone" ]
-                , p [ class "font-serif text-center" ]
-                    [ text "A tool for learning the pitches and intervals of Byzantine chant." ]
-                , viewIf calendarInfo.isEastertide
-                    (p [ class "font-serif text-center" ]
-                        [ span [ class "font-greek" ] [ text "Χριστὸς ἀνέστη" ]
-                        , text " – "
-                        , text "Christ is risen!"
-                        ]
-                    )
+        , div [ Styles.flexCol, class "flex-1 mx-4" ]
+            [ Collapsible.div
+                (Collapsible.isOpen headerIsOpen)
+                []
+                [ div
+                    [ class "overflow-hidden"
+                    , Styles.flexCol
+                    , class "mb-4"
+                    ]
+                    [ h1 [ class "font-heading text-4xl text-center" ]
+                        [ text "ByzanTone" ]
+                    , p [ class "font-serif text-center" ]
+                        [ text "A tool for learning the pitches and intervals of Byzantine chant." ]
+                    , viewIf calendarInfo.isEastertide
+                        (p [ class "font-serif text-center" ]
+                            [ span [ class "font-greek" ] [ text "Χριστὸς ἀνέστη" ]
+                            , text " – "
+                            , text "Christ is risen!"
+                            ]
+                        )
 
-                -- , viewIf model.layoutData.showSpacing (p [ class "text-center" ] [ text "|" ])
+                    -- , viewIf model.layoutData.showSpacing (p [ class "text-center" ] [ text "|" ])
+                    ]
                 ]
+            , viewModeHeading modeSettings headerIsOpen
             ]
         , button
             [ class "w-7 mt-2 self-start"
@@ -486,6 +493,25 @@ modeDataRadioConfig =
                         ]
                 )
             )
+
+
+viewModeHeading : ModeSettings -> Bool -> Html Msg
+viewModeHeading modeSettings headerIsOpen =
+    h2
+        [ Styles.flexRowCentered
+        , Styles.transition
+        , class "font-heading text-xl lg:text-2xl"
+        , classList [ ( "mb-4", headerIsOpen ) ]
+        ]
+        [ ModeSettings.signature modeSettings
+            |> Maybe.map ModalSignature.view
+            |> Maybe.withDefaultLazy
+                (\_ ->
+                    ModeSettings.scale modeSettings
+                        |> Scale.name
+                        |> text
+                )
+        ]
 
 
 pitchTracker : AudioSettings -> LayoutData -> Html Msg

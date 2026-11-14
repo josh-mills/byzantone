@@ -558,8 +558,8 @@ isonSelectionIndicator modeSettings pitchState degree =
             let
                 degreeIsEligible =
                     case modeSettings.selection of
-                        Just (ByMode mode) ->
-                            List.member degree (Mode.data mode).isonOptions
+                        Just (ByMode selected) ->
+                            List.member degree (Mode.data selected.mode).isonOptions
 
                         _ ->
                             maybeCurrentIson /= Nothing || Degree.indexOf degree <= 12
