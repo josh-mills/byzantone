@@ -9,9 +9,9 @@ import Byzantine.Register as Register exposing (Register)
 import Byzantine.Scale as Scale exposing (Scale)
 import Components.Collapsible as Collapsible
 import Components.RadioFieldset as RadioFieldset
-import Html exposing (Html, button, div, span, text)
-import Html.Attributes as Attr exposing (class, classList, id)
-import Html.Events exposing (onClick, onInput)
+import Html exposing (Html, button, div, fieldset, input, label, legend, span, text)
+import Html.Attributes as Attr exposing (checked, class, classList, id)
+import Html.Events exposing (onCheck, onClick, onInput)
 import Html.Extra exposing (viewIf)
 import Html.Lazy exposing (..)
 import Icons
@@ -278,6 +278,7 @@ optionContent layout audioSettings modeSettings pitchState modeBuilderModel isOp
                                 (listenRegisterRadioConfig audioSettings)
                                 audioSettings.listenRegister
                             , lazy2 RadioFieldset.view pitchFeedbackRadioConfig audioSettings.pitchFeedback
+                            , lazy filterIsonCheckbox audioSettings.filterIsonFromMic
                             ]
 
                         AudioSettings.Play ->
@@ -290,7 +291,7 @@ optionContent layout audioSettings modeSettings pitchState modeBuilderModel isOp
             IsonMenu ->
                 wrapper
                     [ lazy isonButton pitchState.ison
-                    , lazy viewIsonStatus (PitchState.ison pitchState.ison)
+                    , Html.Extra.viewMaybe clearIsonButton (PitchState.ison pitchState.ison)
                     ]
 
             ScaleMenu ->
@@ -362,6 +363,27 @@ pitchFeedbackRadioConfig =
         }
 
 
+filterIsonCheckbox : Bool -> Html Msg
+filterIsonCheckbox isChecked =
+    fieldset [ Styles.borderRounded, class "px-2 pb-1 mb-2" ]
+        [ legend [ class "px-1" ] [ text "Speakers" ]
+        , div [ Styles.flexRow, class "items-center" ]
+            [ input
+                [ Attr.type_ "checkbox"
+                , id "filter-ison-checkbox"
+                , class "cursor-pointer m-2"
+                , checked isChecked
+                , onCheck Update.SetFilterIsonFromMic
+                ]
+                []
+            , label [ Attr.for "filter-ison-checkbox", class "cursor-pointer" ]
+                [ text "I'm using speakers" ]
+            ]
+        , div [ class "text-sm pb-1" ]
+            [ text "Helps keep the ison from being mistaken for your voice. Leave off when using headphones." ]
+        ]
+
+
 isonButton : IsonStatus -> Html Msg
 isonButton ison =
     button
@@ -391,28 +413,17 @@ isonButton ison =
         [ text "Select Ison" ]
 
 
-viewIsonStatus : Maybe Pitch -> Html Msg
-viewIsonStatus pitch =
-    div [ class "mt-2" ]
-        [ text "Current Ison: "
-        , case pitch of
-            Nothing ->
-                text "none"
-
-            Just p ->
-                Degree.text (Pitch.unwrapDegree p)
-        , viewIf (Maybe.isJust pitch) clearIsonButton
-        ]
-
-
-clearIsonButton : Html Msg
-clearIsonButton =
+clearIsonButton : Pitch -> Html Msg
+clearIsonButton pitch =
     button
         [ Styles.buttonClass
-        , class "mx-2"
+        , class "my-2"
         , onClick (Update.SetIson PitchState.NoIson)
         ]
-        [ text "clear" ]
+        [ text "Clear Ison ("
+        , Degree.text (Pitch.unwrapDegree pitch)
+        , text ")"
+        ]
 
 
 scaleRadioConfig : RadioFieldset.Config Scale Msg

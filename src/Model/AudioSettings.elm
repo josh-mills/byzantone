@@ -32,6 +32,7 @@ type alias AudioSettings =
     , listenRegister : ListenRegister
     , responsiveness : Responsiveness
     , pitchFeedback : PitchFeedbackUnit
+    , filterIsonFromMic : Bool
     }
 
 
@@ -44,6 +45,7 @@ defaultAudioSettings =
     , listenRegister = Auto Bass
     , responsiveness = Smooth
     , pitchFeedback = Moria
+    , filterIsonFromMic = False
     }
 
 

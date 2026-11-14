@@ -58,6 +58,7 @@ type Msg
     | SetListenRegister ListenRegister
     | SetResponsiveness AudioSettings.Responsiveness
     | SetPitchFeedback AudioSettings.PitchFeedbackUnit
+    | SetFilterIsonFromMic Bool
     | SetScale Scale
     | ToggleControlMenu ControlsMenu.MenuOption
     | ToggleHeaderCollapsed
@@ -157,7 +158,7 @@ update msg model =
         SetAudioMode mode ->
             ( { model
                 | detectedPitch = Nothing
-                , pitchState = PitchState.initialPitchState
+                , pitchState = PitchState.resetKeepingIson model.pitchState
               }
                 |> updateAudioSettings (\audioSettings -> { audioSettings | audioMode = mode })
                 |> resetPitchSpaceData
@@ -172,10 +173,19 @@ update msg model =
             )
 
         SetIson ison ->
-            ( updatePitchState
-                (\pitchState -> { pitchState | ison = ison })
-                model
-                |> resetPitchSpaceData
+            let
+                updatedModel =
+                    updatePitchState
+                        (\pitchState -> { pitchState | ison = ison })
+                        model
+                        |> resetPitchSpaceData
+            in
+            ( case ison of
+                PitchState.SelectingIson _ ->
+                    { updatedModel | openControlMenus = ControlsMenu.init }
+
+                _ ->
+                    updatedModel
             , Cmd.none
             )
 
@@ -228,6 +238,13 @@ update msg model =
         SetPitchFeedback pitchFeedback ->
             ( updateAudioSettings
                 (\audioSettings -> { audioSettings | pitchFeedback = pitchFeedback })
+                model
+            , Cmd.none
+            )
+
+        SetFilterIsonFromMic filterIsonFromMic ->
+            ( updateAudioSettings
+                (\audioSettings -> { audioSettings | filterIsonFromMic = filterIsonFromMic })
                 model
             , Cmd.none
             )
@@ -509,26 +526,44 @@ If in Play mode, this is the main means of interacting with the playback engine:
 it will select or deselect the pitch, apply or de-apply accidentals, or set the
 ison.
 
-If in Listen mode, this is used only for setting the accidental.
+If in Listen mode, this is used only for setting the ison (while selecting one)
+or the accidental.
 
 -}
 processPitchButtonClick : Model -> Degree -> Model
 processPitchButtonClick model degree =
     case model.audioSettings.audioMode of
         AudioSettings.Listen ->
-            updatePitchState
-                (\pitchState ->
-                    { pitchState
-                        | appliedAccidentals =
-                            applyAccidentalWithValidation model.modeSettings.scale
-                                model.pitchSpaceData
-                                model.pitchState
-                                degree
-                        , proposedAccidental = NoProposedAccidental
-                    }
-                )
-                model
-                |> resetPitchSpaceData
+            case model.pitchState.ison of
+                SelectingIson _ ->
+                    updatePitchState
+                        (\pitchState ->
+                            { pitchState
+                                | ison = Selected degree
+                                , appliedAccidentals =
+                                    DegreeDataDict.set degree
+                                        Nothing
+                                        pitchState.appliedAccidentals
+                                , proposedAccidental = NoProposedAccidental
+                            }
+                        )
+                        model
+                        |> resetPitchSpaceData
+
+                _ ->
+                    updatePitchState
+                        (\pitchState ->
+                            { pitchState
+                                | appliedAccidentals =
+                                    applyAccidentalWithValidation model.modeSettings.scale
+                                        model.pitchSpaceData
+                                        model.pitchState
+                                        degree
+                                , proposedAccidental = NoProposedAccidental
+                            }
+                        )
+                        model
+                        |> resetPitchSpaceData
 
         AudioSettings.Play ->
             let
