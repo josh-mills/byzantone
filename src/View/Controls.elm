@@ -291,7 +291,7 @@ optionContent layout audioSettings modeSettings pitchState modeBuilderModel isOp
             IsonMenu ->
                 wrapper
                     [ lazy isonButton pitchState.ison
-                    , lazy viewIsonStatus (PitchState.ison pitchState.ison)
+                    , Html.Extra.viewMaybe clearIsonButton (PitchState.ison pitchState.ison)
                     ]
 
             ScaleMenu ->
@@ -413,28 +413,17 @@ isonButton ison =
         [ text "Select Ison" ]
 
 
-viewIsonStatus : Maybe Pitch -> Html Msg
-viewIsonStatus pitch =
-    div [ class "mt-2" ]
-        [ text "Current Ison: "
-        , case pitch of
-            Nothing ->
-                text "none"
-
-            Just p ->
-                Degree.text (Pitch.unwrapDegree p)
-        , viewIf (Maybe.isJust pitch) clearIsonButton
-        ]
-
-
-clearIsonButton : Html Msg
-clearIsonButton =
+clearIsonButton : Pitch -> Html Msg
+clearIsonButton pitch =
     button
         [ Styles.buttonClass
-        , class "mx-2"
+        , class "my-2"
         , onClick (Update.SetIson PitchState.NoIson)
         ]
-        [ text "clear" ]
+        [ text "Clear Ison ("
+        , Degree.text (Pitch.unwrapDegree pitch)
+        , text ")"
+        ]
 
 
 scaleRadioConfig : RadioFieldset.Config Scale Msg
