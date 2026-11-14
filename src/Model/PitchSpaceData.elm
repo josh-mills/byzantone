@@ -45,13 +45,15 @@ as a result of model updates.
 
 import Byzantine.Degree as Degree exposing (Degree)
 import Byzantine.Interval as Interval exposing (Interval)
+import Byzantine.Mode as Mode
 import Byzantine.Pitch as Pitch exposing (Pitch)
 import Byzantine.PitchPosition as PitchPosition exposing (PitchPosition)
 import Byzantine.Scale exposing (Scale)
 import Maybe.Extra
+import ModeBuilder exposing (Selection(..))
 import Model.DegreeDataDict as DegreeDataDict exposing (DegreeDataDict)
 import Model.LayoutData as LayoutData exposing (Layout(..), LayoutData)
-import Model.ModeSettings exposing (ModeSettings)
+import Model.ModeSettings as ModeSettings exposing (ModeSettings)
 import Model.PitchState as PitchState exposing (PitchState)
 import Movement exposing (Movement)
 
@@ -134,32 +136,32 @@ init layoutData modeSettings pitchState =
             case proposedMovementTo of
                 Just ( movementToDegree, withAccidental ) ->
                     if degree == movementToDegree then
-                        Pitch.from modeSettings.scale
+                        ModeSettings.pitchFrom modeSettings
                             (Just withAccidental)
                             degree
 
                     else
-                        Pitch.from modeSettings.scale
+                        ModeSettings.pitchFrom modeSettings
                             (DegreeDataDict.get degree pitchState.appliedAccidentals)
                             degree
 
                 Nothing ->
-                    Pitch.from modeSettings.scale
+                    ModeSettings.pitchFrom modeSettings
                         (DegreeDataDict.get degree pitchState.appliedAccidentals)
                         degree
     in
     { display = determineDisplay layoutData
-    , isonIndicators = DegreeDataDict.init (isonSelectionIndicator pitchState)
+    , isonIndicators = DegreeDataDict.init (isonSelectionIndicator modeSettings pitchState)
     , pitches =
         DegreeDataDict.init
             (\degree ->
-                Pitch.from modeSettings.scale
+                ModeSettings.pitchFrom modeSettings
                     (DegreeDataDict.get degree pitchState.appliedAccidentals)
                     degree
             )
     , pitchPositions =
         DegreeDataDict.init
-            (Pitch.position modeSettings.scale << pitchWithAccidental)
+            (Pitch.position (ModeSettings.scale modeSettings) << pitchWithAccidental)
     , pitchVisibility = DegreeDataDict.init (visibility visibleRangeData)
     , scalingFactor = 10
     , visibleRange = visibleRangeData
@@ -173,32 +175,39 @@ consider additional limits as well.)
 -}
 calculateVisibleRange : ModeSettings -> PitchState -> VisibleRange
 calculateVisibleRange modeSettings pitchState =
-    case PitchState.currentPitch modeSettings.scale pitchState of
+    let
+        scale =
+            ModeSettings.scale modeSettings
+
+        range =
+            ModeSettings.range modeSettings
+    in
+    case PitchState.currentPitch modeSettings pitchState of
         Just currentPitch ->
             let
                 currentDegree =
                     Pitch.unwrapDegree currentPitch
 
                 startPitch =
-                    if Degree.indexOf currentDegree < Degree.indexOf modeSettings.rangeStart then
+                    if Degree.indexOf currentDegree < Degree.indexOf range.start then
                         currentPitch
 
                     else
-                        Pitch.natural modeSettings.rangeStart
+                        Pitch.natural range.start
 
                 endPitch =
-                    if Degree.indexOf currentDegree > Degree.indexOf modeSettings.rangeEnd then
+                    if Degree.indexOf currentDegree > Degree.indexOf range.end then
                         currentPitch
 
                     else
-                        Pitch.natural modeSettings.rangeEnd
+                        Pitch.natural range.end
             in
-            constructVisibleRange modeSettings.scale startPitch endPitch
+            constructVisibleRange scale startPitch endPitch
 
         Nothing ->
-            constructVisibleRange modeSettings.scale
-                (Pitch.natural modeSettings.rangeStart)
-                (Pitch.natural modeSettings.rangeEnd)
+            constructVisibleRange scale
+                (Pitch.natural range.start)
+                (Pitch.natural range.end)
 
 
 constructVisibleRange : Scale -> Pitch -> Pitch -> VisibleRange
@@ -534,31 +543,35 @@ type IsonSelectionIndicator
     | SelectingNotEligible
 
 
-{-| TODO: we'll need to get modal logic actually built out.
+{-| When a mode is selected, `ModeData.isonOptions` determines which degrees can
+be selected as the ison. Otherwise (no selection, or a scale), any degree is
+eligible when there is already an ison, and degrees up to index 12 are eligible
+when there isn't.
 -}
-isonSelectionIndicator : PitchState -> Degree -> IsonSelectionIndicator
-isonSelectionIndicator pitchState degree =
+isonSelectionIndicator : ModeSettings -> PitchState -> Degree -> IsonSelectionIndicator
+isonSelectionIndicator modeSettings pitchState degree =
     case pitchState.ison of
         PitchState.NoIson ->
             NotIson
 
-        PitchState.SelectingIson (Just currentIson) ->
-            if currentIson == degree then
+        PitchState.SelectingIson maybeCurrentIson ->
+            let
+                degreeIsEligible =
+                    case modeSettings.selection of
+                        Just (ByMode selected) ->
+                            List.member degree (Mode.data selected.mode).isonOptions
+
+                        _ ->
+                            maybeCurrentIson /= Nothing || Degree.indexOf degree <= 12
+            in
+            if not degreeIsEligible then
+                SelectingNotEligible
+
+            else if maybeCurrentIson == Just degree then
                 CanBeSelected_IsCurrent
 
             else
                 CanBeSelected_NotCurrent
-
-        PitchState.SelectingIson Nothing ->
-            let
-                degreeIsEligible =
-                    Degree.indexOf degree <= 12
-            in
-            if degreeIsEligible then
-                CanBeSelected_NotCurrent
-
-            else
-                SelectingNotEligible
 
         PitchState.Selected currentIson ->
             if currentIson == degree then

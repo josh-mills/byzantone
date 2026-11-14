@@ -1,7 +1,7 @@
 module Components.RadioFieldset exposing
     ( Config, baseConfig
     , Layout(..)
-    , withCustomSelected, withCustomViewItem, withConditionalPostpend, withItemToString, withLayout
+    , withCustomSelected, withCustomViewItem, withConditionalPostpend, withHiddenLegend, withItemToString, withLayout
     , view
     )
 
@@ -20,7 +20,7 @@ module Components.RadioFieldset exposing
 
 # Config Options
 
-@docs withCustomSelected, withCustomViewItem, withConditionalPostpend, withItemToString, withLayout
+@docs withCustomSelected, withCustomViewItem, withConditionalPostpend, withHiddenLegend, withItemToString, withLayout
 
 
 # View
@@ -46,9 +46,11 @@ import Styles
 
   - `Column` — the default; options stack vertically.
   - `FlexRow` — options are laid out in a wrapping horizontal row.
-  - `TwoColumnGrid` — options fill the first column top-to-bottom, then the
-    second column top-to-bottom, split as evenly as possible (the first column
-    gets the extra item when the count is odd).
+  - `TwoColumnGrid` — at the `lg` breakpoint and above, options fill the first
+    column top-to-bottom, then the second column top-to-bottom, split as evenly
+    as possible (the first column gets the extra item when the count is odd).
+    Below `lg`, options stack in a single column. The DOM order is always the
+    original option order.
 
 -}
 type Layout
@@ -65,6 +67,7 @@ type Config a msg
     = Config
         { itemToString : a -> String
         , legendText : String
+        , legendHidden : Bool
         , onSelect : a -> msg
         , options : List a
         , maybeBottomElement : Maybe (a -> Html msg)
@@ -85,6 +88,7 @@ baseConfig { itemToString, legendText, onSelect, options } =
     Config
         { itemToString = itemToString
         , legendText = legendText
+        , legendHidden = False
         , onSelect = onSelect
         , options = options
         , maybeBottomElement = Nothing
@@ -117,6 +121,19 @@ withConditionalPostpend bottomElement (Config config) =
     Config { config | maybeBottomElement = Just bottomElement }
 
 
+{-| Visually hide the legend while keeping it available to assistive
+technology. The `legendText` given to `baseConfig` is still rendered (as
+screen-reader-only text) and is still used to group the radio buttons, so it
+should remain meaningful.
+
+Use this sparingly, only when the options are self-explanatory in context.
+
+-}
+withHiddenLegend : Config a msg -> Config a msg
+withHiddenLegend (Config config) =
+    Config { config | legendHidden = True }
+
+
 {-| Override the `itemToString` function used to derive element IDs and default
 label text. Useful when two fieldsets share the same option type and would
 otherwise produce identical `id` attributes.
@@ -146,6 +163,11 @@ getItemToStringFn (Config { itemToString }) =
 getLegendText : Config a msg -> String
 getLegendText (Config { legendText }) =
     legendText
+
+
+getLegendHidden : Config a msg -> Bool
+getLegendHidden (Config { legendHidden }) =
+    legendHidden
 
 
 getOnSelectMsg : Config a msg -> a -> msg
@@ -200,20 +222,28 @@ view config selected =
                     [ div [ Styles.flexRow, class "flex-wrap" ] renderedOptions ]
 
                 TwoColumnGrid ->
-                    let
-                        ( col1, col2 ) =
-                            List.Extra.splitAt
-                                ((List.length renderedOptions + 1) // 2)
-                                renderedOptions
-                    in
-                    [ div [ class "grid grid-cols-2" ]
-                        (List.Extra.interweave col1 col2)
+                    [ div
+                        [ class "grid grid-cols-1 lg:grid-cols-2 lg:grid-flow-col lg:grid-rows-[repeat(var(--rows),auto)]"
+                        , Attr.attribute "style" ("--rows: " ++ String.fromInt ((List.length renderedOptions + 1) // 2))
+                        ]
+                        renderedOptions
                     ]
     in
     wrappedOptions
         |> addBottomElement config selected
         -- we could include an optional instruction text here, too
-        |> (::) (legend [ class "px-1" ] [ text (getLegendText config) ])
+        |> (::)
+            (legend
+                [ class
+                    (if getLegendHidden config then
+                        "sr-only"
+
+                     else
+                        "px-1"
+                    )
+                ]
+                [ text (getLegendText config) ]
+            )
         |> fieldset [ Styles.borderRounded, class "px-2 pb-1 mb-2" ]
 
 

@@ -95,10 +95,10 @@ compare position1 position2 =
 pitchPositions : Scale -> Array PitchPosition
 pitchPositions scale =
     case scale of
-        Diatonic ->
+        SoftDiatonic ->
             diatonicPitchPositions
 
-        Enharmonic ->
+        HardDiatonic ->
             enharmonicPitchPositions
 
         SoftChromatic ->

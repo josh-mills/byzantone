@@ -6,10 +6,10 @@ import Byzantine.Accidental as Accidental exposing (Accidental)
 import Byzantine.Degree as Degree exposing (Degree(..))
 import Byzantine.DetectedPitch as DetectedPitch
 import Byzantine.Frequency exposing (Frequency, PitchStandard)
+import Byzantine.Mode as Mode
 import Byzantine.Pitch as Pitch exposing (Pitch)
 import Byzantine.PitchPosition as PitchPosition
 import Byzantine.Register exposing (Register)
-import Byzantine.Scale exposing (Scale)
 import Http
 import Maybe.Extra as Maybe
 import ModeBuilder
@@ -18,7 +18,7 @@ import Model.AudioSettings as AudioSettings exposing (AudioSettings, ListenRegis
 import Model.ControlsMenu as ControlsMenu
 import Model.DegreeDataDict as DegreeDataDict exposing (DegreeDataDict)
 import Model.LayoutData exposing (LayoutData, LayoutSelection)
-import Model.ModeSettings exposing (ModeSettings)
+import Model.ModeSettings as ModeSettings exposing (ModeSettings)
 import Model.PitchSpaceData as PitchSpaceData exposing (PitchSpaceData)
 import Model.PitchState as PitchState exposing (IsonStatus(..), PitchState, ProposedAccidental(..))
 import Movement exposing (Movement)
@@ -58,7 +58,6 @@ type Msg
     | SetListenRegister ListenRegister
     | SetResponsiveness AudioSettings.Responsiveness
     | SetPitchFeedback AudioSettings.PitchFeedbackUnit
-    | SetScale Scale
     | ToggleControlMenu ControlsMenu.MenuOption
     | ToggleHeaderCollapsed
     | ToggleMenu
@@ -116,10 +115,21 @@ update msg model =
 
         ModeBuilderMsg subMsg ->
             let
-                ( modeBuilderModel, modeBuilderCmd ) =
+                ( modeBuilderModel, modeBuilderCmd, maybeSelection ) =
                     ModeBuilder.update subMsg model.modeBuilder
             in
             ( { model | modeBuilder = modeBuilderModel }
+                |> updateModeSettings
+                    (\modeSettings ->
+                        case maybeSelection of
+                            Just _ ->
+                                { modeSettings | selection = maybeSelection }
+
+                            Nothing ->
+                                modeSettings
+                    )
+                |> clearInvalidIson
+                |> resetPitchSpaceData
             , Cmd.map ModeBuilderMsg modeBuilderCmd
             )
 
@@ -232,15 +242,6 @@ update msg model =
             , Cmd.none
             )
 
-        SetScale scale ->
-            ( updateModeSettings
-                (\modeSettings -> { modeSettings | scale = scale })
-                -- , currentPitch = Nothing -- consider this.
-                model
-                |> resetPitchSpaceData
-            , Cmd.none
-            )
-
         SetDetectedPitch { maybeFrequency, timestamp } ->
             ( case model.audioSettings.audioMode of
                 AudioSettings.Listen ->
@@ -277,29 +278,48 @@ update msg model =
             handleKeydown key model
 
 
-{-| Applies accidental transformations (flat/sharp). Uses defaultAccidental if none
-applied, or transforms existing accidental, cancelling if transformation fails.
+{-| Steps the proposed accidental (flat/sharp) with the given function, e.g.,
+`Accidental.raiseWithin`. The step is taken within the accidentals relevant to the
+current selection (see `ModeSettings.relevantAccidentals`), mirroring the
+accidental buttons that are enabled.
 -}
-handleAccidentalKey : (Accidental -> Maybe Accidental) -> Accidental -> Model -> Model
-handleAccidentalKey transformAccidental defaultAccidental model =
+handleAccidentalKey : (List Accidental -> Maybe Accidental -> Maybe Accidental) -> Model -> Model
+handleAccidentalKey stepWithin model =
+    let
+        step =
+            stepWithin (ModeSettings.relevantAccidentals model.modeSettings)
+    in
     updatePitchState
-        (\pitchState ->
-            { pitchState
-                | proposedAccidental =
-                    case pitchState.proposedAccidental of
-                        Apply accidental ->
-                            case transformAccidental accidental of
-                                Just transformedAccidental ->
-                                    Apply transformedAccidental
-
-                                Nothing ->
-                                    CancelAccidental
-
-                        _ ->
-                            Apply defaultAccidental
-            }
-        )
+        (\pitchState -> { pitchState | proposedAccidental = nextProposedAccidental step pitchState })
         model
+
+
+{-| The next proposal after stepping. With no accidental proposed, this starts
+from natural, and is left unchanged if there is nowhere to step. Stepping past the
+last accidental proposes `CancelAccidental`, but only if there is an applied
+accidental to cancel; otherwise the proposal is cleared.
+-}
+nextProposedAccidental : (Maybe Accidental -> Maybe Accidental) -> PitchState -> ProposedAccidental
+nextProposedAccidental step pitchState =
+    case pitchState.proposedAccidental of
+        Apply accidental ->
+            step (Just accidental)
+                |> Maybe.map Apply
+                |> Maybe.withDefault (cancelOrClear pitchState)
+
+        _ ->
+            step Nothing
+                |> Maybe.map Apply
+                |> Maybe.withDefault pitchState.proposedAccidental
+
+
+cancelOrClear : PitchState -> ProposedAccidental
+cancelOrClear pitchState =
+    if PitchState.hasAppliedAccidentals pitchState then
+        CancelAccidental
+
+    else
+        NoProposedAccidental
 
 
 handleSelectPitch : Maybe Pitch -> Maybe Movement -> Model -> Model
@@ -365,7 +385,7 @@ handleSelectProposedMovement movement model =
 computeMovementWithAccidental : Model -> Movement -> Movement
 computeMovementWithAccidental model movement =
     Movement.applyAccidental
-        model.modeSettings.scale
+        (ModeSettings.pitchFrom model.modeSettings)
         (PitchState.unwrapProposedAccidental model.pitchState.proposedAccidental)
         movement
 
@@ -378,7 +398,7 @@ validateMovement model movementWithAccidental fallbackMovement =
     Maybe.unwrap Movement.None
         (\currentPitch ->
             if
-                Movement.isValid model.modeSettings.scale
+                Movement.isValid (ModeSettings.scale model.modeSettings)
                     currentPitch
                     movementWithAccidental
             then
@@ -387,7 +407,45 @@ validateMovement model movementWithAccidental fallbackMovement =
             else
                 fallbackMovement
         )
-        (PitchState.currentPitch model.modeSettings.scale model.pitchState)
+        (PitchState.currentPitch model.modeSettings model.pitchState)
+
+
+{-| If a mode is selected, clear the ison when it is not one of the mode's
+`isonOptions`. An ison that is being changed (`SelectingIson`) keeps its
+selecting status, but loses its current degree.
+-}
+clearInvalidIson : Model -> Model
+clearInvalidIson model =
+    case model.modeSettings.selection of
+        Just (ModeBuilder.ByMode selected) ->
+            let
+                isValid degree =
+                    List.member degree (Mode.data selected.mode).isonOptions
+            in
+            updatePitchState
+                (\pitchState ->
+                    case pitchState.ison of
+                        Selected degree ->
+                            if isValid degree then
+                                pitchState
+
+                            else
+                                { pitchState | ison = NoIson }
+
+                        SelectingIson (Just degree) ->
+                            if isValid degree then
+                                pitchState
+
+                            else
+                                { pitchState | ison = SelectingIson Nothing }
+
+                        _ ->
+                            pitchState
+                )
+                model
+
+        _ ->
+            model
 
 
 type RangePointToUpdate
@@ -401,17 +459,17 @@ array.
 handleRangeUpdate : RangePointToUpdate -> String -> Model -> Model
 handleRangeUpdate rangePoint rangeValue model =
     updateModeSettings
-        (\modeSettings ->
+        (\({ range } as modeSettings) ->
             String.toInt rangeValue
                 |> Maybe.andThen (\i -> Array.get i Degree.gamut)
                 |> Maybe.map
                     (\degree ->
                         case rangePoint of
                             RangeStart ->
-                                { modeSettings | rangeStart = degree }
+                                { modeSettings | range = { range | start = degree } }
 
                             RangeEnd ->
-                                { modeSettings | rangeEnd = degree }
+                                { modeSettings | range = { range | end = degree } }
                     )
                 |> Maybe.withDefault modeSettings
         )
@@ -520,7 +578,7 @@ processPitchButtonClick model degree =
                 (\pitchState ->
                     { pitchState
                         | appliedAccidentals =
-                            applyAccidentalWithValidation model.modeSettings.scale
+                            applyAccidentalWithValidation model.modeSettings
                                 model.pitchSpaceData
                                 model.pitchState
                                 degree
@@ -563,7 +621,7 @@ processPitchButtonClick model degree =
                         ( ison, Apply _, True ) ->
                             ( ison
                             , model.pitchState.currentDegree
-                            , applyAccidentalWithValidation model.modeSettings.scale
+                            , applyAccidentalWithValidation model.modeSettings
                                 model.pitchSpaceData
                                 model.pitchState
                                 degree
@@ -580,7 +638,7 @@ processPitchButtonClick model degree =
                         ( ison, Apply _, False ) ->
                             ( ison
                             , Just degree
-                            , applyAccidentalWithValidation model.modeSettings.scale
+                            , applyAccidentalWithValidation model.modeSettings
                                 model.pitchSpaceData
                                 model.pitchState
                                 degree
@@ -612,13 +670,18 @@ processPitchButtonClick model degree =
                 |> resetPitchSpaceData
 
 
-applyAccidentalWithValidation : Scale -> PitchSpaceData -> PitchState -> Degree -> DegreeDataDict (Maybe Accidental)
-applyAccidentalWithValidation scale { pitchPositions } pitchState degree =
+applyAccidentalWithValidation : ModeSettings -> PitchSpaceData -> PitchState -> Degree -> DegreeDataDict (Maybe Accidental)
+applyAccidentalWithValidation modeSettings { pitchPositions } pitchState degree =
     case pitchState.proposedAccidental of
         Apply accidental ->
             let
                 isValidInflection =
-                    PitchPosition.isValidInflection scale accidental degree
+                    case ModeSettings.mode modeSettings of
+                        Just mode ->
+                            Mode.isValidInflection mode accidental degree
+
+                        Nothing ->
+                            PitchPosition.isValidInflection (ModeSettings.scale modeSettings) accidental degree
 
                 positonWithInflection =
                     PitchPosition.inflect (DegreeDataDict.get degree pitchPositions) accidental
@@ -771,10 +834,10 @@ handleKeydown key model =
             handleIsonToggle model
 
         "f" ->
-            ( handleAccidentalKey Accidental.lower Accidental.Flat2 model, Cmd.none )
+            ( handleAccidentalKey Accidental.lowerWithin model, Cmd.none )
 
         "s" ->
-            ( handleAccidentalKey Accidental.raise Accidental.Sharp2 model, Cmd.none )
+            ( handleAccidentalKey Accidental.raiseWithin model, Cmd.none )
 
         _ ->
             ( model, Cmd.none )
@@ -837,7 +900,7 @@ moveAndFocus model interval =
             model.pitchState.currentDegree
                 |> Maybe.andThen (\degree -> Degree.step degree interval)
                 |> Maybe.map
-                    (Pitch.from model.modeSettings.scale
+                    (ModeSettings.pitchFrom model.modeSettings
                         (PitchState.unwrapProposedAccidental model.pitchState.proposedAccidental)
                     )
     in

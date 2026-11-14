@@ -1,7 +1,7 @@
 module Byzantine.Mode exposing
     ( Mode(..), toString, all
-    , ModeData, data
-    , Inflection
+    , ModeData, data, Range
+    , Inflection, isValidInflection, relevantAccidentals, pitchFrom
     )
 
 {-| Data structure to capture modal characteristics.
@@ -16,21 +16,25 @@ TODO: verify signatures.
 
 # Mode Data
 
-@docs ModeData, data
+@docs ModeData, data, Range
 
 
 ## Melodic Attractions
 
-@docs Inflection
+@docs Inflection, isValidInflection, relevantAccidentals, pitchFrom
 
 -}
 
-import Byzantine.Accidental exposing (Accidental(..))
-import Byzantine.Degree exposing (Degree(..))
+import Byzantine.Accidental as Accidental exposing (Accidental(..))
+import Byzantine.Degree as Degree exposing (Degree(..))
 import Byzantine.Mode.Classification exposing (Classification(..), Ordinal(..))
 import Byzantine.Mode.Genre exposing (Genre(..))
 import Byzantine.Mode.Signature as Signature exposing (Signature)
+import Byzantine.Pitch as Pitch exposing (Pitch)
+import Byzantine.PitchPosition as PitchPosition
 import Byzantine.Scale exposing (Scale(..))
+import List.Extra
+import Model.DegreeDataDict as DegreeDataDict exposing (DegreeDataDict)
 
 
 type Mode
@@ -43,6 +47,7 @@ type Mode
     | AuthenticFour_Bou_Legetos
     | AuthenticFour_Di_Agia
     | AuthenticFour_Pa_Sticheraric
+    | AuthenticFour_DiBou
     | PlagalOne_Pa_Sticheraric
     | PlagalOne_Pa_Papadic
     | PlagalOne_Ke_Eirmologic
@@ -51,6 +56,7 @@ type Mode
     | PlagalOne_Pa_Minor
     | PlagalTwo_Pa
     | PlagalTwo_Di
+    | PlagalTwo_Di_Triphone
     | PlagalThree_Ga
     | PlagalThree_Zo
     | PlagalThree_Zo_Hard
@@ -90,6 +96,9 @@ toString mode =
         AuthenticFour_Pa_Sticheraric ->
             "Fourth-First, Sticheraric Fourth Mode"
 
+        AuthenticFour_DiBou ->
+            "Soft-Chromatic Medial Fourth Mode"
+
         PlagalOne_Pa_Sticheraric ->
             "Plagal Mode One, Sticheraric"
 
@@ -113,6 +122,9 @@ toString mode =
 
         PlagalTwo_Di ->
             "Plagal Mode Two, Soft Chromatic"
+
+        PlagalTwo_Di_Triphone ->
+            "Plagal Mode Two, Hard Chromatic Triphone"
 
         PlagalThree_Ga ->
             "Grave Mode (Eirmologic, Sticheraric)"
@@ -141,6 +153,7 @@ all =
     , AuthenticFour_Bou_Legetos
     , AuthenticFour_Di_Agia
     , AuthenticFour_Pa_Sticheraric
+    , AuthenticFour_DiBou
     , PlagalOne_Pa_Sticheraric
     , PlagalOne_Pa_Papadic
     , PlagalOne_Ke_Eirmologic
@@ -149,6 +162,7 @@ all =
     , PlagalOne_Pa_Minor
     , PlagalTwo_Pa
     , PlagalTwo_Di
+    , PlagalTwo_Di_Triphone
     , PlagalThree_Ga
     , PlagalThree_Zo
     , PlagalThree_Zo_Hard
@@ -191,6 +205,9 @@ data mode =
         AuthenticFour_Pa_Sticheraric ->
             authenticFour_Pa_Sticheraric
 
+        AuthenticFour_DiBou ->
+            authenticFour_DiBou
+
         PlagalOne_Pa_Sticheraric ->
             plagalOne_Pa_Sticheraric
 
@@ -215,6 +232,9 @@ data mode =
         PlagalTwo_Di ->
             plagalTwo_Di
 
+        PlagalTwo_Di_Triphone ->
+            plagalTwo_Di_Triphone
+
         PlagalThree_Ga ->
             plagalThree_Ga
 
@@ -237,6 +257,12 @@ data mode =
   - modal signature (may be more than one)
   - apichima
 
+Another possible point to model: mixed-scale modes, e.g.,
+hard chromatic bottom tetrachord, soft diatonic upper tetrachord. `scale : Scale` might be the wrong modeling;
+we may need a tetrachordal structure model that could be either a consistent scale
+or a mixed scale of two different tetrachords.
+E.g., triphone plagal second on Di, Boyer 5-VI, p. 480.
+
 -}
 type alias ModeData =
     { classification : Classification
@@ -245,12 +271,17 @@ type alias ModeData =
     , scale : Scale
     , dominantTones : DominantTones
     , isonOptions : List Degree
-    , range :
-        { start : Degree
-        , end : Degree
-        }
+    , range : Range
     , recitingTone : Degree
-    , possibleInflections : List Inflection
+    , possibleInflections : DegreeDataDict (Maybe Inflection)
+    }
+
+
+{-| The range of degrees, inclusive, over which a mode is sung.
+-}
+type alias Range =
+    { start : Degree
+    , end : Degree
     }
 
 
@@ -269,13 +300,83 @@ type alias CadencePoints =
     }
 
 
-{-| This will need to be expanded to capture additional musical details, namely,
+{-| The melodic attractions available at a single degree. Stored in a
+`DegreeDataDict`, so `degree` is redundant with the dict key; it is kept so an
+`Inflection` remains self-describing.
+
+This will need to be expanded to capture additional musical details, namely,
 context, and whether or not the inflection is discretionary or forced.
+
 -}
 type alias Inflection =
     { degree : Degree
     , accidentals : List Accidental
     }
+
+
+{-| Can the accidental be applied to the degree within the mode? The accidental
+must be one of the mode's possible inflections for that degree, and it must also
+be a valid inflection within the mode's scale.
+-}
+isValidInflection : Mode -> Accidental -> Degree -> Bool
+isValidInflection mode accidental degree =
+    let
+        modeData =
+            data mode
+    in
+    PitchPosition.isValidInflection modeData.scale accidental degree
+        && (DegreeDataDict.get degree modeData.possibleInflections
+                |> Maybe.map (\inflection -> List.member accidental inflection.accidentals)
+                |> Maybe.withDefault False
+           )
+
+
+{-| Every accidental that appears among the mode's possible inflections at any
+degree, without duplicates, sorted by moria adjustment (most flat to most
+sharp).
+-}
+relevantAccidentals : Mode -> List Accidental
+relevantAccidentals mode =
+    let
+        possibleInflections =
+            (data mode).possibleInflections
+    in
+    Degree.gamutList
+        |> List.filterMap (\degree -> DegreeDataDict.get degree possibleInflections)
+        |> List.concatMap .accidentals
+        |> List.Extra.unique
+        |> List.sortBy Accidental.moriaAdjustment
+
+
+{-| Construct a pitch for a degree within the mode. If the accidental is not
+valid for the degree within the mode (see `isValidInflection`), or is `Nothing`,
+the pitch is natural.
+-}
+pitchFrom : Mode -> Maybe Accidental -> Degree -> Pitch
+pitchFrom mode maybeAccidental degree =
+    Pitch.from (data mode).scale
+        (maybeAccidental
+            |> Maybe.andThen
+                (\accidental ->
+                    if isValidInflection mode accidental degree then
+                        Just accidental
+
+                    else
+                        Nothing
+                )
+        )
+        degree
+
+
+{-| Build a mode's inflections from a sparse list. Each inflection is stored
+under its own `degree`; every unlisted degree is `Nothing`. If a degree
+is listed more than once, the last entry wins.
+-}
+inflections : List Inflection -> DegreeDataDict (Maybe Inflection)
+inflections =
+    List.foldl
+        (\inflection -> DegreeDataDict.set inflection.degree (Just inflection))
+        (DegreeDataDict.init (\_ -> Nothing))
 
 
 
@@ -287,7 +388,7 @@ authenticOne_Ke_Papadic =
     { classification = Authentic ModeOne
     , genres = [ Papadic ]
     , signatures = [ Signature.authenticOneKe ]
-    , scale = Diatonic
+    , scale = SoftDiatonic
     , dominantTones =
         { base = Ke
         , cadencePoints =
@@ -305,11 +406,12 @@ authenticOne_Ke_Papadic =
         }
     , recitingTone = Ke
     , possibleInflections =
-        [ { degree = Zo_, accidentals = [ Sharp2 ] }
-        , { degree = Pa_, accidentals = [ Flat2, Flat4 ] }
-        , { degree = Ni_, accidentals = [ Sharp2, Sharp4 ] }
-        , { degree = Ga, accidentals = [ Sharp4, Sharp6 ] }
-        ]
+        inflections
+            [ { degree = Zo_, accidentals = [ Sharp2 ] }
+            , { degree = Pa_, accidentals = [ Flat2, Flat4 ] }
+            , { degree = Ni_, accidentals = [ Sharp2, Sharp4 ] }
+            , { degree = Ga, accidentals = [ Sharp4, Sharp6 ] }
+            ]
     }
 
 
@@ -318,7 +420,7 @@ authenticOne_Pa_Eirmologic =
     { classification = Authentic ModeOne
     , genres = [ Eirmologic ]
     , signatures = [ Signature.authenticOnePa ]
-    , scale = Diatonic
+    , scale = SoftDiatonic
     , dominantTones =
         { base = Pa
         , cadencePoints =
@@ -336,11 +438,12 @@ authenticOne_Pa_Eirmologic =
         }
     , recitingTone = Di
     , possibleInflections =
-        [ { degree = Ga, accidentals = [ Sharp2, Sharp4 ] }
-        , { degree = Bou, accidentals = [ Sharp2 ] }
-        , { degree = Di, accidentals = [ Flat4 ] }
-        , { degree = Zo_, accidentals = [ Flat4 ] }
-        ]
+        inflections
+            [ { degree = Ga, accidentals = [ Sharp2, Sharp4 ] }
+            , { degree = Bou, accidentals = [ Sharp2 ] }
+            , { degree = Di, accidentals = [ Flat4 ] }
+            , { degree = Zo_, accidentals = [ Flat4 ] }
+            ]
     }
 
 
@@ -355,7 +458,7 @@ authenticOne_Pa_Sticheraric =
     { classification = Authentic ModeOne
     , genres = [ Sticheraric ]
     , signatures = [ Signature.authenticOnePa ]
-    , scale = Diatonic
+    , scale = SoftDiatonic
     , dominantTones =
         { base = Pa
         , cadencePoints =
@@ -370,11 +473,12 @@ authenticOne_Pa_Sticheraric =
     , range = { start = DI, end = Pa_ }
     , recitingTone = Pa
     , possibleInflections =
-        [ { degree = Bou, accidentals = [ Sharp2, Sharp4 ] }
-        , { degree = Di, accidentals = [ Flat2, Flat4, Flat6 ] }
-        , { degree = Ga, accidentals = [ Sharp2, Sharp4 ] }
-        , { degree = Zo_, accidentals = [ Flat4 ] }
-        ]
+        inflections
+            [ { degree = Bou, accidentals = [ Sharp2, Sharp4 ] }
+            , { degree = Di, accidentals = [ Flat2, Flat4, Flat6 ] }
+            , { degree = Ga, accidentals = [ Sharp2, Sharp4 ] }
+            , { degree = Zo_, accidentals = [ Flat4 ] }
+            ]
     }
 
 
@@ -415,11 +519,12 @@ authenticTwo_Di =
     , range = { start = Ni, end = Ga_ }
     , recitingTone = Di
     , possibleInflections =
-        [ { degree = Ga, accidentals = [ Sharp2, Sharp4, Sharp6 ] }
-        , { degree = Pa, accidentals = [ Sharp4, Sharp6 ] }
-        , { degree = Ke, accidentals = [ Sharp2, Sharp4 ] }
-        , { degree = Zo_, accidentals = [ Sharp2, Sharp4 ] }
-        ]
+        inflections
+            [ { degree = Ga, accidentals = [ Sharp2, Sharp4, Sharp6 ] }
+            , { degree = Pa, accidentals = [ Sharp4, Sharp6 ] }
+            , { degree = Ke, accidentals = [ Sharp2, Sharp4 ] }
+            , { degree = Zo_, accidentals = [ Sharp2, Sharp4 ] }
+            ]
     }
 
 
@@ -441,7 +546,7 @@ authenticThree_Ga_Eirmologic =
     { classification = Authentic ModeThree
     , genres = [ Eirmologic, Sticheraric ]
     , signatures = [ Signature.lowerThirdGa_1, Signature.lowerThirdGa_2, Signature.lowerThirdGa_3 ]
-    , scale = Diatonic
+    , scale = SoftDiatonic
     , dominantTones =
         { base = Ga
         , cadencePoints =
@@ -456,11 +561,12 @@ authenticThree_Ga_Eirmologic =
     , range = { start = Ni, end = Ga_ }
     , recitingTone = Ke
     , possibleInflections =
-        [ { degree = Bou, accidentals = [ Sharp2, Sharp4 ] }
-        , { degree = Di, accidentals = [ Sharp2, Sharp4 ] }
-        , { degree = Zo_, accidentals = [ Flat4 ] }
-        , { degree = Pa, accidentals = [ Sharp4 ] }
-        ]
+        inflections
+            [ { degree = Bou, accidentals = [ Sharp2, Sharp4 ] }
+            , { degree = Di, accidentals = [ Sharp2, Sharp4 ] }
+            , { degree = Zo_, accidentals = [ Flat4 ] }
+            , { degree = Pa, accidentals = [ Sharp4 ] }
+            ]
     }
 
 
@@ -478,7 +584,7 @@ authenticThree_Ga_Papadic =
     { classification = Authentic ModeThree
     , genres = [ Papadic ]
     , signatures = [ Signature.lowerThirdGa_papadic ]
-    , scale = Diatonic
+    , scale = SoftDiatonic
     , dominantTones =
         { base = Ga
         , cadencePoints =
@@ -493,9 +599,10 @@ authenticThree_Ga_Papadic =
     , range = { start = Ni, end = Ga_ }
     , recitingTone = Ke
     , possibleInflections =
-        [ { degree = Ke, accidentals = [ Sharp2 ] }
-        , { degree = Bou_, accidentals = [ Flat4 ] }
-        ]
+        inflections
+            [ { degree = Ke, accidentals = [ Sharp2 ] }
+            , { degree = Bou_, accidentals = [ Flat4 ] }
+            ]
     }
 
 
@@ -516,7 +623,7 @@ authenticFour_Bou_Legetos =
     { classification = Authentic ModeFour
     , genres = [ Eirmologic ]
     , signatures = [ Signature.medialFourBou_1, Signature.medialFourBou_2 ]
-    , scale = Diatonic
+    , scale = SoftDiatonic
     , dominantTones =
         { base = Bou
         , cadencePoints =
@@ -531,11 +638,12 @@ authenticFour_Bou_Legetos =
     , range = { start = DI, end = Pa_ }
     , recitingTone = Di
     , possibleInflections =
-        [ { degree = Pa, accidentals = [ Sharp2, Sharp4, Sharp6 ] }
-        , { degree = Ga, accidentals = [ Sharp2, Sharp4 ] }
-        , { degree = Ke, accidentals = [ Flat2, Sharp4 ] }
-        , { degree = Zo_, accidentals = [ Flat4 ] }
-        ]
+        inflections
+            [ { degree = Pa, accidentals = [ Sharp2, Sharp4, Sharp6 ] }
+            , { degree = Ga, accidentals = [ Sharp2, Sharp4 ] }
+            , { degree = Ke, accidentals = [ Flat2, Sharp4 ] }
+            , { degree = Zo_, accidentals = [ Flat4 ] }
+            ]
     }
 
 
@@ -558,7 +666,7 @@ authenticFour_Di_Agia =
     { classification = Authentic ModeFour
     , genres = [ Papadic ]
     , signatures = [ Signature.authenticFourDi ]
-    , scale = Diatonic
+    , scale = SoftDiatonic
     , dominantTones =
         { base = Di
         , cadencePoints =
@@ -573,11 +681,12 @@ authenticFour_Di_Agia =
     , range = { start = Zo, end = Pa_ }
     , recitingTone = Zo_
     , possibleInflections =
-        [ { degree = Ga, accidentals = [ Sharp2, Sharp4, Sharp6 ] }
-        , { degree = Ke, accidentals = [ Sharp2, Sharp4 ] }
-        , { degree = Zo_, accidentals = [ Flat4, Sharp2, Sharp4 ] }
-        , { degree = Ni_, accidentals = [ Sharp4, Sharp6 ] }
-        ]
+        inflections
+            [ { degree = Ga, accidentals = [ Sharp2, Sharp4, Sharp6 ] }
+            , { degree = Ke, accidentals = [ Sharp2, Sharp4 ] }
+            , { degree = Zo_, accidentals = [ Flat4, Sharp2, Sharp4 ] }
+            , { degree = Ni_, accidentals = [ Sharp4, Sharp6 ] }
+            ]
     }
 
 
@@ -599,7 +708,7 @@ authenticFour_Pa_Sticheraric =
     { classification = Authentic ModeFour
     , genres = [ Sticheraric ]
     , signatures = [ Signature.paramedialFourPa ]
-    , scale = Diatonic
+    , scale = SoftDiatonic
     , dominantTones =
         { base = Bou
         , cadencePoints =
@@ -614,11 +723,44 @@ authenticFour_Pa_Sticheraric =
     , range = { start = DI, end = Ni_ }
     , recitingTone = Pa
     , possibleInflections =
-        [ { degree = Pa, accidentals = [ Sharp2, Sharp4 ] }
-        , { degree = Ga, accidentals = [ Sharp2, Sharp4 ] }
-        , { degree = Ke, accidentals = [ Flat2, Sharp4 ] }
-        , { degree = Zo_, accidentals = [ Flat4, Sharp2, Sharp4 ] }
-        ]
+        inflections
+            [ { degree = Pa, accidentals = [ Sharp2, Sharp4 ] }
+            , { degree = Ga, accidentals = [ Sharp2, Sharp4 ] }
+            , { degree = Ke, accidentals = [ Flat2, Sharp4 ] }
+            , { degree = Zo_, accidentals = [ Flat4, Sharp2, Sharp4 ] }
+            ]
+    }
+
+
+{-| not entirely sure about range. Also, genre is odd. Boyer notes that it's a
+misnomer to refer to this as an eirmologic mode, although many do. But, neither
+does he classify this explicitly as sticheraric.
+-}
+authenticFour_DiBou : ModeData
+authenticFour_DiBou =
+    { classification = Authentic ModeFour
+    , genres = []
+    , signatures = [ Signature.medialFourDi_softChromatic, Signature.medialFourBou_softChromatic ]
+    , scale = SoftChromatic
+    , dominantTones =
+        { base = Di
+        , cadencePoints =
+            { final = Bou
+            , complete = [ Bou, Di ]
+            , medial = []
+            , incomplete = [ Di ]
+            }
+        , nonCadentialFoci = [ Zo_ ]
+        }
+    , isonOptions = [ Di, DI ]
+    , range = { start = Pa, end = Pa_ }
+    , recitingTone = Di
+    , possibleInflections =
+        inflections
+            [ { degree = Ga, accidentals = [ Sharp2, Sharp4, Sharp6 ] }
+            , { degree = Pa, accidentals = [ Sharp4, Sharp6, Sharp8 ] }
+            , { degree = Ke, accidentals = [ Sharp2, Sharp4 ] }
+            ]
     }
 
 
@@ -634,7 +776,7 @@ plagalOne_Pa_Sticheraric =
     { classification = Plagal ModeOne
     , genres = [ Sticheraric ]
     , signatures = [ Signature.plagalFirstPa ]
-    , scale = Diatonic
+    , scale = SoftDiatonic
     , dominantTones =
         { base = Pa
         , cadencePoints =
@@ -652,9 +794,10 @@ plagalOne_Pa_Sticheraric =
         }
     , recitingTone = Di
     , possibleInflections =
-        [ { degree = Ga, accidentals = [ Sharp2, Sharp4, Sharp6 ] }
-        , { degree = Zo_, accidentals = [ Flat4 ] }
-        ]
+        inflections
+            [ { degree = Ga, accidentals = [ Sharp2, Sharp4, Sharp6 ] }
+            , { degree = Zo_, accidentals = [ Flat4 ] }
+            ]
     }
 
 
@@ -671,7 +814,7 @@ plagalOne_Pa_Papadic =
     { classification = Plagal ModeOne
     , genres = [ Papadic ]
     , signatures = [ Signature.plagalFirstPa ]
-    , scale = Diatonic
+    , scale = SoftDiatonic
     , dominantTones =
         { base = Pa
         , cadencePoints =
@@ -689,11 +832,12 @@ plagalOne_Pa_Papadic =
         }
     , recitingTone = Di
     , possibleInflections =
-        [ { degree = Bou, accidentals = [ Sharp2 ] }
-        , { degree = Ga, accidentals = [ Sharp2, Sharp4, Sharp6 ] }
-        , { degree = Di, accidentals = [ Flat4 ] }
-        , { degree = Zo_, accidentals = [ Flat4 ] }
-        ]
+        inflections
+            [ { degree = Bou, accidentals = [ Sharp2 ] }
+            , { degree = Ga, accidentals = [ Sharp2, Sharp4, Sharp6 ] }
+            , { degree = Di, accidentals = [ Flat4 ] }
+            , { degree = Zo_, accidentals = [ Flat4 ] }
+            ]
     }
 
 
@@ -702,7 +846,7 @@ plagalOne_Ke_Eirmologic =
     { classification = Plagal ModeOne
     , genres = [ Eirmologic ]
     , signatures = [ Signature.plagalFirstKe ]
-    , scale = Diatonic
+    , scale = SoftDiatonic
     , dominantTones =
         { base = Ke
         , cadencePoints =
@@ -720,11 +864,12 @@ plagalOne_Ke_Eirmologic =
         }
     , recitingTone = Ke
     , possibleInflections =
-        [ { degree = Zo_, accidentals = [ Sharp2 ] }
-        , { degree = Pa_, accidentals = [ Flat2, Flat4 ] }
-        , { degree = Ni_, accidentals = [ Sharp2, Sharp4 ] }
-        , { degree = Ga_, accidentals = [ Flat4 ] }
-        ]
+        inflections
+            [ { degree = Zo_, accidentals = [ Sharp2 ] }
+            , { degree = Pa_, accidentals = [ Flat2, Flat4 ] }
+            , { degree = Ni_, accidentals = [ Sharp2, Sharp4 ] }
+            , { degree = Ga_, accidentals = [ Flat4 ] }
+            ]
     }
 
 
@@ -741,7 +886,7 @@ plagalOne_Pa_Pentaphone =
     { classification = Plagal ModeOne
     , genres = [ Sticheraric, Papadic ]
     , signatures = [ Signature.plagalFirstPa_pentaphone ]
-    , scale = Enharmonic
+    , scale = HardDiatonic
     , dominantTones =
         { base = Pa
         , cadencePoints =
@@ -756,8 +901,9 @@ plagalOne_Pa_Pentaphone =
     , range = { start = KE, end = Pa_ }
     , recitingTone = Di
     , possibleInflections =
-        [ { degree = Zo_, accidentals = [ Flat4 ] }
-        ]
+        inflections
+            [ { degree = Zo_, accidentals = [ Flat4 ] }
+            ]
     }
 
 
@@ -780,7 +926,7 @@ plagalOne_Pa_Phrygian =
     { classification = Plagal ModeOne
     , genres = [ Sticheraric, Papadic ]
     , signatures = [ Signature.plagalFirstPa_phrygian ]
-    , scale = Enharmonic
+    , scale = HardDiatonic
     , dominantTones =
         { base = Pa
         , cadencePoints =
@@ -795,10 +941,11 @@ plagalOne_Pa_Phrygian =
     , range = { start = KE, end = Pa_ }
     , recitingTone = Di
     , possibleInflections =
-        [ { degree = Ke, accidentals = [ Sharp2, Sharp4 ] }
-        , { degree = Zo_, accidentals = [ Flat4 ] }
-        , { degree = Ga, accidentals = [ Sharp4, Sharp6 ] }
-        ]
+        inflections
+            [ { degree = Ke, accidentals = [ Sharp2, Sharp4 ] }
+            , { degree = Zo_, accidentals = [ Flat4 ] }
+            , { degree = Ga, accidentals = [ Sharp4, Sharp6 ] }
+            ]
     }
 
 
@@ -819,7 +966,7 @@ plagalOne_Pa_Minor =
     { classification = Plagal ModeOne
     , genres = [ Sticheraric, Papadic ]
     , signatures = [ Signature.plagalFirstPa_minor ]
-    , scale = Enharmonic
+    , scale = HardDiatonic
     , dominantTones =
         { base = Pa
         , cadencePoints =
@@ -834,9 +981,10 @@ plagalOne_Pa_Minor =
     , range = { start = KE, end = Pa_ }
     , recitingTone = Di
     , possibleInflections =
-        [ { degree = Ni, accidentals = [ Sharp6 ] }
-        , { degree = Di, accidentals = [ Sharp2 ] }
-        ]
+        inflections
+            [ { degree = Ni, accidentals = [ Sharp6 ] }
+            , { degree = Di, accidentals = [ Sharp2 ] }
+            ]
     }
 
 
@@ -857,12 +1005,7 @@ plagalTwo_Pa : ModeData
 plagalTwo_Pa =
     { classification = Plagal ModeTwo
     , genres = [ Sticheraric, Papadic ]
-    , signatures =
-        [ Signature.plagalSecondPa
-        , Signature.plagalSecondBou
-        , Signature.plagalSecondDi_softChromatic
-        , Signature.plagalSecondDi_hardChromatic
-        ]
+    , signatures = [ Signature.plagalSecondPa ]
     , scale = HardChromatic
     , dominantTones =
         { base = Pa
@@ -878,9 +1021,10 @@ plagalTwo_Pa =
     , range = { start = DI, end = Pa_ }
     , recitingTone = Di
     , possibleInflections =
-        [ { degree = Ni, accidentals = [ Sharp2, Sharp4, Sharp6 ] }
-        , { degree = Ga, accidentals = [ Flat2 ] }
-        ]
+        inflections
+            [ { degree = Ni, accidentals = [ Sharp2, Sharp4, Sharp6 ] }
+            , { degree = Ga, accidentals = [ Flat2 ] }
+            ]
     }
 
 
@@ -890,7 +1034,10 @@ plagalTwo_Di : ModeData
 plagalTwo_Di =
     { classification = Plagal ModeTwo
     , genres = [ Eirmologic ]
-    , signatures = [ Signature.plagalSecondDi_softChromatic ]
+    , signatures =
+        [ Signature.plagalSecondDi_softChromatic
+        , Signature.plagalSecondBou
+        ]
     , scale = SoftChromatic
     , dominantTones =
         { base = Di
@@ -906,10 +1053,44 @@ plagalTwo_Di =
     , range = { start = DI, end = Ga_ }
     , recitingTone = Di
     , possibleInflections =
-        [ { degree = Pa, accidentals = [ Sharp4, Sharp6 ] }
-        , { degree = Ga, accidentals = [ Sharp2, Sharp4, Sharp6 ] }
-        , { degree = Ke, accidentals = [ Sharp2, Sharp4 ] }
-        ]
+        inflections
+            [ { degree = Pa, accidentals = [ Sharp4, Sharp6 ] }
+            , { degree = Ga, accidentals = [ Sharp2, Sharp4, Sharp6 ] }
+            , { degree = Ke, accidentals = [ Sharp2, Sharp4 ] }
+            ]
+    }
+
+
+{-| This one is actually mixed: the bottom tetrachord is hard-chromatic,
+but the upper is soft-diatonic Αγια.
+
+TODO: we need to flesh this out. Boyer notes that this is effectively
+a blend of plagal second on Pa with Agia on Di.
+
+Boyer 5-VI, p 480
+
+-}
+plagalTwo_Di_Triphone : ModeData
+plagalTwo_Di_Triphone =
+    { classification = Plagal ModeTwo
+    , genres = [ Papadic ]
+    , signatures = [ Signature.plagalSecondDi_hardChromatic ]
+    , scale = HardChromatic
+    , dominantTones =
+        { base = Di
+        , cadencePoints =
+            { final = Di
+            , complete = [ Di ]
+            , medial = []
+            , incomplete = [ Ke, Pa ]
+            }
+        , nonCadentialFoci = []
+        }
+    , isonOptions = [ Pa, Ke, Di ]
+    , range = { start = DI, end = Pa_ }
+    , recitingTone = Di
+    , possibleInflections =
+        inflections []
     }
 
 
@@ -929,7 +1110,7 @@ plagalThree_Ga =
     { classification = Plagal ModeThree
     , genres = [ Eirmologic, Sticheraric ]
     , signatures = [ Signature.graveGa ]
-    , scale = Diatonic
+    , scale = SoftDiatonic
     , dominantTones =
         { base = Ga
         , cadencePoints =
@@ -944,10 +1125,11 @@ plagalThree_Ga =
     , range = { start = Ni, end = Ga_ }
     , recitingTone = Di
     , possibleInflections =
-        [ { degree = Bou, accidentals = [ Sharp2, Sharp4 ] }
-        , { degree = Pa, accidentals = [ Sharp2, Sharp4 ] }
-        , { degree = Di, accidentals = [ Sharp2, Sharp4 ] }
-        ]
+        inflections
+            [ { degree = Bou, accidentals = [ Sharp2, Sharp4 ] }
+            , { degree = Pa, accidentals = [ Sharp2, Sharp4 ] }
+            , { degree = Di, accidentals = [ Sharp2, Sharp4 ] }
+            ]
     }
 
 
@@ -973,7 +1155,7 @@ plagalThree_Zo =
     { classification = Plagal ModeThree
     , genres = [ Sticheraric, Papadic ]
     , signatures = [ Signature.graveZo ]
-    , scale = Diatonic
+    , scale = SoftDiatonic
     , dominantTones =
         { base = Zo_
         , cadencePoints =
@@ -988,9 +1170,10 @@ plagalThree_Zo =
     , range = { start = Di, end = Pa_ }
     , recitingTone = Ga
     , possibleInflections =
-        [ { degree = Ke, accidentals = [ Sharp4, Sharp6 ] }
-        , { degree = Ga, accidentals = [ Sharp2 ] }
-        ]
+        inflections
+            [ { degree = Ke, accidentals = [ Sharp4, Sharp6 ] }
+            , { degree = Ga, accidentals = [ Sharp2 ] }
+            ]
     }
 
 
@@ -1008,7 +1191,7 @@ plagalThree_Zo_Hard =
     { classification = Plagal ModeThree
     , genres = [ Sticheraric, Papadic ]
     , signatures = [ Signature.graveZoFlat ]
-    , scale = Enharmonic
+    , scale = HardDiatonic
     , dominantTones =
         { base = Zo_
         , cadencePoints =
@@ -1023,10 +1206,11 @@ plagalThree_Zo_Hard =
     , range = { start = DI, end = Ni_ }
     , recitingTone = Zo_
     , possibleInflections =
-        [ { degree = Ke, accidentals = [ Sharp2, Sharp4 ] }
-        , { degree = Di, accidentals = [ Sharp4 ] }
-        , { degree = Ga, accidentals = [ Sharp4, Sharp6 ] }
-        ]
+        inflections
+            [ { degree = Ke, accidentals = [ Sharp2, Sharp4 ] }
+            , { degree = Di, accidentals = [ Sharp4 ] }
+            , { degree = Ga, accidentals = [ Sharp4, Sharp6 ] }
+            ]
     }
 
 
@@ -1040,7 +1224,7 @@ plagalFour_Ni =
     { classification = Plagal ModeFour
     , genres = [ Eirmologic, Sticheraric, Papadic ]
     , signatures = [ Signature.plagalFourthNi ]
-    , scale = Diatonic
+    , scale = SoftDiatonic
     , dominantTones =
         { base = Ni
         , cadencePoints =
@@ -1055,11 +1239,12 @@ plagalFour_Ni =
     , range = { start = GA, end = Ni_ }
     , recitingTone = Di
     , possibleInflections =
-        [ { degree = Zo, accidentals = [ Sharp2, Sharp4 ] }
-        , { degree = Pa, accidentals = [ Sharp2, Sharp4 ] }
-        , { degree = Ga, accidentals = [ Sharp2, Sharp4 ] }
-        , { degree = Zo_, accidentals = [ Flat4 ] }
-        ]
+        inflections
+            [ { degree = Zo, accidentals = [ Sharp2, Sharp4 ] }
+            , { degree = Pa, accidentals = [ Sharp2, Sharp4 ] }
+            , { degree = Ga, accidentals = [ Sharp2, Sharp4 ] }
+            , { degree = Zo_, accidentals = [ Flat4 ] }
+            ]
     }
 
 
@@ -1079,7 +1264,7 @@ plagalFour_Ga =
     { classification = Plagal ModeFour
     , genres = [ Eirmologic ]
     , signatures = [ Signature.plagalFourthGa_1, Signature.plagalFourthGa_2 ]
-    , scale = Diatonic
+    , scale = SoftDiatonic
     , dominantTones =
         { base = Ga
         , cadencePoints =
@@ -1094,8 +1279,9 @@ plagalFour_Ga =
     , range = { start = Ni, end = Ga_ }
     , recitingTone = Ga
     , possibleInflections =
-        [ { degree = Bou, accidentals = [ Sharp2, Sharp4 ] }
-        , { degree = Di, accidentals = [ Sharp2, Sharp4 ] }
-        , { degree = Pa, accidentals = [ Sharp2, Sharp4 ] }
-        ]
+        inflections
+            [ { degree = Bou, accidentals = [ Sharp2, Sharp4 ] }
+            , { degree = Di, accidentals = [ Sharp2, Sharp4 ] }
+            , { degree = Pa, accidentals = [ Sharp2, Sharp4 ] }
+            ]
     }

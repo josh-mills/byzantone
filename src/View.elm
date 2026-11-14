@@ -1,12 +1,13 @@
 module View exposing (view)
 
 import Byzantine.ByzHtml.Martyria as ByzHtmlMartyria
+import Byzantine.ByzHtml.ModalSignature as ModalSignature
 import Byzantine.Degree as Degree exposing (Degree(..))
 import Byzantine.Frequency as Frequency exposing (Frequency(..), PitchStandard(..))
 import Byzantine.Martyria as Martyria
 import Byzantine.Mode as Mode exposing (Mode)
 import Byzantine.Pitch as Pitch exposing (Pitch)
-import Byzantine.Scale exposing (Scale(..))
+import Byzantine.Scale as Scale exposing (Scale(..))
 import Components.Collapsible as Collapsible
 import Components.RadioFieldset as RadioFieldset
 import Html exposing (Html, button, datalist, div, h1, h2, main_, p, span, text)
@@ -22,7 +23,7 @@ import Model exposing (Modal(..), Model, Remote)
 import Model.AudioSettings as AudioSettings exposing (AudioSettings)
 import Model.CalendarInfo exposing (CalendarInfo)
 import Model.LayoutData as LayoutData exposing (Layout(..), LayoutData, LayoutSelection(..), layoutFor)
-import Model.ModeSettings exposing (ModeSettings)
+import Model.ModeSettings as ModeSettings exposing (ModeSettings)
 import Model.PitchState as PitchState
 import Styles
 import Svg.Attributes
@@ -45,12 +46,12 @@ view model =
             (\_ ->
                 lazy4 chantEngineNode
                     model.audioSettings
-                    model.modeSettings.scale
-                    (PitchState.currentPitch model.modeSettings.scale model.pitchState)
+                    (ModeSettings.scale model.modeSettings)
+                    (PitchState.currentPitch model.modeSettings model.pitchState)
                     (PitchState.ison model.pitchState.ison)
             )
         , lazy2 backdrop model.menuOpen model.modal
-        , lazy2 header model.calendar model.headerIsOpen
+        , lazy3 header model.calendar model.modeSettings model.headerIsOpen
         , lazy5 viewModal model.audioSettings model.layoutData model.modeSettings model.remote model.modal
 
         -- , viewIf LayoutData.showSpacing (div [ class "text-center" ] [ text "|" ])
@@ -73,10 +74,8 @@ view model =
                 model.pitchState
                 model.detectedPitch
             , View.Controls.view
-                model.devMode
                 (layoutFor model.layoutData)
                 model.audioSettings
-                model.modeSettings
                 model.pitchState
                 model.openControlMenus
                 model.modeBuilder
@@ -132,9 +131,13 @@ chantEngineNode audioSettings scale currentPitch currentIson =
 
 Caret points down when expanded, rotates 180° when collapsed.
 
+The mode heading sits outside the collapsible title block, so it appears beneath
+the title when the header is open and between the caret and the menu button when
+the header is collapsed.
+
 -}
-header : CalendarInfo -> Bool -> Html Msg
-header calendarInfo headerIsOpen =
+header : CalendarInfo -> ModeSettings -> Bool -> Html Msg
+header calendarInfo modeSettings headerIsOpen =
     Html.header
         [ Styles.flexRowCentered
         , Styles.transition
@@ -144,7 +147,7 @@ header calendarInfo headerIsOpen =
             , ( "py-4", headerIsOpen )
             ]
         ]
-        [ div [ class "w-7" ]
+        [ div [ class "w-7 mt-2 self-start" ]
             [ button
                 [ class "w-full lg:hidden"
                 , Styles.transition
@@ -154,28 +157,31 @@ header calendarInfo headerIsOpen =
                 [ Icons.caretDown [ Svg.Attributes.class "w-6 h-6" ]
                 ]
             ]
-        , Collapsible.div
-            (Collapsible.isOpen headerIsOpen)
-            [ class "flex-1 mx-4" ]
-            [ div
-                [ class "overflow-hidden"
-                , Styles.flexCol
-                , class "mb-4"
-                ]
-                [ h1 [ class "font-heading text-4xl text-center" ]
-                    [ text "ByzanTone" ]
-                , p [ class "font-serif text-center" ]
-                    [ text "A tool for learning the pitches and intervals of Byzantine chant." ]
-                , viewIf calendarInfo.isEastertide
-                    (p [ class "font-serif text-center" ]
-                        [ span [ class "font-greek" ] [ text "Χριστὸς ἀνέστη" ]
-                        , text " – "
-                        , text "Christ is risen!"
-                        ]
-                    )
+        , div [ Styles.flexCol, class "flex-1 mx-4" ]
+            [ Collapsible.div
+                (Collapsible.isOpen headerIsOpen)
+                []
+                [ div
+                    [ class "overflow-hidden"
+                    , Styles.flexCol
+                    , class "mb-4"
+                    ]
+                    [ h1 [ class "font-heading text-4xl text-center" ]
+                        [ text "ByzanTone" ]
+                    , p [ class "font-serif text-center" ]
+                        [ text "A tool for learning the pitches and intervals of Byzantine chant." ]
+                    , viewIf calendarInfo.isEastertide
+                        (p [ class "font-serif text-center" ]
+                            [ span [ class "font-greek" ] [ text "Χριστὸς ἀνέστη" ]
+                            , text " – "
+                            , text "Christ is risen!"
+                            ]
+                        )
 
-                -- , viewIf model.layoutData.showSpacing (p [ class "text-center" ] [ text "|" ])
+                    -- , viewIf model.layoutData.showSpacing (p [ class "text-center" ] [ text "|" ])
+                    ]
                 ]
+            , viewModeHeading modeSettings headerIsOpen
             ]
         , button
             [ class "w-7 mt-2 self-start"
@@ -370,13 +376,13 @@ depending on how dynamic we want to be, and on how well we should reflect
 specific modal constraints.
 -}
 rangeFieldset : ModeSettings -> Html Msg
-rangeFieldset { rangeStart, rangeEnd } =
+rangeFieldset { range } =
     let
         maxLowerBound =
-            Degree.step rangeEnd -3 |> Maybe.withDefault rangeStart
+            Degree.step range.end -3 |> Maybe.withDefault range.start
 
         minUpperBound =
-            Degree.step rangeStart 3 |> Maybe.withDefault rangeEnd
+            Degree.step range.start 3 |> Maybe.withDefault range.end
 
         intString degree =
             Degree.indexOf degree |> String.fromInt
@@ -422,12 +428,12 @@ rangeFieldset { rangeStart, rangeEnd } =
         [ Html.legend [ class "px-1" ] [ Html.text "Range" ]
         , p []
             [ span [ class "me-1" ] [ text "Display range" ]
-            , Degree.text rangeStart
+            , Degree.text range.start
             , span [ class "mx-1" ] [ text "to" ]
-            , Degree.text rangeEnd
+            , Degree.text range.end
             ]
-        , row "From:" "range-start" GA maxLowerBound rangeStart SetRangeStart
-        , row "To:" "range-end" minUpperBound Ga_ rangeEnd SetRangeEnd
+        , row "From:" "range-start" GA maxLowerBound range.start SetRangeStart
+        , row "To:" "range-end" minUpperBound Ga_ range.end SetRangeEnd
         ]
 
 
@@ -437,17 +443,17 @@ viewPitchStandard pitchStandard =
         ( martyria, frequency ) =
             case pitchStandard of
                 Ni256 ->
-                    ( Martyria.for Diatonic Ni |> ByzHtmlMartyria.view
+                    ( Martyria.for SoftDiatonic Ni |> ByzHtmlMartyria.view
                     , " = 256 Hz"
                     )
 
                 Ke440 ->
-                    ( Martyria.for Diatonic Ke |> ByzHtmlMartyria.view
+                    ( Martyria.for SoftDiatonic Ke |> ByzHtmlMartyria.view
                     , " = 440 Hz"
                     )
 
                 VariableDi _ ->
-                    ( Martyria.for Diatonic Di |> ByzHtmlMartyria.view
+                    ( Martyria.for SoftDiatonic Di |> ByzHtmlMartyria.view
                     , " = Priest’s Special"
                     )
     in
@@ -475,6 +481,36 @@ modeDataRadioConfig =
         , onSelect = SelectModal << ModeModal
         , options = List.map Just Mode.all
         }
+        |> RadioFieldset.withCustomViewItem
+            (Html.Extra.viewMaybe
+                (\mode ->
+                    div [ Styles.flexRow, class "gap-4 mb-1 mx-2" ]
+                        [ div [] [ text (Mode.toString mode), text "." ]
+                        , Mode.data mode
+                            |> .signatures
+                            |> List.head
+                            |> Html.Extra.viewMaybe ModalSignature.view
+                        ]
+                )
+            )
+
+
+viewModeHeading : ModeSettings -> Bool -> Html Msg
+viewModeHeading modeSettings headerIsOpen =
+    h2
+        [ Styles.flexRowCentered
+        , Styles.transition
+        , class "font-heading text-xl lg:text-2xl"
+        , classList [ ( "mb-4", headerIsOpen ) ]
+        ]
+        [ ModeSettings.signature modeSettings
+            |> Maybe.map ModalSignature.view
+            |> Maybe.withDefaultLazy
+                (\_ ->
+                    ModeSettings.scale modeSettings
+                        |> (\scale -> text (Scale.name scale ++ " Scale"))
+                )
+        ]
 
 
 pitchTracker : AudioSettings -> LayoutData -> Html Msg

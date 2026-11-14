@@ -12,7 +12,7 @@ module Byzantine.Mode.Signature exposing
     , plagalSecondPa, plagalSecondBou, plagalSecondDi_softChromatic, plagalSecondDi_hardChromatic
     , graveGa, graveZo, graveZoFlat
     , plagalFourthNi, plagalFourthGa_1, plagalFourthGa_2
-    , signaturesFor
+    , signaturesFor, signaturesForClassification
     )
 
 {-| WIP.
@@ -280,7 +280,7 @@ authenticOneKe =
     Regular
         { ichos = Ichos
         , indicator = First
-        , base = Base Ke (Fthora.for Diatonic Ke)
+        , base = Base Ke (Fthora.for SoftDiatonic Ke)
         }
 
 
@@ -289,7 +289,7 @@ authenticOnePa =
     Regular
         { ichos = Ichos
         , indicator = First
-        , base = Base Pa (Fthora.for Diatonic Pa)
+        , base = Base Pa (Fthora.for SoftDiatonic Pa)
         }
 
 
@@ -345,7 +345,7 @@ lowerThirdGa_1 =
     Regular
         { ichos = Ichos
         , indicator = ClassificationIndicator (Authentic ModeThree)
-        , base = Base Ga (Fthora.for Diatonic Ga)
+        , base = Base Ga (Fthora.for SoftDiatonic Ga)
         }
 
 
@@ -354,7 +354,7 @@ lowerThirdGa_2 =
     Regular
         { ichos = Ichos
         , indicator = Third
-        , base = Base Ga (Fthora.for Diatonic Ga)
+        , base = Base Ga (Fthora.for SoftDiatonic Ga)
         }
 
 
@@ -363,7 +363,7 @@ lowerThirdGa_3 =
     Regular
         { ichos = Ichos
         , indicator = ThirdNaNa
-        , base = Base Ga (Fthora.for Diatonic Ga)
+        , base = Base Ga (Fthora.for SoftDiatonic Ga)
         }
 
 
@@ -372,7 +372,7 @@ lowerThirdGa_papadic =
     Regular
         { ichos = Ichos
         , indicator = ThirdNaNa
-        , base = Base Ga (Fthora.for Diatonic Ni)
+        , base = Base Ga (Fthora.for SoftDiatonic Ni)
         }
 
 
@@ -396,7 +396,7 @@ authenticFourDi =
     Regular
         { ichos = Ichos
         , indicator = Fourth
-        , base = Base Di (Fthora.for Diatonic Di)
+        , base = Base Di (Fthora.for SoftDiatonic Di)
         }
 
 
@@ -405,8 +405,8 @@ medialFourBou_1 =
     Irregular
         { ichos = Ichos
         , indicator = Fourth
-        , baseDegree = Just Bou
-        , fthora = Fthora.for Diatonic Bou
+        , baseDegree = Nothing
+        , fthora = Fthora.for SoftDiatonic Bou
         , neume = Just (Descending SynechesElafron Nothing)
         }
 
@@ -417,7 +417,7 @@ medialFourBou_2 =
         { ichos = Ichos
         , indicator = Legetos
         , baseDegree = Just Bou
-        , fthora = Fthora.for Diatonic Bou
+        , fthora = Fthora.for SoftDiatonic Bou
         , neume = Nothing
         }
 
@@ -427,7 +427,7 @@ paramedialFourPa =
     Regular
         { ichos = Ichos
         , indicator = Fourth
-        , base = Base Pa (Fthora.for Diatonic Pa)
+        , base = Base Pa (Fthora.for SoftDiatonic Pa)
         }
 
 
@@ -446,7 +446,7 @@ medialFourBou_softChromatic =
         { ichos = Ichos
         , indicator = Fourth
         , baseDegree = Just Bou
-        , fthora = Fthora.for SoftChromatic Bou
+        , fthora = Fthora.for SoftChromatic Di
         , neume = Just (Descending SynechesElafron Nothing)
         }
 
@@ -470,7 +470,7 @@ plagalFirstPa =
     Regular
         { ichos = IchosPlagal
         , indicator = PlagalFirst
-        , base = Base Pa (Fthora.for Diatonic Pa)
+        , base = Base Pa (Fthora.for SoftDiatonic Pa)
         }
 
 
@@ -480,8 +480,8 @@ plagalFirstKe =
         { ichos = IchosPlagal
         , indicator = PlagalFirst
         , baseDegree = Just Ke
-        , fthora = Fthora.for Diatonic Ke
-        , neume = IntervalCharacter.basicInterval 5
+        , fthora = Fthora.for SoftDiatonic Pa
+        , neume = IntervalCharacter.basicInterval 4
         }
 
 
@@ -491,8 +491,11 @@ plagalFirstPa_pentaphone =
         { ichos = IchosPlagal
         , indicator = PlagalFirst
         , baseDegree = Just Pa
-        , fthora = Fthora.for Enharmonic Zo_
+        , fthora = Fthora.for HardDiatonic Zo_
         , neume = IntervalCharacter.basicInterval 5
+
+        -- this interval should probably have an accidental, but data modeling
+        -- doesn't currently support the Ajem as an accidental.
         }
 
 
@@ -506,7 +509,7 @@ plagalFirstPa_phrygian =
         { ichos = IchosPlagal
         , indicator = PlagalFirst
         , baseDegree = Just Pa
-        , fthora = Nothing
+        , fthora = Fthora.for HardDiatonic Ke
         , neume = Nothing
         }
 
@@ -516,7 +519,7 @@ plagalFirstPa_minor =
     Regular
         { ichos = IchosPlagal
         , indicator = PlagalFirst
-        , base = Base Pa (Fthora.for Diatonic Di)
+        , base = Base Pa (Fthora.for SoftDiatonic Di)
         }
 
 
@@ -542,6 +545,9 @@ plagalSecondPa =
         }
 
 
+{-| TODO: this neume is wrong. It's _kentimata_ below, not kentima.
+I don't have this modeled yet.
+-}
 plagalSecondBou : Signature
 plagalSecondBou =
     Irregular
@@ -587,7 +593,7 @@ graveGa =
     Regular
         { ichos = Ichos
         , indicator = Varys
-        , base = Base Ga (Fthora.for Diatonic Ga)
+        , base = Base Ga (Fthora.for SoftDiatonic Ga)
         }
 
 
@@ -596,7 +602,7 @@ graveZo =
     Regular
         { ichos = Ichos
         , indicator = Varys
-        , base = Base Zo (Fthora.for Diatonic Zo)
+        , base = Base Zo Nothing
         }
 
 
@@ -605,7 +611,7 @@ graveZoFlat =
     Regular
         { ichos = Ichos
         , indicator = Varys
-        , base = Base Zo (Fthora.for Enharmonic Zo_)
+        , base = Base Zo (Fthora.for HardDiatonic Zo_)
         }
 
 
@@ -623,10 +629,16 @@ plagalFourthNi =
     Regular
         { ichos = IchosPlagal
         , indicator = PlagalFourth
-        , base = Base Ni (Fthora.for Diatonic Ni)
+        , base = Base Ni (Fthora.for SoftDiatonic Ni)
         }
 
 
+{-| The interval here isn't strictly correct.
+It should also bear a martyria of nana,
+which isn't something that really fits with the standard interval modeling.
+There may be a modeling gap for the irregular signature,
+which is relevant for only this case.
+-}
 plagalFourthGa_1 : Signature
 plagalFourthGa_1 =
     Irregular
@@ -634,7 +646,7 @@ plagalFourthGa_1 =
         , indicator = PlagalFourth
         , baseDegree = Nothing
         , fthora = Nothing
-        , neume = IntervalCharacter.basicInterval 4
+        , neume = IntervalCharacter.basicInterval 3
         }
 
 
@@ -643,7 +655,7 @@ plagalFourthGa_2 =
     Regular
         { ichos = IchosPlagal
         , indicator = PlagalFourth
-        , base = Base Ga (Fthora.for Diatonic Ni)
+        , base = Base Ga (Fthora.for SoftDiatonic Ni)
         }
 
 
@@ -660,3 +672,34 @@ signaturesFor ichos indicator =
             e.ichos == ichos && e.indicator == indicator
         )
         all
+
+
+{-| All signatures belonging to the given Classification, regardless of Ichos or
+Indicator.
+-}
+signaturesForClassification : Classification -> List Signature
+signaturesForClassification classification_ =
+    case classification_ of
+        Authentic ModeOne ->
+            firstModes
+
+        Authentic ModeTwo ->
+            secondModes
+
+        Authentic ModeThree ->
+            thirdModes
+
+        Authentic ModeFour ->
+            fourthModes
+
+        Plagal ModeOne ->
+            plagalFirstModes
+
+        Plagal ModeTwo ->
+            plagalSecondModes
+
+        Plagal ModeThree ->
+            graveModes
+
+        Plagal ModeFour ->
+            plagalFourthModes

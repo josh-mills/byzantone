@@ -1,5 +1,5 @@
 module Byzantine.ByzHtml.ModalSignature exposing
-    ( view, viewDivision
+    ( view, viewDivision, viewClassification
     , modePlagal, modeWordEchos
     , modeFirst, modeSecond, modeThird, modeThirdNana, modeFourth, modeLegetos, modePlagalFirst, modePlagalSecond, modeVarys, modeVarys2, modePlagalFourth, modeWordVarys
     , modeNi, modePa, modeVou, modeGa, modeDi, modeKe, modeZo
@@ -14,7 +14,7 @@ to be built out so we can implement a general `view` function.
 
 # View
 
-@docs view, viewDivision
+@docs view, viewDivision, viewClassification
 
 
 # Components
@@ -46,9 +46,11 @@ to be built out so we can implement a general `view` function.
 
 -}
 
-import Byzantine.ByzHtml.Fthora as Fthora
+import Byzantine.ByzHtml.Fthora as FthoraHtml
+import Byzantine.ByzHtml.Interval as Interval
 import Byzantine.Degree exposing (Degree(..))
-import Byzantine.Fthora exposing (Fthora)
+import Byzantine.Fthora as Fthora exposing (Fthora)
+import Byzantine.IntervalCharacter exposing (IntervalCharacter)
 import Byzantine.Mode.Classification as Classification exposing (Classification(..), Ordinal(..))
 import Byzantine.Mode.Signature as Signature exposing (Elements, Ichos(..), Indicator(..), Signature)
 import Html exposing (Html)
@@ -98,6 +100,40 @@ viewDivision ichos =
 
         IchosPlagal ->
             [ modeWordEchos, modePlagal ]
+
+
+{-| A classification on its own, without the "Ichos" word or a base: the capital
+ordinal for authentic modes, the plagal marker followed by the capital ordinal
+for plagal modes, and the word "Varys" for the Grave mode (which is named rather
+than numbered).
+-}
+viewClassification : Classification -> Html msg
+viewClassification classification =
+    case classification of
+        Authentic ordinal ->
+            modeCapital ordinal
+
+        Plagal ModeThree ->
+            modeWordVarys
+
+        Plagal ordinal ->
+            Html.span [] [ modePlagal, modeCapital ordinal ]
+
+
+modeCapital : Ordinal -> Html msg
+modeCapital ordinal =
+    case ordinal of
+        ModeOne ->
+            modeAlphaCapital
+
+        ModeTwo ->
+            modeBetaCapital
+
+        ModeThree ->
+            modeGammaCapital
+
+        ModeFour ->
+            modeDeltaCapital
 
 
 modePlagal : Html msg
@@ -235,61 +271,264 @@ viewBase : Signature -> Elements -> List (Html msg)
 viewBase signature elements =
     case Signature.classification signature of
         Authentic ModeOne ->
-            modesFirst elements
+            basesModesFirst elements
 
         Authentic ModeTwo ->
-            []
+            basesModesSecond elements
 
         Authentic ModeThree ->
-            []
+            basesModesThird elements
 
         Authentic ModeFour ->
-            []
+            basesModesFourth elements
 
         Plagal ModeOne ->
-            []
+            basesModesPlagalFirst elements
 
         Plagal ModeTwo ->
-            []
+            basesModesPlagalSecond elements
 
         Plagal ModeThree ->
-            []
+            basesModesPlagalThird elements
 
         Plagal ModeFour ->
-            []
+            basesModesPlagalFourth elements
 
 
-{-| TODOs:
-
-  - positing from Ke needs fiddling. We'll need a bare position-right fthora wrapper,
-    or a new position variant for the ByzHtml that creates the position adjustment.
-
+{-| TODO: we could dispense with a mode-specific helpers
+if this general pattern repeats with enough regularity.
 -}
-modesFirst : Elements -> List (Html msg)
-modesFirst { baseDegree, fthora, neume } =
+basesModesFirst : Elements -> List (Html msg)
+basesModesFirst { baseDegree, fthora, neume } =
     case ( baseDegree, fthora, neume ) of
-        ( Just Ke, Just fth, Nothing ) ->
-            [ modeKe, bareFthora fth ]
-
-        ( Just Pa, Just fth, Nothing ) ->
-            [ modePa, bareFthora fth ]
+        ( Just degree, Just fth, Nothing ) ->
+            [ base degree, fthoraRight fth ]
 
         _ ->
             []
 
 
-{-| Can I use anchor positioning for this I wonder?
-Or a `Degree -> Fthora -> Html msg` helper that handles the inline wrapping?
-We might just bypass the web component node per se and just reach for the glyph
-directly.
+basesModesSecond : Elements -> List (Html msg)
+basesModesSecond { baseDegree, fthora, neume } =
+    case ( baseDegree, fthora, neume ) of
+        ( Just degree, Just fth, Nothing ) ->
+            [ base degree, fthoraAbove fth ]
+
+        _ ->
+            []
+
+
+basesModesThird : Elements -> List (Html msg)
+basesModesThird { baseDegree, fthora, neume } =
+    case ( baseDegree, fthora, neume ) of
+        ( Just Ga, Just ((Fthora.DiatonicFthora Fthora.D_Ni) as fth), Nothing ) ->
+            [ modeGa, fthoraRight fth ]
+
+        ( Just Ga, Just fth, Nothing ) ->
+            [ modeGa, fthoraAbove fth ]
+
+        _ ->
+            []
+
+
+basesModesFourth : Elements -> List (Html msg)
+basesModesFourth { baseDegree, fthora, neume } =
+    case ( baseDegree, fthora, neume ) of
+        ( Just Di, Just fth, Nothing ) ->
+            [ modeDi, fthoraAbove fth ]
+
+        ( Nothing, Just fth, Just intervalChar ) ->
+            [ neumeView intervalChar
+            , Html.span [ class "-ms-2 relative -top-1" ]
+                [ FthoraHtml.view FthoraHtml.Above fth ]
+            ]
+
+        ( Just Bou, Just fth, Nothing ) ->
+            [ modeVou, fthoraRight fth ]
+
+        ( Just Pa, Just fth, Nothing ) ->
+            [ modePa, fthoraAbove fth ]
+
+        ( Just Bou, Just fth, Just intervalChar ) ->
+            [ neumeView intervalChar, modeVou, fthoraAbove fth ]
+
+        _ ->
+            []
+
+
+basesModesPlagalFirst : Elements -> List (Html msg)
+basesModesPlagalFirst { baseDegree, fthora, neume } =
+    case ( baseDegree, fthora, neume ) of
+        ( Just Pa, Just ((Fthora.DiatonicFthora Fthora.D_Pa) as fth), Nothing ) ->
+            [ modePa, fthoraAbove fth ]
+
+        ( Just Ke, Just fth, Just intervalChar ) ->
+            [ Html.span [ class "mx-2" ]
+                [ intervalOverBase intervalChar modeKe
+                , fthoraRight fth
+                ]
+            ]
+
+        ( Just Pa, Just fth, Just intervalChar ) ->
+            [ modePa
+            , neumeView intervalChar
+            , fthoraAbove fth
+            ]
+
+        ( Just Pa, Just fth, Nothing ) ->
+            [ modePa, fthoraRight fth ]
+
+        _ ->
+            []
+
+
+basesModesPlagalSecond : Elements -> List (Html msg)
+basesModesPlagalSecond { baseDegree, fthora, neume } =
+    case ( baseDegree, fthora, neume ) of
+        ( Just Pa, Just fth, Nothing ) ->
+            [ modePa, fthoraAbove fth ]
+
+        ( Just Di, Just fth, Just intervalChar ) ->
+            [ neumeView intervalChar
+            , modeDi
+            , fthoraAbove fth
+            ]
+
+        ( Just Di, Just fth, Nothing ) ->
+            [ modeDi, fthoraAbove fth ]
+
+        ( Just Bou, Just fth, Just intervalChar ) ->
+            [ modeVou
+            , fthoraAbove fth
+            , neumeView intervalChar
+            ]
+
+        _ ->
+            []
+
+
+basesModesPlagalThird : Elements -> List (Html msg)
+basesModesPlagalThird { baseDegree, fthora, neume } =
+    case ( baseDegree, fthora, neume ) of
+        ( Just Ga, Just fth, Nothing ) ->
+            [ modeGa, fthoraAbove fth ]
+
+        ( Just Zo, Nothing, Nothing ) ->
+            [ modeZo ]
+
+        ( Just Zo, Just fth, Nothing ) ->
+            [ modeZo, fthoraAbove fth ]
+
+        _ ->
+            []
+
+
+basesModesPlagalFourth : Elements -> List (Html msg)
+basesModesPlagalFourth { baseDegree, fthora, neume } =
+    case ( baseDegree, fthora, neume ) of
+        ( Just Ni, Just fth, Nothing ) ->
+            [ modeNi, fthoraRight fth ]
+
+        ( Nothing, Nothing, Just intervalChar ) ->
+            [ neumeView intervalChar
+            , Html.span [ class "relative -left-[0.7em]" ]
+                [ Html.node "x-martyria-nana-below" [] [] ]
+            ]
+
+        ( Just Ga, Just fth, Nothing ) ->
+            [ modeGa, fthoraRight fth ]
+
+        _ ->
+            []
+
+
+{-| Stack an interval character above a base character. The interval is
+absolutely positioned so it doesn't affect the line's layout, and is centered
+over the base. The interval's line box is anchored to the top of the base, then
+pulled down with a negative `-mb-*` to compensate for the empty space the neume
+font leaves below its glyph. Tune `-mb-*` for vertical spacing (larger pulls the
+interval closer) and add a `translate-x-*` for any horizontal optical nudge.
 -}
-bareFthora : Fthora -> Html msg
-bareFthora fthora =
-    Html.span [ class "_ml-2" ] [ Fthora.view Fthora.Secondary fthora ]
+intervalOverBase : IntervalCharacter -> Html msg -> Html msg
+intervalOverBase intervalChar baseChar =
+    Html.span [ class "relative top-[0.2em] me-1 inline-block" ]
+        [ Html.span [ class "absolute bottom-full left-1/2 -mb-[0.8em] -translate-x-1/2" ]
+            [ Interval.view intervalChar ]
+        , Html.span [ class "relative top-[0.2em]" ] [ baseChar ]
+        ]
+
+
+neumeView : IntervalCharacter -> Html msg
+neumeView intervalChar =
+    Html.span [ class "ms-2 relative -top-2" ]
+        [ Interval.view intervalChar ]
+
+
+fthoraRight : Fthora -> Html msg
+fthoraRight fthora =
+    Html.span [ class "ms-2 relative top-[0.33em]" ]
+        [ FthoraHtml.view FthoraHtml.Secondary fthora ]
+
+
+{-| nudge slightly to the right? Evaluate once everything is built out.
+-}
+fthoraAbove : Fthora -> Html msg
+fthoraAbove fthora =
+    Html.span [ class "relative -top-1 left-1" ]
+        [ FthoraHtml.view FthoraHtml.Above fthora ]
 
 
 
 -- bases
+
+
+base : Degree -> Html msg
+base degree =
+    case degree of
+        GA ->
+            modeGa
+
+        DI ->
+            modeDi
+
+        KE ->
+            modeKe
+
+        Zo ->
+            modeZo
+
+        Ni ->
+            modeNi
+
+        Pa ->
+            modePa
+
+        Bou ->
+            modeVou
+
+        Ga ->
+            modeGa
+
+        Di ->
+            modeDi
+
+        Ke ->
+            modeKe
+
+        Zo_ ->
+            modeZo
+
+        Ni_ ->
+            modeNi
+
+        Pa_ ->
+            modePa
+
+        Bou_ ->
+            modeVou
+
+        Ga_ ->
+            modeGa
 
 
 modeNi : Html msg
