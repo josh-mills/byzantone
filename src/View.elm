@@ -508,8 +508,7 @@ viewModeHeading modeSettings headerIsOpen =
             |> Maybe.withDefaultLazy
                 (\_ ->
                     ModeSettings.scale modeSettings
-                        |> Scale.name
-                        |> text
+                        |> (\scale -> text (Scale.name scale ++ " Scale"))
                 )
         ]
 
