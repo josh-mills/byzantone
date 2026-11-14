@@ -29,8 +29,11 @@ interface ToneNode {
 }
 
 class ChantEngine extends HTMLElement {
-    private readonly audioContext: AudioContext;
-    private readonly mainGainNode: GainNode;
+    // These are undefined if the browser refused to create an AudioContext
+    // (e.g. NotSupportedError when a hardware context limit is reached). In
+    // that case the engine is a silent no-op.
+    private readonly audioContext?: AudioContext;
+    private readonly mainGainNode?: GainNode;
     private ison?: ToneNode;
     private melos?: ToneNode;
 
@@ -44,7 +47,12 @@ class ChantEngine extends HTMLElement {
 
     constructor() {
         super();
-        this.audioContext = new AudioContext();
+        try {
+            this.audioContext = new AudioContext();
+        } catch (error) {
+            console.error("chant-engine: unable to create AudioContext", error);
+            return;
+        }
         this.mainGainNode = this.audioContext.createGain();
         this.mainGainNode.connect(this.audioContext.destination);
 
@@ -63,7 +71,7 @@ class ChantEngine extends HTMLElement {
         devLog("disconnecting chant engine...");
         this.stopTone(this.ison);
         this.stopTone(this.melos);
-        this.audioContext.close();
+        this.audioContext?.close();
     }
 
     static get observedAttributes(): string[] {
@@ -79,7 +87,7 @@ class ChantEngine extends HTMLElement {
 
         switch (name) {
             case "gain":
-                if (newValue !== null) {
+                if (this.mainGainNode && newValue !== null) {
                     this.mainGainNode.gain.value = Number(newValue);
                 }
                 break;
@@ -128,6 +136,8 @@ class ChantEngine extends HTMLElement {
     }
 
     private playTone(freq: number): ToneNode | undefined {
+        if (!this.audioContext || !this.mainGainNode) return undefined;
+
         if (
             !Number.isFinite(freq) ||
             freq < ChantEngine.minFrequency ||
@@ -137,6 +147,14 @@ class ChantEngine extends HTMLElement {
         }
 
         devLog(`playing ${freq}`);
+
+        // The engine may be mounted before any user gesture (it stays mounted
+        // across audio modes), in which case the context starts suspended.
+        // Tones are only started in response to user input, so resuming here is
+        // permitted by autoplay policies.
+        if (this.audioContext.state === "suspended") {
+            void this.audioContext.resume();
+        }
 
         const oscillator = this.audioContext.createOscillator();
         const gainNode = this.audioContext.createGain();
@@ -160,7 +178,7 @@ class ChantEngine extends HTMLElement {
     }
 
     private stopTone(tone?: ToneNode): void {
-        if (!tone) return;
+        if (!tone || !this.audioContext) return;
 
         const { oscillator, gainNode } = tone;
         const now = this.audioContext.currentTime;

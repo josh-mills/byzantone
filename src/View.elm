@@ -41,14 +41,11 @@ import View.PitchSpace as PitchSpace
 view : Model -> Html Msg
 view model =
     div [ class "h-screen" ]
-        [ Html.Extra.viewIfLazy (model.audioSettings.audioMode == AudioSettings.Play)
-            (\_ ->
-                lazy4 chantEngineNode
-                    model.audioSettings
-                    model.modeSettings.scale
-                    (PitchState.currentPitch model.modeSettings.scale model.pitchState)
-                    (PitchState.ison model.pitchState.ison)
-            )
+        [ lazy4 chantEngineNode
+            model.audioSettings
+            model.modeSettings.scale
+            (melosPitch model)
+            (PitchState.ison model.pitchState.ison)
         , lazy2 backdrop model.menuOpen model.modal
         , lazy2 header model.calendar model.headerIsOpen
         , lazy5 viewModal model.audioSettings model.layoutData model.modeSettings model.remote model.modal
@@ -103,6 +100,19 @@ backdrop menuOpen modal =
         , Attr.attributeIf (Model.modalOpen modal) (onClick (SelectModal NoModal))
         ]
         []
+
+
+{-| The melos is only sounded in Play mode. In Listen mode the chant engine
+stays mounted so the ison can keep sounding, but it receives no melos pitch.
+-}
+melosPitch : Model -> Maybe Pitch
+melosPitch model =
+    case model.audioSettings.audioMode of
+        AudioSettings.Play ->
+            PitchState.currentPitch model.modeSettings.scale model.pitchState
+
+        AudioSettings.Listen ->
+            Nothing
 
 
 chantEngineNode : AudioSettings -> Scale -> Maybe Pitch -> Maybe Pitch -> Html msg

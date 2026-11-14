@@ -157,7 +157,7 @@ update msg model =
         SetAudioMode mode ->
             ( { model
                 | detectedPitch = Nothing
-                , pitchState = PitchState.initialPitchState
+                , pitchState = PitchState.resetKeepingIson model.pitchState
               }
                 |> updateAudioSettings (\audioSettings -> { audioSettings | audioMode = mode })
                 |> resetPitchSpaceData
@@ -509,26 +509,44 @@ If in Play mode, this is the main means of interacting with the playback engine:
 it will select or deselect the pitch, apply or de-apply accidentals, or set the
 ison.
 
-If in Listen mode, this is used only for setting the accidental.
+If in Listen mode, this is used only for setting the ison (while selecting one)
+or the accidental.
 
 -}
 processPitchButtonClick : Model -> Degree -> Model
 processPitchButtonClick model degree =
     case model.audioSettings.audioMode of
         AudioSettings.Listen ->
-            updatePitchState
-                (\pitchState ->
-                    { pitchState
-                        | appliedAccidentals =
-                            applyAccidentalWithValidation model.modeSettings.scale
-                                model.pitchSpaceData
-                                model.pitchState
-                                degree
-                        , proposedAccidental = NoProposedAccidental
-                    }
-                )
-                model
-                |> resetPitchSpaceData
+            case model.pitchState.ison of
+                SelectingIson _ ->
+                    updatePitchState
+                        (\pitchState ->
+                            { pitchState
+                                | ison = Selected degree
+                                , appliedAccidentals =
+                                    DegreeDataDict.set degree
+                                        Nothing
+                                        pitchState.appliedAccidentals
+                                , proposedAccidental = NoProposedAccidental
+                            }
+                        )
+                        model
+                        |> resetPitchSpaceData
+
+                _ ->
+                    updatePitchState
+                        (\pitchState ->
+                            { pitchState
+                                | appliedAccidentals =
+                                    applyAccidentalWithValidation model.modeSettings.scale
+                                        model.pitchSpaceData
+                                        model.pitchState
+                                        degree
+                                , proposedAccidental = NoProposedAccidental
+                            }
+                        )
+                        model
+                        |> resetPitchSpaceData
 
         AudioSettings.Play ->
             let
