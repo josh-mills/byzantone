@@ -587,9 +587,41 @@ ison.
 If in Listen mode, this is used only for setting the ison (while selecting one)
 or the accidental.
 
+While an ison is being selected, only degrees that are eligible as an ison (see
+`PitchSpaceData.isEligibleIson`) can be chosen. Clicking any other degree cancels
+the selection, keeping the existing ison if there is one, and the click is then
+handled as it would be outside of ison selection.
+
 -}
 processPitchButtonClick : Model -> Degree -> Model
 processPitchButtonClick model degree =
+    handlePitchButtonClick (cancelIneligibleIsonSelection model degree) degree
+
+
+cancelIneligibleIsonSelection : Model -> Degree -> Model
+cancelIneligibleIsonSelection model degree =
+    case model.pitchState.ison of
+        SelectingIson maybeCurrentIson ->
+            if PitchSpaceData.isEligibleIson model.modeSettings model.pitchState degree then
+                model
+
+            else
+                updatePitchState
+                    (\pitchState ->
+                        { pitchState
+                            | ison =
+                                Maybe.map Selected maybeCurrentIson
+                                    |> Maybe.withDefault NoIson
+                        }
+                    )
+                    model
+
+        _ ->
+            model
+
+
+handlePitchButtonClick : Model -> Degree -> Model
+handlePitchButtonClick model degree =
     case model.audioSettings.audioMode of
         AudioSettings.Listen ->
             case model.pitchState.ison of

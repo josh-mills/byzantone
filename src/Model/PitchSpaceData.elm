@@ -4,7 +4,7 @@ module Model.PitchSpaceData exposing
     , VisibleRange, PositionWithinVisibleRange(..), positionIsVisible
     , PitchPositionContextString, encodePitchPositionContext, decodePitchPositionContext
     , intervalsWithVisibility
-    , IsonSelectionIndicator, isCurrentIson, canBeSelectedAsIson
+    , IsonSelectionIndicator, isCurrentIson, canBeSelectedAsIson, isEligibleIson
     )
 
 {-| Derived data for view logic. All values in here should be primitives,
@@ -39,7 +39,7 @@ as a result of model updates.
 
 # Ison
 
-@docs IsonSelectionIndicator, isCurrentIson, canBeSelectedAsIson
+@docs IsonSelectionIndicator, isCurrentIson, canBeSelectedAsIson, isEligibleIson
 
 -}
 
@@ -579,6 +579,15 @@ isonSelectionIndicator modeSettings pitchState degree =
 
             else
                 NotIson
+
+
+{-| Is the degree eligible to be selected as the ison, given the current mode
+settings and pitch state? This is only ever `True` while an ison selection is in
+progress, and agrees with the indicators used to highlight the pitch buttons.
+-}
+isEligibleIson : ModeSettings -> PitchState -> Degree -> Bool
+isEligibleIson modeSettings pitchState degree =
+    canBeSelectedAsIson (isonSelectionIndicator modeSettings pitchState degree)
 
 
 isCurrentIson : IsonSelectionIndicator -> Bool
