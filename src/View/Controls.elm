@@ -380,7 +380,7 @@ filterIsonCheckbox isChecked =
                 [ text "I'm using speakers" ]
             ]
         , div [ class "text-sm pb-1" ]
-            [ text "Helps keep the ison from being mistaken for your voice. Leave off when using headphones." ]
+            [ text "Helps keep the ison from being mistaken for your voice. Enable when not using headphones." ]
         ]
 
 
