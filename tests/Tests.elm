@@ -11,7 +11,7 @@ import Byzantine.Scale as Scale exposing (Scale(..))
 import Expect
 import List.Extra
 import Model.DegreeDataDict as DegreeDataDict
-import Model.PitchState as PitchState
+import Model.PitchState as PitchState exposing (IsonStatus(..))
 import Test exposing (Test, describe, test)
 
 
@@ -413,6 +413,37 @@ degreeDataDictTests =
                     , \d -> Expect.equal "Ga_" (DegreeDataDict.get Ga_ d)
                     ]
                     dict
+        ]
+
+
+pitchStateResetTests : Test
+pitchStateResetTests =
+    let
+        resetIson ison =
+            { initialPitchState | ison = ison }
+                |> PitchState.resetKeepingIson
+                |> .ison
+
+        initialPitchState =
+            PitchState.initialPitchState
+    in
+    describe "PitchState.resetKeepingIson"
+        [ test "keeps no ison" <|
+            \_ -> Expect.equal NoIson (resetIson NoIson)
+        , test "keeps a selected ison" <|
+            \_ -> Expect.equal (Selected Di) (resetIson (Selected Di))
+        , test "settles an in-progress selection that has a current ison" <|
+            \_ -> Expect.equal (Selected Di) (resetIson (SelectingIson (Just Di)))
+        , test "drops an in-progress selection with no current ison" <|
+            \_ -> Expect.equal NoIson (resetIson (SelectingIson Nothing))
+        , test "resets everything else" <|
+            \_ ->
+                { initialPitchState
+                    | ison = Selected Di
+                    , currentDegree = Just Ke
+                }
+                    |> PitchState.resetKeepingIson
+                    |> Expect.equal { initialPitchState | ison = Selected Di }
         ]
 
 

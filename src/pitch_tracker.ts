@@ -1,7 +1,148 @@
+// Configuration for removing the ison from the microphone signal. See
+// ISON_CANCELLER_SOURCE below.
+const ISON_CANCELLER_CONFIG = {
+    // Width (-3 dB, in Hz) of the notch around the ison frequency once it has
+    // converged. Narrower preserves more of a voice singing at or near the
+    // ison, but adapts more slowly (time constant of about 1 / (pi * bandwidth)
+    // seconds). The bleed is a steady tone, so slow is fine.
+    bandwidthHz: 1,
+    // Wider notch used briefly after the ison changes, so the new tone is
+    // removed quickly.
+    acquireBandwidthHz: 10,
+    acquireSeconds: 0.5,
+    // Number of harmonics of the ison to remove (1 = fundamental only). Raise
+    // this if speaker distortion makes harmonics of the ison bleed into the mic
+    // (small laptop speakers often radiate the 2nd harmonic more than a low
+    // fundamental). Each extra harmonic also notches a voice sung at that
+    // multiple of the ison.
+    harmonics: 1,
+} as const;
+
+/**
+ * Source for an AudioWorklet that removes a sine tone of known frequency (the
+ * ison, played by <chant-engine> through the speakers) from the microphone
+ * signal, so that it doesn't confuse pitch detection.
+ *
+ * It's a two-weight LMS adaptive noise canceller. The reference signals are a
+ * sine and cosine generated locally at the ison frequency; the weights learn the
+ * amplitude and phase of the ison as picked up by the mic, and that estimate is
+ * subtracted from the input:
+ *
+ *     y = w1*sin(wt) + w2*cos(wt)    // estimate of the ison at the mic
+ *     e = x - y                      // output: mic signal without the ison
+ *     w1 += mu*e*sin(wt); w2 += mu*e*cos(wt)
+ *
+ * Only the frequency is needed, not the playback signal, so this works even
+ * though playback and capture are in different AudioContexts. The step size is
+ * derived from a target notch bandwidth: mu = 2*pi*bandwidth / sampleRate. A
+ wider bandwidth is used for a short time after the frequency changes.
+ *
+ * A frequency of 0 disables cancellation (the input passes through unchanged).
+ * It is kept as a string because the worklet is loaded from a Blob URL, which
+ * avoids a separate build/serving step for the worklet file.
+ */
+const ISON_CANCELLER_SOURCE = `
+class IsonCanceller extends AudioWorkletProcessor {
+    static get parameterDescriptors() {
+        return [
+            {
+                name: "frequency",
+                defaultValue: 0,
+                minValue: 0,
+                maxValue: 24000,
+                automationRate: "k-rate",
+            },
+        ];
+    }
+
+    constructor(options) {
+        super();
+        const config = (options && options.processorOptions) || {};
+        this.harmonics = config.harmonics || 1;
+        this.muSteady = (2 * Math.PI * config.bandwidthHz) / sampleRate;
+        this.muAcquire = (2 * Math.PI * config.acquireBandwidthHz) / sampleRate;
+        this.acquireSamples = Math.round(config.acquireSeconds * sampleRate);
+        this.acquireRemaining = 0;
+        this.phase = 0;
+        this.lastFrequency = 0;
+        this.weights = new Float64Array(2 * this.harmonics);
+        this.sines = new Float64Array(this.harmonics);
+        this.cosines = new Float64Array(this.harmonics);
+    }
+
+    process(inputs, outputs, parameters) {
+        const output = outputs[0];
+        if (!output || output.length === 0) return true;
+        const out = output[0];
+
+        const input = inputs[0];
+        const inp = input && input[0];
+        if (!inp) {
+            out.fill(0);
+            return true;
+        }
+
+        const frequency = parameters.frequency[0];
+        if (!(frequency > 0)) {
+            out.set(inp);
+            this.lastFrequency = 0;
+            return true;
+        }
+
+        if (frequency !== this.lastFrequency) {
+            // The learned amplitude/phase belongs to the previous tone.
+            this.weights.fill(0);
+            this.lastFrequency = frequency;
+            this.acquireRemaining = this.acquireSamples;
+        }
+
+        const twoPi = 2 * Math.PI;
+        const phaseStep = (twoPi * frequency) / sampleRate;
+        const n = this.harmonics;
+        const w = this.weights;
+        const s = this.sines;
+        const c = this.cosines;
+
+        for (let i = 0; i < inp.length; i++) {
+            this.phase += phaseStep;
+            if (this.phase >= twoPi) this.phase -= twoPi;
+
+            let estimate = 0;
+            for (let k = 0; k < n; k++) {
+                const angle = (k + 1) * this.phase;
+                s[k] = Math.sin(angle);
+                c[k] = Math.cos(angle);
+                estimate += w[2 * k] * s[k] + w[2 * k + 1] * c[k];
+            }
+
+            const error = inp[i] - estimate;
+            out[i] = error;
+
+            let mu = this.muSteady;
+            if (this.acquireRemaining > 0) {
+                mu = this.muAcquire;
+                this.acquireRemaining--;
+            }
+            for (let k = 0; k < n; k++) {
+                w[2 * k] += mu * error * s[k];
+                w[2 * k + 1] += mu * error * c[k];
+            }
+        }
+
+        return true;
+    }
+}
+
+registerProcessor("ison-canceller", IsonCanceller);
+`;
+
 class PitchTracker extends HTMLElement {
     private audioContext: AudioContext | null = null;
     private analyser: AnalyserNode | null = null;
     private source: MediaStreamAudioSourceNode | null = null;
+    private canceller: AudioWorkletNode | null = null;
+    // Frequency (Hz) of the ison currently sounding, or 0 if none.
+    private isonFrequency: number = 0;
     private canvas: HTMLCanvasElement | null = null;
     private canvasContext: CanvasRenderingContext2D | null = null;
     private noteDisplay: HTMLDivElement | null = null;
@@ -20,7 +161,7 @@ class PitchTracker extends HTMLElement {
     }
 
     static get observedAttributes(): string[] {
-        return ["smoothing", "render-visualization"];
+        return ["smoothing", "render-visualization", "ison"];
     }
 
     attributeChangedCallback(
@@ -30,7 +171,15 @@ class PitchTracker extends HTMLElement {
     ): void {
         if (oldValue === newValue) return;
 
-        if (name === "smoothing" && newValue) {
+        if (name === "ison") {
+            const frequency = newValue ? parseFloat(newValue) : 0;
+            this.isonFrequency =
+                Number.isFinite(frequency) && frequency > 0 ? frequency : 0;
+            const param = this.canceller?.parameters.get("frequency");
+            if (param) {
+                param.value = this.isonFrequency;
+            }
+        } else if (name === "smoothing" && newValue) {
             if (newValue === "sensitive" || newValue === "smooth") {
                 this.smoothing = newValue;
                 // Reinitialize if we're already running
@@ -204,8 +353,9 @@ https://alexanderell.is/posts/tuner/
             this.createVisualElements();
 
             // Create audio context
-            this.audioContext = new (window.AudioContext ||
+            const audioContext = new (window.AudioContext ||
                 (window as any).webkitAudioContext)();
+            this.audioContext = audioContext;
             this.analyser = this.audioContext.createAnalyser();
             this.analyser.minDecibels = -100;
             this.analyser.maxDecibels = -10;
@@ -221,16 +371,47 @@ https://alexanderell.is/posts/tuner/
             }
 
             try {
-                const constraints = { audio: true };
-                this.stream =
+                // Browser mic processing is disabled on purpose:
+                // - In Chrome, `audio: true` enables echo cancellation, which
+                //   taps the page's audio output and produces audible clicks
+                //   in other playing audio (e.g. the ison) whenever the mic
+                //   stream is opened or closed.
+                // - Noise suppression and AGC alter the voice signal that the
+                //   autocorrelation pitch detector depends on.
+                const constraints = {
+                    audio: {
+                        echoCancellation: false,
+                        noiseSuppression: false,
+                        autoGainControl: false,
+                    },
+                };
+                // Load the ison canceller first so the graph is complete when
+                // the mic opens. If it can't be loaded, the mic is analyzed
+                // directly (the ison may then bleed into detection).
+                const canceller = await this.createIsonCanceller(audioContext);
+
+                const stream =
                     await navigator.mediaDevices.getUserMedia(constraints);
 
+                // The element may have been disconnected, or re-initialized,
+                // while waiting on the awaits above.
+                if (this.audioContext !== audioContext) {
+                    stream.getTracks().forEach((track) => track.stop());
+                    return;
+                }
+                this.stream = stream;
+
                 // Initialize the SourceNode
-                this.source = this.audioContext.createMediaStreamSource(
-                    this.stream,
-                );
-                // Connect the source node to the analyzer
-                this.source.connect(this.analyser);
+                this.source = audioContext.createMediaStreamSource(stream);
+
+                // mic -> (ison canceller) -> analyser
+                if (canceller) {
+                    this.canceller = canceller;
+                    this.source.connect(canceller);
+                    canceller.connect(this.analyser);
+                } else {
+                    this.source.connect(this.analyser);
+                }
 
                 // Initialize canvas context only if renderVisualization is true
                 if (this.canvas && this.renderVisualization) {
@@ -289,7 +470,46 @@ https://alexanderell.is/posts/tuner/
 
         // Clean up references
         this.source = null;
+        this.canceller = null;
         this.analyser = null;
+    }
+
+    /**
+     * Creates the worklet node that removes the ison from the mic signal, or
+     * returns null if AudioWorklet is unavailable or fails to load.
+     */
+    private async createIsonCanceller(
+        audioContext: AudioContext,
+    ): Promise<AudioWorkletNode | null> {
+        if (!audioContext.audioWorklet || typeof AudioWorkletNode === "undefined") {
+            return null;
+        }
+
+        const moduleUrl = URL.createObjectURL(
+            new Blob([ISON_CANCELLER_SOURCE], { type: "text/javascript" }),
+        );
+        try {
+            await audioContext.audioWorklet.addModule(moduleUrl);
+            return new AudioWorkletNode(audioContext, "ison-canceller", {
+                numberOfInputs: 1,
+                numberOfOutputs: 1,
+                outputChannelCount: [1],
+                channelCount: 1,
+                channelCountMode: "explicit",
+                parameterData: { frequency: this.isonFrequency },
+                processorOptions: {
+                    bandwidthHz: ISON_CANCELLER_CONFIG.bandwidthHz,
+                    acquireBandwidthHz: ISON_CANCELLER_CONFIG.acquireBandwidthHz,
+                    acquireSeconds: ISON_CANCELLER_CONFIG.acquireSeconds,
+                    harmonics: ISON_CANCELLER_CONFIG.harmonics,
+                },
+            });
+        } catch (error) {
+            console.error("Unable to load the ison canceller:", error);
+            return null;
+        } finally {
+            URL.revokeObjectURL(moduleUrl);
+        }
     }
 
     private visualize() {

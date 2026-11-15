@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.7.0 (2026-11-05)
+### Added
+ - Users can now play an ison when in listen mode
+### Changed
+ - Ison menu closes automatically when selecting an ison
+ - Clearer presentation for clear ison button
+
 ## v.1.6.1 (2026-11-05)
 ### Fixed
  - Bottom menu layout columns

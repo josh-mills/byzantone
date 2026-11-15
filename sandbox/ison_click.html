@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <title>Ison click bisect</title>
+        <style>
+            body {
+                font-family: system-ui, sans-serif;
+                max-width: 48rem;
+                margin: 2rem auto;
+                padding: 0 1rem;
+            }
+            .row {
+                display: flex;
+                gap: 0.5rem;
+                align-items: center;
+                margin: 0.5rem 0;
+            }
+            .row span {
+                flex: 1;
+            }
+            button {
+                padding: 0.4rem 0.8rem;
+            }
+            pre {
+                background: #eee;
+                padding: 0.5rem;
+                height: 12rem;
+                overflow: auto;
+            }
+        </style>
+    </head>
+    <body>
+        <h1>Ison click bisect</h1>
+        <p>
+            Plays a sine "ison" in its own AudioContext (same as
+            <code>ChantEngine</code>), then lets you open/close things that
+            happen when ByzanTone switches between Play and Listen. Listen for a
+            click at each <b>Open</b> and <b>Close</b>. Serve over http (e.g.
+            <code>python3 -m http.server 8000</code> in this directory) so the
+            mic prompt works.
+        </p>
+
+        <div class="row">
+            <label
+                >Ison Hz
+                <input id="freq" type="number" value="220" step="1"
+            /></label>
+            <label
+                >Gain
+                <input id="gain" type="number" value="0.3" step="0.05"
+            /></label>
+            <button id="start">Start ison</button>
+            <button id="stop">Stop ison</button>
+        </div>
+
+        <h2>Scenarios</h2>
+        <div id="scenarios"></div>
+
+        <h2>Log</h2>
+        <pre id="log"></pre>
+
+        <script>
+            const logEl = document.getElementById("log");
+            const log = (msg) => {
+                logEl.textContent += `${performance.now().toFixed(0)}ms  ${msg}\n`;
+                logEl.scrollTop = logEl.scrollHeight;
+            };
+
+            // --- Ison, mirroring ChantEngine's playTone/stopTone ---
+            const FADE = 0.2;
+            let ison = null; // { ctx, osc, gainNode }
+
+            document.getElementById("start").onclick = async () => {
+                if (ison) return;
+                const ctx = new AudioContext();
+                await ctx.resume();
+                const main = ctx.createGain();
+                const gain = parseFloat(document.getElementById("gain").value);
+                main.gain.value = gain;
+                main.connect(ctx.destination);
+
+                const osc = ctx.createOscillator();
+                const gainNode = ctx.createGain();
+                const now = ctx.currentTime;
+                osc.frequency.value = parseFloat(
+                    document.getElementById("freq").value,
+                );
+                osc.type = "sine";
+                gainNode.gain.setValueAtTime(0.001, now);
+                gainNode.gain.exponentialRampToValueAtTime(gain, now + FADE);
+                osc.connect(gainNode);
+                gainNode.connect(main);
+                osc.start();
+                ison = { ctx, osc, gainNode };
+                log(`ison started (ctx sampleRate ${ctx.sampleRate})`);
+            };
+
+            document.getElementById("stop").onclick = () => {
+                if (!ison) return;
+                const { ctx, osc, gainNode } = ison;
+                const now = ctx.currentTime;
+                gainNode.gain.setValueAtTime(gainNode.gain.value, now);
+                gainNode.gain.exponentialRampToValueAtTime(0.001, now + FADE);
+                osc.stop(now + FADE);
+                setTimeout(() => ctx.close(), FADE * 1000 + 50);
+                ison = null;
+                log("ison stopped");
+            };
+
+            // --- Scenarios ---
+            const rawConstraints = {
+                audio: {
+                    echoCancellation: false,
+                    noiseSuppression: false,
+                    autoGainControl: false,
+                },
+            };
+
+            const state = {}; // per-scenario resources
+
+            const stopStream = (stream) =>
+                stream && stream.getTracks().forEach((t) => t.stop());
+
+            const scenarios = [
+                {
+                    id: "ctx",
+                    label: "1. Extra AudioContext only (no mic)",
+                    open: async () => {
+                        state.ctx = new AudioContext();
+                        state.ctx.createAnalyser();
+                    },
+                    close: async () => {
+                        await state.ctx?.close();
+                        state.ctx = null;
+                    },
+                },
+                {
+                    id: "micDefault",
+                    label: "2. Mic only, default constraints (audio: true)",
+                    open: async () => {
+                        state.micDefault =
+                            await navigator.mediaDevices.getUserMedia({
+                                audio: true,
+                            });
+                        log(
+                            "constraints applied: " +
+                                JSON.stringify(
+                                    state.micDefault
+                                        .getAudioTracks()[0]
+                                        .getSettings(),
+                                ),
+                        );
+                    },
+                    close: async () => {
+                        stopStream(state.micDefault);
+                        state.micDefault = null;
+                    },
+                },
+                {
+                    id: "micRaw",
+                    label: "3. Mic only, AEC/NS/AGC all off",
+                    open: async () => {
+                        state.micRaw =
+                            await navigator.mediaDevices.getUserMedia(
+                                rawConstraints,
+                            );
+                    },
+                    close: async () => {
+                        stopStream(state.micRaw);
+                        state.micRaw = null;
+                    },
+                },
+                {
+                    id: "replica",
+                    label: "4. Replica of pitch-tracker (own context + mic default + analyser)",
+                    open: async () => {
+                        const ctx = new AudioContext();
+                        const analyser = ctx.createAnalyser();
+                        const stream =
+                            await navigator.mediaDevices.getUserMedia({
+                                audio: true,
+                            });
+                        const source = ctx.createMediaStreamSource(stream);
+                        source.connect(analyser);
+                        state.replica = { ctx, stream };
+                    },
+                    close: async () => {
+                        stopStream(state.replica?.stream);
+                        await state.replica?.ctx.close();
+                        state.replica = null;
+                    },
+                },
+                {
+                    id: "replicaRaw",
+                    label: "5. Same as 4 but AEC/NS/AGC off",
+                    open: async () => {
+                        const ctx = new AudioContext();
+                        const analyser = ctx.createAnalyser();
+                        const stream =
+                            await navigator.mediaDevices.getUserMedia(
+                                rawConstraints,
+                            );
+                        const source = ctx.createMediaStreamSource(stream);
+                        source.connect(analyser);
+                        state.replicaRaw = { ctx, stream };
+                    },
+                    close: async () => {
+                        stopStream(state.replicaRaw?.stream);
+                        await state.replicaRaw?.ctx.close();
+                        state.replicaRaw = null;
+                    },
+                },
+                {
+                    id: "shared",
+                    label: "6. Shared context: mic (default) into the ison's own context, no second context",
+                    open: async () => {
+                        if (!ison) throw new Error("Start the ison first");
+                        const analyser = ison.ctx.createAnalyser();
+                        const stream =
+                            await navigator.mediaDevices.getUserMedia({
+                                audio: true,
+                            });
+                        const source = ison.ctx.createMediaStreamSource(stream);
+                        source.connect(analyser);
+                        state.shared = { stream, source };
+                    },
+                    close: async () => {
+                        state.shared?.source.disconnect();
+                        stopStream(state.shared?.stream);
+                        state.shared = null;
+                    },
+                },
+            ];
+
+            const container = document.getElementById("scenarios");
+            for (const s of scenarios) {
+                const row = document.createElement("div");
+                row.className = "row";
+                const label = document.createElement("span");
+                label.textContent = s.label;
+                row.appendChild(label);
+                for (const action of ["open", "close"]) {
+                    const b = document.createElement("button");
+                    b.textContent = action[0].toUpperCase() + action.slice(1);
+                    b.onclick = async () => {
+                        log(`${s.id}: ${action}...`);
+                        try {
+                            await s[action]();
+                            log(`${s.id}: ${action} done`);
+                        } catch (e) {
+                            log(`${s.id}: ${action} FAILED: ${e}`);
+                        }
+                    };
+                    row.appendChild(b);
+                }
+                container.appendChild(row);
+            }
+        </script>
+    </body>
+</html>
