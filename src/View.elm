@@ -14,7 +14,7 @@ import Html.Attributes as Attr exposing (class, classList, id, type_)
 import Html.Attributes.Extra as Attr
 import Html.Events exposing (onClick, onInput)
 import Html.Extra exposing (viewIf)
-import Html.Lazy exposing (lazy, lazy2, lazy3, lazy4, lazy5)
+import Html.Lazy exposing (lazy, lazy2, lazy3, lazy5)
 import Icons
 import Json.Decode exposing (Decoder)
 import Maybe.Extra as Maybe
@@ -41,14 +41,10 @@ import View.PitchSpace as PitchSpace
 view : Model -> Html Msg
 view model =
     div [ class "h-screen" ]
-        [ Html.Extra.viewIfLazy (model.audioSettings.audioMode == AudioSettings.Play)
-            (\_ ->
-                lazy4 chantEngineNode
-                    model.audioSettings
-                    model.modeSettings.scale
-                    (PitchState.currentPitch model.modeSettings.scale model.pitchState)
-                    (PitchState.ison model.pitchState.ison)
-            )
+        [ lazy3 chantEngineNode
+            model.audioSettings.gain
+            (melosFrequency model)
+            (isonFrequency model)
         , lazy2 backdrop model.menuOpen model.modal
         , lazy2 header model.calendar model.headerIsOpen
         , lazy5 viewModal model.audioSettings model.layoutData model.modeSettings model.remote model.modal
@@ -81,7 +77,10 @@ view model =
                 model.openControlMenus
                 model.modeBuilder
             , lazy2 View.Controls.viewOverlay (layoutFor model.layoutData) model.openControlMenus
-            , lazy2 pitchTracker model.audioSettings model.layoutData
+            , lazy3 pitchTracker
+                model.audioSettings
+                model.layoutData
+                (trackerIsonFrequency model)
             ]
         ]
 
@@ -105,25 +104,66 @@ backdrop menuOpen modal =
         []
 
 
-chantEngineNode : AudioSettings -> Scale -> Maybe Pitch -> Maybe Pitch -> Html msg
-chantEngineNode audioSettings scale currentPitch currentIson =
-    let
-        frequency pitch =
-            Frequency.frequency audioSettings.pitchStandard
-                audioSettings.playbackRegister
-                (Pitch.position scale pitch)
-                |> Frequency.preciseString
-    in
+{-| The frequency of the melos for the chant engine, or an empty string if
+there is none.
+
+The melos is only sounded in Play mode. In Listen mode the chant engine stays
+mounted so the ison can keep sounding, but it receives no melos.
+
+Frequencies are passed to lazy views as `String`s rather than `Maybe Pitch`es
+because `Html.Lazy` compares its arguments by reference: a `Just` is rebuilt on
+every call, which would defeat the caching, whereas equal strings compare as
+equal.
+
+-}
+melosFrequency : Model -> String
+melosFrequency model =
+    case model.audioSettings.audioMode of
+        AudioSettings.Play ->
+            PitchState.currentPitch model.modeSettings.scale model.pitchState
+                |> Maybe.unwrap "" (playbackFrequencyString model.audioSettings model.modeSettings.scale)
+
+        AudioSettings.Listen ->
+            ""
+
+
+{-| The frequency of the ison, or an empty string if there is none. The ison
+sounds in both audio modes.
+-}
+isonFrequency : Model -> String
+isonFrequency model =
+    PitchState.ison model.pitchState.ison
+        |> Maybe.unwrap "" (playbackFrequencyString model.audioSettings model.modeSettings.scale)
+
+
+{-| The unrounded playback frequency of a pitch, as an attribute value.
+
+The ison is played by `chant-engine` and also passed to `pitch-tracker` (so it
+can be removed from the microphone signal), so both must derive the frequency
+the same way.
+
+-}
+playbackFrequencyString : AudioSettings -> Scale -> Pitch -> String
+playbackFrequencyString audioSettings scale pitch =
+    Frequency.frequency audioSettings.pitchStandard
+        audioSettings.playbackRegister
+        (Pitch.position scale pitch)
+        |> Frequency.preciseString
+
+
+{-| The chant engine plays the melos and ison at the given frequencies (empty
+strings for none).
+-}
+chantEngineNode : Float -> String -> String -> Html msg
+chantEngineNode gain melosFrequency_ isonFrequency_ =
     Html.node "chant-engine"
-        [ audioSettings.gain
+        [ gain
             |> String.fromFloat
             |> Attr.attribute "gain"
-        , Maybe.unwrap Attr.empty
-            (Attr.attribute "melos" << frequency)
-            currentPitch
-        , Maybe.unwrap Attr.empty
-            (Attr.attribute "ison" << frequency)
-            currentIson
+        , Attr.attributeIf (not (String.isEmpty melosFrequency_))
+            (Attr.attribute "melos" melosFrequency_)
+        , Attr.attributeIf (not (String.isEmpty isonFrequency_))
+            (Attr.attribute "ison" isonFrequency_)
         ]
         []
 
@@ -477,8 +517,31 @@ modeDataRadioConfig =
         }
 
 
-pitchTracker : AudioSettings -> LayoutData -> Html Msg
-pitchTracker audioSettings layoutData =
+{-| The frequency of the ison for the pitch tracker to filter out of the
+microphone signal, or an empty string if there is nothing to filter (no ison, or
+the user has not opted in).
+
+This is a `String` rather than a `Maybe Pitch` for the reason described on
+`melosFrequency`.
+
+-}
+trackerIsonFrequency : Model -> String
+trackerIsonFrequency model =
+    if model.audioSettings.filterIsonFromMic then
+        isonFrequency model
+
+    else
+        ""
+
+
+{-| When the user has opted in to filtering the ison from the microphone, the
+pitch tracker is told the frequency of the ison (which sounds through the
+speakers in Listen mode) so it can remove it from the microphone signal. With no
+`ison` attribute (an empty `isonToFilter`), the tracker analyzes the microphone
+signal unmodified.
+-}
+pitchTracker : AudioSettings -> LayoutData -> String -> Html Msg
+pitchTracker audioSettings layoutData isonToFilter =
     case audioSettings.audioMode of
         AudioSettings.Listen ->
             let
@@ -503,6 +566,8 @@ pitchTracker audioSettings layoutData =
                          else
                             "false"
                         )
+                    , Attr.attributeIf (not (String.isEmpty isonToFilter))
+                        (Attr.attribute "ison" isonToFilter)
                     , class "hidden sm:block"
                     ]
                     []

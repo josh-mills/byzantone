@@ -1,5 +1,5 @@
 module Model.PitchState exposing
-    ( PitchState, initialPitchState
+    ( PitchState, initialPitchState, resetKeepingIson
     , IsonStatus(..), ison
     , ProposedAccidental(..), unwrapProposedAccidental
     , currentPitch
@@ -7,7 +7,7 @@ module Model.PitchState exposing
 
 {-| User-controlled pitch state.
 
-@docs PitchState, initialPitchState
+@docs PitchState, initialPitchState, resetKeepingIson
 
 @docs IsonStatus, ison
 
@@ -41,6 +41,30 @@ initialPitchState =
     , proposedAccidental = NoProposedAccidental
     , appliedAccidentals = DegreeDataDict.init (always Nothing)
     , proposedMovement = Movement.None
+    }
+
+
+{-| Reset to the initial pitch state, but keep the current ison sounding. Used
+when changing audio modes, since the ison is independent of the mode.
+
+An ison selection in progress is settled: if there is a current ison it is
+kept as `Selected`, otherwise there is no ison.
+
+-}
+resetKeepingIson : PitchState -> PitchState
+resetKeepingIson pitchState =
+    { initialPitchState
+        | ison =
+            case pitchState.ison of
+                NoIson ->
+                    NoIson
+
+                SelectingIson maybeDegree ->
+                    Maybe.map Selected maybeDegree
+                        |> Maybe.withDefault NoIson
+
+                Selected degree ->
+                    Selected degree
     }
 
 
