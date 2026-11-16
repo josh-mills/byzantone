@@ -410,7 +410,16 @@ isonButton ison =
                 )
             )
         ]
-        [ text "Select Ison" ]
+        [ case ison of
+            PitchState.SelectingIson (Just _) ->
+                text "Change Ison"
+
+            PitchState.Selected _ ->
+                text "Change Ison"
+
+            _ ->
+                text "Select Ison"
+        ]
 
 
 clearIsonButton : Pitch -> Html Msg
@@ -420,7 +429,7 @@ clearIsonButton pitch =
         , class "my-2"
         , onClick (Update.SetIson PitchState.NoIson)
         ]
-        [ text "Clear Ison ("
+        [ text "Stop Ison ("
         , Degree.text (Pitch.unwrapDegree pitch)
         , text ")"
         ]

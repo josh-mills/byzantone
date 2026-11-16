@@ -1,6 +1,12 @@
 # Changelog
 
-## v1.7.0 (2026-11-05)
+## v1.7.1 (2026-11-16)
+### Changed
+ - Ison menu button text changes to "Change Ison" when an ison is selected
+### Fixed
+ - Incorrect date in change log
+
+## v1.7.0 (2026-11-14)
 ### Added
  - Users can now play an ison when in listen mode
 ### Changed
