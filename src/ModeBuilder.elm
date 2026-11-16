@@ -582,6 +582,7 @@ signatureRadioConfig ichos indicator =
             (Html.Extra.viewMaybe
                 (\sig -> div [ class "text-2xl mt-2" ] [ ByzHtml.view sig ])
             )
+        |> RadioFieldset.withLayout RadioFieldset.TwoColumnGrid
 
 
 classifiedSignatureRadioConfig : Classification -> RadioFieldset.Config (Maybe Signature) Msg
