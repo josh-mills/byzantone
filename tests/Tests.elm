@@ -10,6 +10,7 @@ import Byzantine.PitchPosition as PitchPosition
 import Byzantine.Scale as Scale exposing (Scale(..))
 import Expect
 import List.Extra
+import Maybe.Extra as Maybe
 import Model.DegreeDataDict as DegreeDataDict
 import Model.PitchState as PitchState exposing (IsonStatus(..))
 import Test exposing (Test, describe, test)
@@ -444,6 +445,272 @@ pitchStateResetTests =
                 }
                     |> PitchState.resetKeepingIson
                     |> Expect.equal { initialPitchState | ison = Selected Di }
+        ]
+
+
+{-| The pitch space is small enough to cover exhaustively: every scale, every
+degree, every accidental, and every combination of applied accidentals (or none)
+on the neighboring degrees. Each case is checked against an oracle written in
+plain integer moria taken straight from the position tables, so it shares no
+logic with `PitchPosition.staysShortOfNeighbor`.
+-}
+pitchPositionInflectionTests : Test
+pitchPositionInflectionTests =
+    describe "PitchPosition inflection, exhaustively"
+        [ describe "staysShortOfNeighbor agrees with the oracle"
+            (perScaleAndDegree "oracle" staysShortOracleFailures)
+        , describe "staysShortOfNeighbor is monotonic in the size of the accidental"
+            (perScaleAndDegree "monotonic" monotonicFailures)
+        , describe "isValidInflection agrees with the oracle"
+            (perScaleAndDegree "isValidInflection" isValidInflectionOracleFailures)
+        , describe "isValidInflection never inflects outward from the edge of the gamut"
+            (perScaleAndDegree "edges" outwardEdgeFailures)
+        ]
+
+
+{-| One degree of one scale, with an accidental to try and the applied
+accidentals (if any) on the degrees below and above.
+-}
+type alias InflectionCase =
+    { scale : Scale
+    , index : Int
+    , degree : Degree
+    , accidental : Accidental
+    , belowState : Maybe Accidental
+    , aboveState : Maybe Accidental
+    }
+
+
+accidentalStates : List (Maybe Accidental)
+accidentalStates =
+    Nothing :: List.map Just Accidental.all
+
+
+neighborStates : List ( Maybe Accidental, Maybe Accidental )
+neighborStates =
+    List.concatMap (\below -> List.map (Tuple.pair below) accidentalStates) accidentalStates
+
+
+inflectionCase : Scale -> ( Int, Degree ) -> ( Maybe Accidental, Maybe Accidental ) -> Accidental -> InflectionCase
+inflectionCase scale ( index, degree ) ( belowState, aboveState ) accidental =
+    { scale = scale
+    , index = index
+    , degree = degree
+    , accidental = accidental
+    , belowState = belowState
+    , aboveState = aboveState
+    }
+
+
+allInflectionCases : Scale -> ( Int, Degree ) -> List InflectionCase
+allInflectionCases scale scaleDegree =
+    List.concatMap
+        (\states -> List.map (inflectionCase scale scaleDegree states) Accidental.all)
+        neighborStates
+
+
+stateToString : Maybe Accidental -> String
+stateToString =
+    Maybe.unwrap "natural" Accidental.toString
+
+
+describeCase : InflectionCase -> String
+describeCase c =
+    String.join " "
+        [ Scale.name c.scale
+        , Degree.toString c.degree
+        , Accidental.toString c.accidental
+        , "below:"
+        , stateToString c.belowState
+        , "above:"
+        , stateToString c.aboveState
+        ]
+
+
+{-| One test per scale and degree, failing with every offending case.
+-}
+perScaleAndDegree : String -> (Scale -> ( Int, Degree ) -> List String) -> List Test
+perScaleAndDegree label failuresFor =
+    Scale.all
+        |> List.concatMap
+            (\scale ->
+                Degree.gamutList
+                    |> List.indexedMap Tuple.pair
+                    |> List.map
+                        (\( index, degree ) ->
+                            test (label ++ ": " ++ Scale.name scale ++ " " ++ Degree.toString degree) <|
+                                \_ -> Expect.equal [] (failuresFor scale ( index, degree ))
+                        )
+            )
+
+
+{-| The function under test, with neighbors reflecting the case's applied
+accidentals.
+-}
+actualStaysShort : InflectionCase -> Bool
+actualStaysShort c =
+    let
+        positionAt index state =
+            PitchPosition.pitchPositions c.scale
+                |> Array.get index
+                |> Maybe.map (\position -> Maybe.unwrap position (PitchPosition.inflect position) state)
+    in
+    PitchPosition.staysShortOfNeighbor c.accidental
+        { below = positionAt (c.index - 1) c.belowState
+        , above = positionAt (c.index + 1) c.aboveState
+        }
+        (PitchPosition.pitchPosition c.scale c.degree (Just c.accidental))
+
+
+{-| The oracle: is the inflected position short of the neighbor in the direction
+of inflection? Written against raw integer moria from the position table.
+-}
+oracleStaysShort : InflectionCase -> Bool
+oracleStaysShort c =
+    let
+        moriaAt index state =
+            PitchPosition.pitchPositions c.scale
+                |> Array.get index
+                |> Maybe.map
+                    (\position ->
+                        PitchPosition.unwrap position
+                            + Maybe.unwrap 0 Accidental.moriaAdjustment state
+                    )
+
+        inflected =
+            Maybe.withDefault -1 (moriaAt c.index (Just c.accidental))
+    in
+    if Accidental.moriaAdjustment c.accidental > 0 then
+        Maybe.unwrap False (\above -> above > inflected) (moriaAt (c.index + 1) c.aboveState)
+
+    else
+        Maybe.unwrap False (\below -> below < inflected) (moriaAt (c.index - 1) c.belowState)
+
+
+staysShortOracleFailures : Scale -> ( Int, Degree ) -> List String
+staysShortOracleFailures scale scaleDegree =
+    allInflectionCases scale scaleDegree
+        |> List.filter (\c -> actualStaysShort c /= oracleStaysShort c)
+        |> List.map describeCase
+
+
+allowedRank : Bool -> Int
+allowedRank allowed =
+    if allowed then
+        0
+
+    else
+        1
+
+
+{-| If a sharp is allowed, every smaller sharp is too; likewise flats.
+-}
+monotonicFailures : Scale -> ( Int, Degree ) -> List String
+monotonicFailures scale scaleDegree =
+    let
+        allowedFirst results =
+            results == List.sortBy allowedRank results
+
+        isMonotonic states =
+            let
+                allowed =
+                    inflectionCase scale scaleDegree states >> actualStaysShort
+            in
+            allowedFirst (List.map allowed Accidental.allSharps)
+                && allowedFirst (List.map allowed (List.reverse Accidental.allFlats))
+    in
+    neighborStates
+        |> List.filter (not << isMonotonic)
+        |> List.map
+            (\( below, above ) ->
+                Scale.name scale
+                    ++ " "
+                    ++ Degree.toString (Tuple.second scaleDegree)
+                    ++ " below: "
+                    ++ stateToString below
+                    ++ " above: "
+                    ++ stateToString above
+            )
+
+
+{-| `isValidInflection` is the natural-neighbor case.
+-}
+isValidInflectionOracleFailures : Scale -> ( Int, Degree ) -> List String
+isValidInflectionOracleFailures scale (( _, degree ) as scaleDegree) =
+    Accidental.all
+        |> List.map (inflectionCase scale scaleDegree ( Nothing, Nothing ))
+        |> List.filter
+            (\c -> PitchPosition.isValidInflection scale c.accidental degree /= oracleStaysShort c)
+        |> List.map describeCase
+
+
+{-| The edges of the gamut have nothing to inflect toward.
+-}
+outwardEdgeFailures : Scale -> ( Int, Degree ) -> List String
+outwardEdgeFailures scale ( index, degree ) =
+    let
+        outward =
+            if index == List.length Degree.gamutList - 1 then
+                Accidental.allSharps
+
+            else if index == 0 then
+                Accidental.allFlats
+
+            else
+                []
+    in
+    outward
+        |> List.filter (\accidental -> PitchPosition.isValidInflection scale accidental degree)
+        |> List.map (\accidental -> Scale.name scale ++ " " ++ Degree.toString degree ++ " " ++ Accidental.toString accidental)
+
+
+pitchPositionTests : Test
+pitchPositionTests =
+    let
+        base =
+            PitchPosition.pitchPosition SoftDiatonic Di Nothing
+
+        shifted accidental =
+            PitchPosition.inflect base accidental
+
+        neighbors =
+            { below = Just (shifted Flat8), above = Just (shifted Sharp8) }
+    in
+    describe "PitchPosition.staysShortOfNeighbor"
+        [ test "a sharp short of the neighbor above is allowed" <|
+            \_ ->
+                PitchPosition.staysShortOfNeighbor Sharp6 neighbors (shifted Sharp6)
+                    |> Expect.equal True
+        , test "a sharp reaching the neighbor above is not allowed" <|
+            \_ ->
+                PitchPosition.staysShortOfNeighbor Sharp8 neighbors (shifted Sharp8)
+                    |> Expect.equal False
+        , test "a flat short of the neighbor below is allowed" <|
+            \_ ->
+                PitchPosition.staysShortOfNeighbor Flat6 neighbors (shifted Flat6)
+                    |> Expect.equal True
+        , test "a flat reaching the neighbor below is not allowed" <|
+            \_ ->
+                PitchPosition.staysShortOfNeighbor Flat8 neighbors (shifted Flat8)
+                    |> Expect.equal False
+        , test "a sharp with no neighbor above is not allowed" <|
+            \_ ->
+                PitchPosition.staysShortOfNeighbor Sharp2
+                    { neighbors | above = Nothing }
+                    (shifted Sharp2)
+                    |> Expect.equal False
+        , test "a flat with no neighbor below is not allowed" <|
+            \_ ->
+                PitchPosition.staysShortOfNeighbor Flat2
+                    { neighbors | below = Nothing }
+                    (shifted Flat2)
+                    |> Expect.equal False
+        , test "only the neighbor in the direction of inflection matters" <|
+            \_ ->
+                PitchPosition.staysShortOfNeighbor Sharp2
+                    { neighbors | below = Nothing }
+                    (shifted Sharp2)
+                    |> Expect.equal True
         ]
 
 

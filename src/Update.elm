@@ -753,26 +753,14 @@ applyAccidentalWithValidation modeSettings { pitchPositions } pitchState degree 
                 positonWithInflection =
                     PitchPosition.inflect (DegreeDataDict.get degree pitchPositions) accidental
 
-                wouldNotBeInversion =
-                    if Accidental.moriaAdjustment accidental > 0 then
-                        Maybe.unwrap False
-                            (\degreeHigher ->
-                                PitchPosition.compare
-                                    (DegreeDataDict.get degreeHigher pitchPositions)
-                                    positonWithInflection
-                                    == GT
-                            )
-                            (Degree.step degree 1)
+                neighborPosition step =
+                    Degree.step degree step
+                        |> Maybe.map (\neighbor -> DegreeDataDict.get neighbor pitchPositions)
 
-                    else
-                        Maybe.unwrap False
-                            (\degreeLower ->
-                                PitchPosition.compare
-                                    (DegreeDataDict.get degreeLower pitchPositions)
-                                    positonWithInflection
-                                    == LT
-                            )
-                            (Degree.step degree -1)
+                wouldNotBeInversion =
+                    PitchPosition.staysShortOfNeighbor accidental
+                        { below = neighborPosition -1, above = neighborPosition 1 }
+                        positonWithInflection
             in
             if isValidInflection && wouldNotBeInversion then
                 DegreeDataDict.set degree (Just accidental) pitchState.appliedAccidentals
@@ -960,39 +948,115 @@ handleIsonToggle model =
             ( model, Cmd.none )
 
 
+{-| Moves the current degree by the given interval. If an accidental is proposed,
+it is applied to the destination degree, subject to the same validation as when
+clicking a pitch button (see `applyProposedAccidentalToMovedDegree`).
+-}
 moveAndFocus : Model -> Int -> ( Model, Cmd Msg )
 moveAndFocus model interval =
     let
-        pitch =
+        targetDegree =
             model.pitchState.currentDegree
                 |> Maybe.andThen (\degree -> Degree.step degree interval)
-                |> Maybe.map
-                    (ModeSettings.pitchFrom model.modeSettings
-                        (PitchState.unwrapProposedAccidental model.pitchState.proposedAccidental)
-                    )
+
+        accidentalsWithoutCurrent =
+            clearCurrentDegreeAccidental model.pitchState.currentDegree
+                model.pitchState.appliedAccidentals
+
+        appliedAccidentals =
+            case targetDegree of
+                Just degree ->
+                    applyProposedAccidentalToMovedDegree model.modeSettings
+                        accidentalsWithoutCurrent
+                        model.pitchState.proposedAccidental
+                        degree
+
+                Nothing ->
+                    accidentalsWithoutCurrent
     in
     ( updatePitchState
         (\pitchState ->
             { pitchState
-                | currentDegree = Maybe.map Pitch.unwrapDegree pitch
+                | currentDegree = targetDegree
                 , proposedAccidental = NoProposedAccidental
-                , appliedAccidentals =
-                    clearCurrentDegreeAccidental pitchState.currentDegree
-                        pitchState.appliedAccidentals
+                , appliedAccidentals = appliedAccidentals
             }
         )
         model
         |> resetPitchSpaceData
     , Maybe.unwrap Cmd.none
-        (\pitch_ ->
-            Pitch.unwrapDegree pitch_
-                |> Degree.toString
+        (\degree ->
+            Degree.toString degree
                 |> (++) "p_"
                 |> Dom.focus
                 |> Task.attempt DomResult
         )
-        pitch
+        targetDegree
     )
+
+
+{-| Applies the proposed accidental to a degree that the current pitch is moving
+to (by `moveAndFocus` or `setAndFocus`), given the applied accidentals as they
+will be once the previous degree's accidental is cleared.
+
+  - `Apply` sets the accidental, but only if it is valid for the degree (see
+    `ModeSettings.pitchFrom`) and does not invert the degree with its neighbor;
+    otherwise the degree's accidentals are left as they were.
+  - `CancelAccidental` clears the degree's accidental.
+  - `NoProposedAccidental` leaves the degree's accidentals as they were.
+
+-}
+applyProposedAccidentalToMovedDegree :
+    ModeSettings
+    -> DegreeDataDict (Maybe Accidental)
+    -> ProposedAccidental
+    -> Degree
+    -> DegreeDataDict (Maybe Accidental)
+applyProposedAccidentalToMovedDegree modeSettings appliedAccidentals proposedAccidental degree =
+    case proposedAccidental of
+        Apply accidental ->
+            if wouldInflectWithoutInversion modeSettings appliedAccidentals accidental degree then
+                DegreeDataDict.set degree (Just accidental) appliedAccidentals
+
+            else
+                appliedAccidentals
+
+        CancelAccidental ->
+            DegreeDataDict.set degree Nothing appliedAccidentals
+
+        NoProposedAccidental ->
+            appliedAccidentals
+
+
+{-| Whether the degree can take the accidental: it must be valid for the degree
+in the current mode or scale, and the inflected position must not cross over the
+position of the adjacent degree in the direction of inflection. Positions of the
+adjacent degrees reflect their applied accidentals.
+-}
+wouldInflectWithoutInversion : ModeSettings -> DegreeDataDict (Maybe Accidental) -> Accidental -> Degree -> Bool
+wouldInflectWithoutInversion modeSettings appliedAccidentals accidental degree =
+    let
+        scale =
+            ModeSettings.scale modeSettings
+
+        pitchOf maybeAccidental degree_ =
+            ModeSettings.pitchFrom modeSettings maybeAccidental degree_
+
+        inflectedPitch =
+            pitchOf (Just accidental) degree
+
+        neighborPosition step =
+            Degree.step degree step
+                |> Maybe.map
+                    (\neighbor ->
+                        Pitch.position scale
+                            (pitchOf (DegreeDataDict.get neighbor appliedAccidentals) neighbor)
+                    )
+    in
+    (Pitch.unwrapAccidental inflectedPitch == Just accidental)
+        && PitchPosition.staysShortOfNeighbor accidental
+            { below = neighborPosition -1, above = neighborPosition 1 }
+            (Pitch.position scale inflectedPitch)
 
 
 setAndFocus : Model -> Degree -> ( Model, Cmd Msg )
@@ -1005,11 +1069,25 @@ setAndFocus model degree =
                 |> resetPitchSpaceData
 
         _ ->
+            let
+                accidentalsWithoutPrevious =
+                    if model.pitchState.currentDegree == Just degree then
+                        model.pitchState.appliedAccidentals
+
+                    else
+                        clearCurrentDegreeAccidental model.pitchState.currentDegree
+                            model.pitchState.appliedAccidentals
+            in
             updatePitchState
                 (\pitchState ->
                     { pitchState
                         | currentDegree = Just degree
                         , proposedAccidental = NoProposedAccidental
+                        , appliedAccidentals =
+                            applyProposedAccidentalToMovedDegree model.modeSettings
+                                accidentalsWithoutPrevious
+                                pitchState.proposedAccidental
+                                degree
                     }
                 )
                 model
