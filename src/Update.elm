@@ -807,6 +807,9 @@ handleKeydown key model =
         "Escape" ->
             handleEscapeKey model
 
+        "0" ->
+            moveAndFocus model 0
+
         "1" ->
             moveAndFocus model 1
 
@@ -950,7 +953,9 @@ handleIsonToggle model =
 
 {-| Moves the current degree by the given interval. If an accidental is proposed,
 it is applied to the destination degree, subject to the same validation as when
-clicking a pitch button (see `applyProposedAccidentalToMovedDegree`).
+clicking a pitch button (see `applyProposedAccidentalToMovedDegree`). An interval
+of zero stays on the current degree, so that the proposed accidental can be
+applied to it.
 -}
 moveAndFocus : Model -> Int -> ( Model, Cmd Msg )
 moveAndFocus model interval =
@@ -960,8 +965,7 @@ moveAndFocus model interval =
                 |> Maybe.andThen (\degree -> Degree.step degree interval)
 
         accidentalsWithoutCurrent =
-            clearCurrentDegreeAccidental model.pitchState.currentDegree
-                model.pitchState.appliedAccidentals
+            accidentalsBeforeMovingTo targetDegree model.pitchState
 
         appliedAccidentals =
             case targetDegree of
@@ -993,6 +997,19 @@ moveAndFocus model interval =
         )
         targetDegree
     )
+
+
+{-| The applied accidentals once the current degree has been left for the target
+degree: the current degree's accidental is cleared, unless the target is the
+current degree itself (e.g., a move of zero steps), which keeps it.
+-}
+accidentalsBeforeMovingTo : Maybe Degree -> PitchState -> DegreeDataDict (Maybe Accidental)
+accidentalsBeforeMovingTo targetDegree pitchState =
+    if targetDegree == pitchState.currentDegree then
+        pitchState.appliedAccidentals
+
+    else
+        clearCurrentDegreeAccidental pitchState.currentDegree pitchState.appliedAccidentals
 
 
 {-| Applies the proposed accidental to a degree that the current pitch is moving
@@ -1071,12 +1088,7 @@ setAndFocus model degree =
         _ ->
             let
                 accidentalsWithoutPrevious =
-                    if model.pitchState.currentDegree == Just degree then
-                        model.pitchState.appliedAccidentals
-
-                    else
-                        clearCurrentDegreeAccidental model.pitchState.currentDegree
-                            model.pitchState.appliedAccidentals
+                    accidentalsBeforeMovingTo (Just degree) model.pitchState
             in
             updatePitchState
                 (\pitchState ->
