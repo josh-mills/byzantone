@@ -183,19 +183,7 @@ update msg model =
             )
 
         SetIson ison ->
-            let
-                updatedModel =
-                    updatePitchState
-                        (\pitchState -> { pitchState | ison = ison })
-                        model
-                        |> resetPitchSpaceData
-            in
-            ( case ison of
-                PitchState.SelectingIson _ ->
-                    { updatedModel | openControlMenus = ControlsMenu.init }
-
-                _ ->
-                    updatedModel
+            ( handleSetIson ison model
             , Cmd.none
             )
 
@@ -915,40 +903,52 @@ handleEscapeKey model =
         )
 
 
+{-| Sets the ison status. Entering ison selection also closes any open control
+menus.
+-}
+handleSetIson : IsonStatus -> Model -> Model
+handleSetIson ison model =
+    let
+        updatedModel =
+            updatePitchState
+                (\pitchState -> { pitchState | ison = ison })
+                model
+                |> resetPitchSpaceData
+    in
+    case ison of
+        PitchState.SelectingIson _ ->
+            { updatedModel | openControlMenus = ControlsMenu.init }
+
+        _ ->
+            updatedModel
+
+
+{-| The `i` shortcut steps through the same ison states as the ison button:
+start selecting (from no ison, or to change a selected one), confirm the ison
+being selected, or abandon a selection that has no ison.
+-}
 handleIsonToggle : Model -> ( Model, Cmd Msg )
 handleIsonToggle model =
     case model.pitchState.ison of
         PitchState.NoIson ->
-            ( updatePitchState
-                (\pitchState ->
-                    { pitchState | ison = PitchState.SelectingIson Nothing }
-                )
-                model
+            ( handleSetIson (PitchState.SelectingIson Nothing) model
             , Task.attempt DomResult (Dom.focus "select-ison-button")
             )
 
         PitchState.SelectingIson (Just ison) ->
-            ( updatePitchState
-                (\pitchState ->
-                    { pitchState
-                        | ison = PitchState.Selected ison
-                    }
-                )
-                model
+            ( handleSetIson (PitchState.Selected ison) model
             , Cmd.none
             )
 
         PitchState.SelectingIson Nothing ->
-            ( updatePitchState
-                (\pitchState ->
-                    { pitchState | ison = PitchState.NoIson }
-                )
-                model
+            ( handleSetIson PitchState.NoIson model
             , Task.attempt DomResult (Dom.focus "select-ison-button")
             )
 
-        PitchState.Selected _ ->
-            ( model, Cmd.none )
+        PitchState.Selected ison ->
+            ( handleSetIson (PitchState.SelectingIson (Just ison)) model
+            , Task.attempt DomResult (Dom.focus "select-ison-button")
+            )
 
 
 {-| Moves the current degree by the given interval. If an accidental is proposed,
