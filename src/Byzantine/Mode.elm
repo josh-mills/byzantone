@@ -399,18 +399,21 @@ authenticOne_Ke_Papadic =
             }
         , nonCadentialFoci = []
         }
-    , isonOptions = [ Ke ]
+    , isonOptions = [ Pa, Di, Ke ]
     , range =
-        { start = Pa
-        , end = Pa_
+        { start = KE
+        , end = Bou_
         }
     , recitingTone = Ke
     , possibleInflections =
         inflections
-            [ { degree = Zo_, accidentals = [ Sharp2 ] }
+            [ { degree = Zo_, accidentals = [ Flat4, Flat2, Sharp2, Sharp4 ] }
             , { degree = Pa_, accidentals = [ Flat2, Flat4 ] }
             , { degree = Ni_, accidentals = [ Sharp2, Sharp4 ] }
             , { degree = Ga, accidentals = [ Sharp4, Sharp6 ] }
+            , { degree = Bou_, accidentals = [ Sharp2 ] }
+            , { degree = Bou, accidentals = [ Sharp2 ] }
+            , { degree = Ke, accidentals = [ Sharp4 ] }
             ]
     }
 
@@ -634,7 +637,7 @@ authenticFour_Bou_Legetos =
             }
         , nonCadentialFoci = [ Zo_ ]
         }
-    , isonOptions = [ Bou, Di, DI ]
+    , isonOptions = [ Pa, Bou, Di, DI ]
     , range = { start = DI, end = Pa_ }
     , recitingTone = Di
     , possibleInflections =
@@ -684,7 +687,7 @@ authenticFour_Di_Agia =
         inflections
             [ { degree = Ga, accidentals = [ Sharp2, Sharp4, Sharp6 ] }
             , { degree = Ke, accidentals = [ Sharp2, Sharp4 ] }
-            , { degree = Zo_, accidentals = [ Flat4, Sharp2, Sharp4 ] }
+            , { degree = Zo_, accidentals = [ Flat4, Flat2, Sharp2, Sharp4 ] }
             , { degree = Ni_, accidentals = [ Sharp4, Sharp6 ] }
             ]
     }
@@ -1235,7 +1238,7 @@ plagalFour_Ni =
             }
         , nonCadentialFoci = []
         }
-    , isonOptions = [ Ni, Di, DI ]
+    , isonOptions = [ Ni, Pa, Di, DI ]
     , range = { start = GA, end = Ni_ }
     , recitingTone = Di
     , possibleInflections =
