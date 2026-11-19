@@ -8,25 +8,25 @@ module Byzantine.Scale exposing (Scale(..), all, decode, encode, name)
 "hard-diatonic".
 -}
 type Scale
-    = Diatonic
-    | Enharmonic
+    = SoftDiatonic
+    | HardDiatonic
     | SoftChromatic
     | HardChromatic
 
 
 all : List Scale
 all =
-    [ Diatonic, Enharmonic, SoftChromatic, HardChromatic ]
+    [ SoftDiatonic, HardDiatonic, SoftChromatic, HardChromatic ]
 
 
 name : Scale -> String
 name scale =
     case scale of
-        Diatonic ->
-            "Diatonic"
+        SoftDiatonic ->
+            "Soft Diatonic"
 
-        Enharmonic ->
-            "Enharmonic"
+        HardDiatonic ->
+            "Hard Diatonic (Enharmonic)"
 
         SoftChromatic ->
             "Soft Chromatic"
@@ -37,8 +37,8 @@ name scale =
 
 {-| Encode a Scale to a string representation:
 
-  - "ds" for Diatonic (soft-diatonic)
-  - "dh" for Enharmonic (hard-diatonic)
+  - "ds" for SoftDiatonic
+  - "dh" for HardDiatonic
   - "cs" for SoftChromatic
   - "ch" for HardChromatic
 
@@ -46,10 +46,10 @@ name scale =
 encode : Scale -> String
 encode scale =
     case scale of
-        Diatonic ->
+        SoftDiatonic ->
             "ds"
 
-        Enharmonic ->
+        HardDiatonic ->
             "dh"
 
         SoftChromatic ->
@@ -61,8 +61,8 @@ encode scale =
 
 {-| Decode a string representation to a Scale. Valid inputs are:
 
-  - "ds" for Diatonic (soft-diatonic)
-  - "dh" for Enharmonic (hard-diatonic)
+  - "ds" for SoftDiatonic
+  - "dh" for HardDiatonic
   - "cs" for SoftChromatic
   - "ch" for HardChromatic
 
@@ -73,10 +73,10 @@ decode : String -> Result String Scale
 decode str =
     case str of
         "ds" ->
-            Ok Diatonic
+            Ok SoftDiatonic
 
         "dh" ->
-            Ok Enharmonic
+            Ok HardDiatonic
 
         "cs" ->
             Ok SoftChromatic

@@ -7,12 +7,14 @@ import Byzantine.Accidental as Accidental
 import Byzantine.ByzHtml.Accidental as ByzHtmlAccidental
 import Byzantine.ByzHtml.Interval as ByzHtmlInterval
 import Byzantine.ByzHtml.Martyria as ByzHtmlMartyria
+import Byzantine.ByzHtml.ModalSignature as ModalSignature
 import Byzantine.Degree as Degree exposing (Degree)
 import Byzantine.DetectedPitch exposing (DetectedPitch)
 import Byzantine.Frequency as Frequency
 import Byzantine.Interval as Interval exposing (Interval)
 import Byzantine.IntervalCharacter as IntervalCharacter
 import Byzantine.Martyria as Martyria
+import Byzantine.Mode as Mode exposing (Mode)
 import Byzantine.Pitch as Pitch exposing (Pitch, PitchString)
 import Byzantine.PitchPosition as PitchPosition
 import Html exposing (Html, button, div, li, span, text)
@@ -25,7 +27,7 @@ import Maybe.Extra as Maybe
 import Model.AudioSettings as AudioSettings exposing (AudioSettings, Responsiveness(..))
 import Model.DegreeDataDict as DegreeDataDict
 import Model.LayoutData as LayoutData exposing (Layout(..))
-import Model.ModeSettings exposing (ModeSettings)
+import Model.ModeSettings as ModeSettings exposing (ModeSettings)
 import Model.PitchSpaceData as PitchSpaceData
     exposing
         ( Display
@@ -69,7 +71,35 @@ view pitchSpaceData audioSettings modeSettings pitchState maybeTimestampedDetect
             audioSettings
             (Maybe.map .detectedPitch maybeTimestampedDetectedPitch)
         , Html.Lazy.lazy3 viewPitches pitchSpaceData modeSettings pitchState
-        , Html.Lazy.lazy2 viewAccidentalButtons pitchSpaceData.display pitchState.proposedAccidental
+        , Html.Lazy.lazy4 viewAccidentalButtons
+            pitchSpaceData.display
+            modeSettings
+            (PitchState.hasAppliedAccidentals pitchState)
+            pitchState.proposedAccidental
+        , Html.Extra.viewIfLazy False (\_ -> signatures)
+        ]
+
+
+signatures : Html Msg
+signatures =
+    div [ class "m-6" ]
+        [ Html.h3 [ class "font-heading text-2xl" ]
+            [ text "All Modes and their Signatures" ]
+        , Html.ul [] (List.map viewModeSignatures Mode.all)
+        ]
+
+
+viewModeSignatures : Mode -> Html Msg
+viewModeSignatures mode =
+    li [ class "flex flex-row gap-2 m-2 my-4" ]
+        [ div [ class "font-bold" ]
+            [ Html.text (Mode.toString mode)
+            , text ". "
+            ]
+        , (Mode.data mode).signatures
+            |> List.map ModalSignature.view
+            |> List.intersperse (Html.div [ class "px-2 text-md" ] [ text "~ or ~" ])
+            |> div [ class "flex flex-row" ]
         ]
 
 
@@ -108,7 +138,7 @@ viewIntervals pitchSpaceData modeSettings pitchState =
             :: listAttributes pitchSpaceData.display
         )
         (List.map (viewInterval pitchSpaceData modeSettings pitchState)
-            (PitchSpaceData.intervalsWithVisibility modeSettings.scale pitchSpaceData pitchState.proposedMovement)
+            (PitchSpaceData.intervalsWithVisibility (ModeSettings.scale modeSettings) pitchSpaceData pitchState.proposedMovement)
         )
 
 
@@ -116,10 +146,10 @@ viewInterval : PitchSpaceData -> ModeSettings -> PitchState -> ( Interval, Posit
 viewInterval pitchSpaceData modeSettings pitchState ( interval, position ) =
     let
         currentPitch =
-            PitchState.currentPitch modeSettings.scale pitchState
+            PitchState.currentPitch modeSettings pitchState
 
         currentPitchString =
-            Maybe.unwrap "" (Pitch.encode modeSettings.scale) currentPitch
+            Maybe.unwrap "" (Pitch.encode (ModeSettings.scale modeSettings)) currentPitch
 
         shouldHighlight =
             shouldHighlightInterval currentPitch pitchState.proposedMovement interval
@@ -128,7 +158,7 @@ viewInterval pitchSpaceData modeSettings pitchState ( interval, position ) =
         currentPitchString
         pitchSpaceData.display
         pitchSpaceData.scalingFactor
-        (Interval.encode modeSettings.scale interval)
+        (Interval.encode (ModeSettings.scale modeSettings) interval)
         position
         shouldHighlight
 
@@ -452,7 +482,7 @@ viewPitches : PitchSpaceData -> ModeSettings -> PitchState -> Html Msg
 viewPitches pitchSpaceData modeSettings pitchState =
     let
         currentPitch =
-            PitchState.currentPitch modeSettings.scale pitchState
+            PitchState.currentPitch modeSettings pitchState
     in
     Html.ol (listAttributes pitchSpaceData.display)
         (List.map
@@ -468,7 +498,7 @@ viewPitch pitchSpaceData modeSettings pitchState currentPitch degree =
     let
         pitchString =
             DegreeDataDict.get degree pitchSpaceData.pitches
-                |> Pitch.encode modeSettings.scale
+                |> Pitch.encode (ModeSettings.scale modeSettings)
 
         isCurrentDegree =
             Just degree == Maybe.map Pitch.unwrapDegree currentPitch
@@ -481,17 +511,7 @@ viewPitch pitchSpaceData modeSettings pitchState currentPitch degree =
 
         shouldHighlight =
             PitchSpaceData.canBeSelectedAsIson isonStatusIndicator
-                || (case pitchState.proposedAccidental of
-                        Apply accidental ->
-                            PitchPosition.isValidInflection modeSettings.scale accidental degree
-
-                        CancelAccidental ->
-                            DegreeDataDict.get degree pitchState.appliedAccidentals
-                                |> Maybe.isJust
-
-                        NoProposedAccidental ->
-                            False
-                   )
+                || shouldHighlightForProposedAccidental modeSettings pitchState degree
 
         positionWithinRange =
             DegreeDataDict.get degree pitchSpaceData.pitchVisibility
@@ -505,6 +525,31 @@ viewPitch pitchSpaceData modeSettings pitchState currentPitch degree =
         shouldHighlight
         positionWithinRange
         pitchSpaceData.scalingFactor
+
+
+{-| Whether a degree should be highlighted given the proposed accidental.
+
+When a defined mode is selected, validity is determined by the mode; otherwise
+by the scale.
+
+-}
+shouldHighlightForProposedAccidental : ModeSettings -> PitchState -> Degree -> Bool
+shouldHighlightForProposedAccidental modeSettings pitchState degree =
+    case pitchState.proposedAccidental of
+        Apply accidental ->
+            case ModeSettings.mode modeSettings of
+                Just mode ->
+                    Mode.isValidInflection mode accidental degree
+
+                Nothing ->
+                    PitchPosition.isValidInflection (ModeSettings.scale modeSettings) accidental degree
+
+        CancelAccidental ->
+            DegreeDataDict.get degree pitchState.appliedAccidentals
+                |> Maybe.isJust
+
+        NoProposedAccidental ->
+            False
 
 
 viewPitchLazy :
@@ -813,8 +858,28 @@ pitchElementPosition target display pitchPositions positionWithinRange scalingFa
 -- ACCIDENTAL BUTTONS
 
 
-viewAccidentalButtons : Display -> ProposedAccidental -> Html Msg
-viewAccidentalButtons display proposedAccidental =
+viewAccidentalButtons : Display -> ModeSettings -> Bool -> ProposedAccidental -> Html Msg
+viewAccidentalButtons display modeSettings hasAppliedAccidentals proposedAccidental =
+    let
+        relevantAccidentals =
+            ModeSettings.relevantAccidentals modeSettings
+
+        isEnabled buttonProposedAccidental =
+            case buttonProposedAccidental of
+                Apply accidental ->
+                    List.member accidental relevantAccidentals
+
+                CancelAccidental ->
+                    hasAppliedAccidentals
+
+                NoProposedAccidental ->
+                    True
+
+        viewButton buttonProposedAccidental =
+            viewAccidentalButton (isEnabled buttonProposedAccidental)
+                proposedAccidental
+                buttonProposedAccidental
+    in
     div
         (if PitchSpaceData.isVertical display then
             [ Styles.flexCol, class "justify-center me-4" ]
@@ -835,20 +900,26 @@ viewAccidentalButtons display proposedAccidental =
             (Html.legend [ class "px-1" ] [ Html.text "Accidental" ]
                 :: List.concat
                     [ Accidental.allFlats
-                        |> List.map (viewAccidentalButton proposedAccidental << Apply)
-                    , [ viewAccidentalButton proposedAccidental CancelAccidental ]
+                        |> List.map (viewButton << Apply)
+                    , [ viewButton CancelAccidental ]
                     , Accidental.allSharps
-                        |> List.map (viewAccidentalButton proposedAccidental << Apply)
+                        |> List.map (viewButton << Apply)
                     ]
             )
         ]
 
 
-viewAccidentalButton : ProposedAccidental -> ProposedAccidental -> Html Msg
-viewAccidentalButton currentProposedAccidental buttonProposedAccidental =
+{-| A button that is not enabled is disabled, unless it is the current proposal,
+so that a proposal that has since become unavailable can still be toggled off.
+-}
+viewAccidentalButton : Bool -> ProposedAccidental -> ProposedAccidental -> Html Msg
+viewAccidentalButton isEnabled currentProposedAccidental buttonProposedAccidental =
     let
         isCurrent =
             currentProposedAccidental == buttonProposedAccidental
+
+        isDisabled =
+            not isEnabled && not isCurrent
 
         buttonContent =
             case buttonProposedAccidental of
@@ -865,6 +936,7 @@ viewAccidentalButton currentProposedAccidental buttonProposedAccidental =
         [ Styles.buttonClass
         , Styles.transition
         , class "text-2xl sm:text-3xl min-w-8 sm:min-w-12 max-w-14 m-1"
+        , Attr.disabled isDisabled
         , classList
             [ ( "text-blue-700 border-2 border-blue-700", isCurrent )
             , ( "border-2 border-transparent", not isCurrent )

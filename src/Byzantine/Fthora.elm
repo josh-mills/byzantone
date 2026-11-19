@@ -23,7 +23,9 @@ type DiatonicDegree
 
 
 type EnharmonicDegree
-    = E_Zo_
+    = E_Ga
+    | E_Ke
+    | E_Zo_
 
 
 type HardChromaticDegree
@@ -42,7 +44,7 @@ type SoftChromaticDegree
 for : Scale -> Degree -> Maybe Fthora
 for scale degree =
     case scale of
-        Diatonic ->
+        SoftDiatonic ->
             case degree of
                 Ni ->
                     Just (DiatonicFthora D_Ni)
@@ -71,8 +73,14 @@ for scale degree =
                 _ ->
                     Nothing
 
-        Enharmonic ->
+        HardDiatonic ->
             case degree of
+                Ga ->
+                    Just (EnharmonicFthora E_Ga)
+
+                Ke ->
+                    Just (EnharmonicFthora E_Ke)
+
                 Zo_ ->
                     Just (EnharmonicFthora E_Zo_)
 

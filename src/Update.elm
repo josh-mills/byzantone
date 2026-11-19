@@ -6,10 +6,10 @@ import Byzantine.Accidental as Accidental exposing (Accidental)
 import Byzantine.Degree as Degree exposing (Degree(..))
 import Byzantine.DetectedPitch as DetectedPitch
 import Byzantine.Frequency exposing (Frequency, PitchStandard)
+import Byzantine.Mode as Mode
 import Byzantine.Pitch as Pitch exposing (Pitch)
 import Byzantine.PitchPosition as PitchPosition
 import Byzantine.Register exposing (Register)
-import Byzantine.Scale exposing (Scale)
 import Http
 import Maybe.Extra as Maybe
 import ModeBuilder
@@ -18,7 +18,7 @@ import Model.AudioSettings as AudioSettings exposing (AudioSettings, ListenRegis
 import Model.ControlsMenu as ControlsMenu
 import Model.DegreeDataDict as DegreeDataDict exposing (DegreeDataDict)
 import Model.LayoutData exposing (LayoutData, LayoutSelection)
-import Model.ModeSettings exposing (ModeSettings)
+import Model.ModeSettings as ModeSettings exposing (ModeSettings)
 import Model.PitchSpaceData as PitchSpaceData exposing (PitchSpaceData)
 import Model.PitchState as PitchState exposing (IsonStatus(..), PitchState, ProposedAccidental(..))
 import Movement exposing (Movement)
@@ -59,7 +59,6 @@ type Msg
     | SetResponsiveness AudioSettings.Responsiveness
     | SetPitchFeedback AudioSettings.PitchFeedbackUnit
     | SetFilterIsonFromMic Bool
-    | SetScale Scale
     | ToggleControlMenu ControlsMenu.MenuOption
     | ToggleHeaderCollapsed
     | ToggleMenu
@@ -117,10 +116,21 @@ update msg model =
 
         ModeBuilderMsg subMsg ->
             let
-                ( modeBuilderModel, modeBuilderCmd ) =
+                ( modeBuilderModel, modeBuilderCmd, maybeSelection ) =
                     ModeBuilder.update subMsg model.modeBuilder
             in
             ( { model | modeBuilder = modeBuilderModel }
+                |> updateModeSettings
+                    (\modeSettings ->
+                        case maybeSelection of
+                            Just _ ->
+                                { modeSettings | selection = maybeSelection }
+
+                            Nothing ->
+                                modeSettings
+                    )
+                |> clearInvalidIson
+                |> resetPitchSpaceData
             , Cmd.map ModeBuilderMsg modeBuilderCmd
             )
 
@@ -173,19 +183,7 @@ update msg model =
             )
 
         SetIson ison ->
-            let
-                updatedModel =
-                    updatePitchState
-                        (\pitchState -> { pitchState | ison = ison })
-                        model
-                        |> resetPitchSpaceData
-            in
-            ( case ison of
-                PitchState.SelectingIson _ ->
-                    { updatedModel | openControlMenus = ControlsMenu.init }
-
-                _ ->
-                    updatedModel
+            ( handleSetIson ison model
             , Cmd.none
             )
 
@@ -249,15 +247,6 @@ update msg model =
             , Cmd.none
             )
 
-        SetScale scale ->
-            ( updateModeSettings
-                (\modeSettings -> { modeSettings | scale = scale })
-                -- , currentPitch = Nothing -- consider this.
-                model
-                |> resetPitchSpaceData
-            , Cmd.none
-            )
-
         SetDetectedPitch { maybeFrequency, timestamp } ->
             ( case model.audioSettings.audioMode of
                 AudioSettings.Listen ->
@@ -294,29 +283,48 @@ update msg model =
             handleKeydown key model
 
 
-{-| Applies accidental transformations (flat/sharp). Uses defaultAccidental if none
-applied, or transforms existing accidental, cancelling if transformation fails.
+{-| Steps the proposed accidental (flat/sharp) with the given function, e.g.,
+`Accidental.raiseWithin`. The step is taken within the accidentals relevant to the
+current selection (see `ModeSettings.relevantAccidentals`), mirroring the
+accidental buttons that are enabled.
 -}
-handleAccidentalKey : (Accidental -> Maybe Accidental) -> Accidental -> Model -> Model
-handleAccidentalKey transformAccidental defaultAccidental model =
+handleAccidentalKey : (List Accidental -> Maybe Accidental -> Maybe Accidental) -> Model -> Model
+handleAccidentalKey stepWithin model =
+    let
+        step =
+            stepWithin (ModeSettings.relevantAccidentals model.modeSettings)
+    in
     updatePitchState
-        (\pitchState ->
-            { pitchState
-                | proposedAccidental =
-                    case pitchState.proposedAccidental of
-                        Apply accidental ->
-                            case transformAccidental accidental of
-                                Just transformedAccidental ->
-                                    Apply transformedAccidental
-
-                                Nothing ->
-                                    CancelAccidental
-
-                        _ ->
-                            Apply defaultAccidental
-            }
-        )
+        (\pitchState -> { pitchState | proposedAccidental = nextProposedAccidental step pitchState })
         model
+
+
+{-| The next proposal after stepping. With no accidental proposed, this starts
+from natural, and is left unchanged if there is nowhere to step. Stepping past the
+last accidental proposes `CancelAccidental`, but only if there is an applied
+accidental to cancel; otherwise the proposal is cleared.
+-}
+nextProposedAccidental : (Maybe Accidental -> Maybe Accidental) -> PitchState -> ProposedAccidental
+nextProposedAccidental step pitchState =
+    case pitchState.proposedAccidental of
+        Apply accidental ->
+            step (Just accidental)
+                |> Maybe.map Apply
+                |> Maybe.withDefault (cancelOrClear pitchState)
+
+        _ ->
+            step Nothing
+                |> Maybe.map Apply
+                |> Maybe.withDefault pitchState.proposedAccidental
+
+
+cancelOrClear : PitchState -> ProposedAccidental
+cancelOrClear pitchState =
+    if PitchState.hasAppliedAccidentals pitchState then
+        CancelAccidental
+
+    else
+        NoProposedAccidental
 
 
 handleSelectPitch : Maybe Pitch -> Maybe Movement -> Model -> Model
@@ -382,7 +390,7 @@ handleSelectProposedMovement movement model =
 computeMovementWithAccidental : Model -> Movement -> Movement
 computeMovementWithAccidental model movement =
     Movement.applyAccidental
-        model.modeSettings.scale
+        (ModeSettings.pitchFrom model.modeSettings)
         (PitchState.unwrapProposedAccidental model.pitchState.proposedAccidental)
         movement
 
@@ -395,7 +403,7 @@ validateMovement model movementWithAccidental fallbackMovement =
     Maybe.unwrap Movement.None
         (\currentPitch ->
             if
-                Movement.isValid model.modeSettings.scale
+                Movement.isValid (ModeSettings.scale model.modeSettings)
                     currentPitch
                     movementWithAccidental
             then
@@ -404,7 +412,45 @@ validateMovement model movementWithAccidental fallbackMovement =
             else
                 fallbackMovement
         )
-        (PitchState.currentPitch model.modeSettings.scale model.pitchState)
+        (PitchState.currentPitch model.modeSettings model.pitchState)
+
+
+{-| If a mode is selected, clear the ison when it is not one of the mode's
+`isonOptions`. An ison that is being changed (`SelectingIson`) keeps its
+selecting status, but loses its current degree.
+-}
+clearInvalidIson : Model -> Model
+clearInvalidIson model =
+    case model.modeSettings.selection of
+        Just (ModeBuilder.ByMode selected) ->
+            let
+                isValid degree =
+                    List.member degree (Mode.data selected.mode).isonOptions
+            in
+            updatePitchState
+                (\pitchState ->
+                    case pitchState.ison of
+                        Selected degree ->
+                            if isValid degree then
+                                pitchState
+
+                            else
+                                { pitchState | ison = NoIson }
+
+                        SelectingIson (Just degree) ->
+                            if isValid degree then
+                                pitchState
+
+                            else
+                                { pitchState | ison = SelectingIson Nothing }
+
+                        _ ->
+                            pitchState
+                )
+                model
+
+        _ ->
+            model
 
 
 type RangePointToUpdate
@@ -418,17 +464,17 @@ array.
 handleRangeUpdate : RangePointToUpdate -> String -> Model -> Model
 handleRangeUpdate rangePoint rangeValue model =
     updateModeSettings
-        (\modeSettings ->
+        (\({ range } as modeSettings) ->
             String.toInt rangeValue
                 |> Maybe.andThen (\i -> Array.get i Degree.gamut)
                 |> Maybe.map
                     (\degree ->
                         case rangePoint of
                             RangeStart ->
-                                { modeSettings | rangeStart = degree }
+                                { modeSettings | range = { range | start = degree } }
 
                             RangeEnd ->
-                                { modeSettings | rangeEnd = degree }
+                                { modeSettings | range = { range | end = degree } }
                     )
                 |> Maybe.withDefault modeSettings
         )
@@ -529,9 +575,41 @@ ison.
 If in Listen mode, this is used only for setting the ison (while selecting one)
 or the accidental.
 
+While an ison is being selected, only degrees that are eligible as an ison (see
+`PitchSpaceData.isEligibleIson`) can be chosen. Clicking any other degree cancels
+the selection, keeping the existing ison if there is one, and the click is then
+handled as it would be outside of ison selection.
+
 -}
 processPitchButtonClick : Model -> Degree -> Model
 processPitchButtonClick model degree =
+    handlePitchButtonClick (cancelIneligibleIsonSelection model degree) degree
+
+
+cancelIneligibleIsonSelection : Model -> Degree -> Model
+cancelIneligibleIsonSelection model degree =
+    case model.pitchState.ison of
+        SelectingIson maybeCurrentIson ->
+            if PitchSpaceData.isEligibleIson model.modeSettings model.pitchState degree then
+                model
+
+            else
+                updatePitchState
+                    (\pitchState ->
+                        { pitchState
+                            | ison =
+                                Maybe.map Selected maybeCurrentIson
+                                    |> Maybe.withDefault NoIson
+                        }
+                    )
+                    model
+
+        _ ->
+            model
+
+
+handlePitchButtonClick : Model -> Degree -> Model
+handlePitchButtonClick model degree =
     case model.audioSettings.audioMode of
         AudioSettings.Listen ->
             case model.pitchState.ison of
@@ -555,7 +633,7 @@ processPitchButtonClick model degree =
                         (\pitchState ->
                             { pitchState
                                 | appliedAccidentals =
-                                    applyAccidentalWithValidation model.modeSettings.scale
+                                    applyAccidentalWithValidation model.modeSettings
                                         model.pitchSpaceData
                                         model.pitchState
                                         degree
@@ -598,7 +676,7 @@ processPitchButtonClick model degree =
                         ( ison, Apply _, True ) ->
                             ( ison
                             , model.pitchState.currentDegree
-                            , applyAccidentalWithValidation model.modeSettings.scale
+                            , applyAccidentalWithValidation model.modeSettings
                                 model.pitchSpaceData
                                 model.pitchState
                                 degree
@@ -615,7 +693,7 @@ processPitchButtonClick model degree =
                         ( ison, Apply _, False ) ->
                             ( ison
                             , Just degree
-                            , applyAccidentalWithValidation model.modeSettings.scale
+                            , applyAccidentalWithValidation model.modeSettings
                                 model.pitchSpaceData
                                 model.pitchState
                                 degree
@@ -647,37 +725,30 @@ processPitchButtonClick model degree =
                 |> resetPitchSpaceData
 
 
-applyAccidentalWithValidation : Scale -> PitchSpaceData -> PitchState -> Degree -> DegreeDataDict (Maybe Accidental)
-applyAccidentalWithValidation scale { pitchPositions } pitchState degree =
+applyAccidentalWithValidation : ModeSettings -> PitchSpaceData -> PitchState -> Degree -> DegreeDataDict (Maybe Accidental)
+applyAccidentalWithValidation modeSettings { pitchPositions } pitchState degree =
     case pitchState.proposedAccidental of
         Apply accidental ->
             let
                 isValidInflection =
-                    PitchPosition.isValidInflection scale accidental degree
+                    case ModeSettings.mode modeSettings of
+                        Just mode ->
+                            Mode.isValidInflection mode accidental degree
+
+                        Nothing ->
+                            PitchPosition.isValidInflection (ModeSettings.scale modeSettings) accidental degree
 
                 positonWithInflection =
                     PitchPosition.inflect (DegreeDataDict.get degree pitchPositions) accidental
 
-                wouldNotBeInversion =
-                    if Accidental.moriaAdjustment accidental > 0 then
-                        Maybe.unwrap False
-                            (\degreeHigher ->
-                                PitchPosition.compare
-                                    (DegreeDataDict.get degreeHigher pitchPositions)
-                                    positonWithInflection
-                                    == GT
-                            )
-                            (Degree.step degree 1)
+                neighborPosition step =
+                    Degree.step degree step
+                        |> Maybe.map (\neighbor -> DegreeDataDict.get neighbor pitchPositions)
 
-                    else
-                        Maybe.unwrap False
-                            (\degreeLower ->
-                                PitchPosition.compare
-                                    (DegreeDataDict.get degreeLower pitchPositions)
-                                    positonWithInflection
-                                    == LT
-                            )
-                            (Degree.step degree -1)
+                wouldNotBeInversion =
+                    PitchPosition.staysShortOfNeighbor accidental
+                        { below = neighborPosition -1, above = neighborPosition 1 }
+                        positonWithInflection
             in
             if isValidInflection && wouldNotBeInversion then
                 DegreeDataDict.set degree (Just accidental) pitchState.appliedAccidentals
@@ -723,6 +794,9 @@ handleKeydown key model =
 
         "Escape" ->
             handleEscapeKey model
+
+        "0" ->
+            moveAndFocus model 0
 
         "1" ->
             moveAndFocus model 1
@@ -806,10 +880,10 @@ handleKeydown key model =
             handleIsonToggle model
 
         "f" ->
-            ( handleAccidentalKey Accidental.lower Accidental.Flat2 model, Cmd.none )
+            ( handleAccidentalKey Accidental.lowerWithin model, Cmd.none )
 
         "s" ->
-            ( handleAccidentalKey Accidental.raise Accidental.Sharp2 model, Cmd.none )
+            ( handleAccidentalKey Accidental.raiseWithin model, Cmd.none )
 
         _ ->
             ( model, Cmd.none )
@@ -829,75 +903,177 @@ handleEscapeKey model =
         )
 
 
+{-| Sets the ison status. Entering ison selection also closes any open control
+menus.
+-}
+handleSetIson : IsonStatus -> Model -> Model
+handleSetIson ison model =
+    let
+        updatedModel =
+            updatePitchState
+                (\pitchState -> { pitchState | ison = ison })
+                model
+                |> resetPitchSpaceData
+    in
+    case ison of
+        PitchState.SelectingIson _ ->
+            { updatedModel | openControlMenus = ControlsMenu.init }
+
+        _ ->
+            updatedModel
+
+
+{-| The `i` shortcut steps through the same ison states as the ison button:
+start selecting (from no ison, or to change a selected one), confirm the ison
+being selected, or abandon a selection that has no ison.
+-}
 handleIsonToggle : Model -> ( Model, Cmd Msg )
 handleIsonToggle model =
     case model.pitchState.ison of
         PitchState.NoIson ->
-            ( updatePitchState
-                (\pitchState ->
-                    { pitchState | ison = PitchState.SelectingIson Nothing }
-                )
-                model
+            ( handleSetIson (PitchState.SelectingIson Nothing) model
             , Task.attempt DomResult (Dom.focus "select-ison-button")
             )
 
         PitchState.SelectingIson (Just ison) ->
-            ( updatePitchState
-                (\pitchState ->
-                    { pitchState
-                        | ison = PitchState.Selected ison
-                    }
-                )
-                model
+            ( handleSetIson (PitchState.Selected ison) model
             , Cmd.none
             )
 
         PitchState.SelectingIson Nothing ->
-            ( updatePitchState
-                (\pitchState ->
-                    { pitchState | ison = PitchState.NoIson }
-                )
-                model
+            ( handleSetIson PitchState.NoIson model
             , Task.attempt DomResult (Dom.focus "select-ison-button")
             )
 
-        PitchState.Selected _ ->
-            ( model, Cmd.none )
+        PitchState.Selected ison ->
+            ( handleSetIson (PitchState.SelectingIson (Just ison)) model
+            , Task.attempt DomResult (Dom.focus "select-ison-button")
+            )
 
 
+{-| Moves the current degree by the given interval. If an accidental is proposed,
+it is applied to the destination degree, subject to the same validation as when
+clicking a pitch button (see `applyProposedAccidentalToMovedDegree`). An interval
+of zero stays on the current degree, so that the proposed accidental can be
+applied to it.
+-}
 moveAndFocus : Model -> Int -> ( Model, Cmd Msg )
 moveAndFocus model interval =
     let
-        pitch =
+        targetDegree =
             model.pitchState.currentDegree
                 |> Maybe.andThen (\degree -> Degree.step degree interval)
-                |> Maybe.map
-                    (Pitch.from model.modeSettings.scale
-                        (PitchState.unwrapProposedAccidental model.pitchState.proposedAccidental)
-                    )
+
+        accidentalsWithoutCurrent =
+            accidentalsBeforeMovingTo targetDegree model.pitchState
+
+        appliedAccidentals =
+            case targetDegree of
+                Just degree ->
+                    applyProposedAccidentalToMovedDegree model.modeSettings
+                        accidentalsWithoutCurrent
+                        model.pitchState.proposedAccidental
+                        degree
+
+                Nothing ->
+                    accidentalsWithoutCurrent
     in
     ( updatePitchState
         (\pitchState ->
             { pitchState
-                | currentDegree = Maybe.map Pitch.unwrapDegree pitch
+                | currentDegree = targetDegree
                 , proposedAccidental = NoProposedAccidental
-                , appliedAccidentals =
-                    clearCurrentDegreeAccidental pitchState.currentDegree
-                        pitchState.appliedAccidentals
+                , appliedAccidentals = appliedAccidentals
             }
         )
         model
         |> resetPitchSpaceData
     , Maybe.unwrap Cmd.none
-        (\pitch_ ->
-            Pitch.unwrapDegree pitch_
-                |> Degree.toString
+        (\degree ->
+            Degree.toString degree
                 |> (++) "p_"
                 |> Dom.focus
                 |> Task.attempt DomResult
         )
-        pitch
+        targetDegree
     )
+
+
+{-| The applied accidentals once the current degree has been left for the target
+degree: the current degree's accidental is cleared, unless the target is the
+current degree itself (e.g., a move of zero steps), which keeps it.
+-}
+accidentalsBeforeMovingTo : Maybe Degree -> PitchState -> DegreeDataDict (Maybe Accidental)
+accidentalsBeforeMovingTo targetDegree pitchState =
+    if targetDegree == pitchState.currentDegree then
+        pitchState.appliedAccidentals
+
+    else
+        clearCurrentDegreeAccidental pitchState.currentDegree pitchState.appliedAccidentals
+
+
+{-| Applies the proposed accidental to a degree that the current pitch is moving
+to (by `moveAndFocus` or `setAndFocus`), given the applied accidentals as they
+will be once the previous degree's accidental is cleared.
+
+  - `Apply` sets the accidental, but only if it is valid for the degree (see
+    `ModeSettings.pitchFrom`) and does not invert the degree with its neighbor;
+    otherwise the degree's accidentals are left as they were.
+  - `CancelAccidental` clears the degree's accidental.
+  - `NoProposedAccidental` leaves the degree's accidentals as they were.
+
+-}
+applyProposedAccidentalToMovedDegree :
+    ModeSettings
+    -> DegreeDataDict (Maybe Accidental)
+    -> ProposedAccidental
+    -> Degree
+    -> DegreeDataDict (Maybe Accidental)
+applyProposedAccidentalToMovedDegree modeSettings appliedAccidentals proposedAccidental degree =
+    case proposedAccidental of
+        Apply accidental ->
+            if wouldInflectWithoutInversion modeSettings appliedAccidentals accidental degree then
+                DegreeDataDict.set degree (Just accidental) appliedAccidentals
+
+            else
+                appliedAccidentals
+
+        CancelAccidental ->
+            DegreeDataDict.set degree Nothing appliedAccidentals
+
+        NoProposedAccidental ->
+            appliedAccidentals
+
+
+{-| Whether the degree can take the accidental: it must be valid for the degree
+in the current mode or scale, and the inflected position must not cross over the
+position of the adjacent degree in the direction of inflection. Positions of the
+adjacent degrees reflect their applied accidentals.
+-}
+wouldInflectWithoutInversion : ModeSettings -> DegreeDataDict (Maybe Accidental) -> Accidental -> Degree -> Bool
+wouldInflectWithoutInversion modeSettings appliedAccidentals accidental degree =
+    let
+        scale =
+            ModeSettings.scale modeSettings
+
+        pitchOf maybeAccidental degree_ =
+            ModeSettings.pitchFrom modeSettings maybeAccidental degree_
+
+        inflectedPitch =
+            pitchOf (Just accidental) degree
+
+        neighborPosition step =
+            Degree.step degree step
+                |> Maybe.map
+                    (\neighbor ->
+                        Pitch.position scale
+                            (pitchOf (DegreeDataDict.get neighbor appliedAccidentals) neighbor)
+                    )
+    in
+    (Pitch.unwrapAccidental inflectedPitch == Just accidental)
+        && PitchPosition.staysShortOfNeighbor accidental
+            { below = neighborPosition -1, above = neighborPosition 1 }
+            (Pitch.position scale inflectedPitch)
 
 
 setAndFocus : Model -> Degree -> ( Model, Cmd Msg )
@@ -910,11 +1086,20 @@ setAndFocus model degree =
                 |> resetPitchSpaceData
 
         _ ->
+            let
+                accidentalsWithoutPrevious =
+                    accidentalsBeforeMovingTo (Just degree) model.pitchState
+            in
             updatePitchState
                 (\pitchState ->
                     { pitchState
                         | currentDegree = Just degree
                         , proposedAccidental = NoProposedAccidental
+                        , appliedAccidentals =
+                            applyProposedAccidentalToMovedDegree model.modeSettings
+                                accidentalsWithoutPrevious
+                                pitchState.proposedAccidental
+                                degree
                     }
                 )
                 model

@@ -52,7 +52,7 @@ type ModalSignature
 for : Scale -> Degree -> Martyria
 for scale degree =
     case scale of
-        Diatonic ->
+        SoftDiatonic ->
             Martyria degree (diatonicSignature degree)
 
         HardChromatic ->
@@ -61,7 +61,7 @@ for scale degree =
         SoftChromatic ->
             Martyria degree (softChromaticSignature degree)
 
-        Enharmonic ->
+        HardDiatonic ->
             Martyria degree (enharmonicSignature degree)
 
 

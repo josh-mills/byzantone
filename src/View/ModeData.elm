@@ -11,6 +11,7 @@ import Html.Events exposing (onClick)
 import Html.Extra
 import List.Extra
 import Model exposing (Modal(..))
+import Model.DegreeDataDict as DegreeDataDict exposing (DegreeDataDict)
 import Styles
 import Update exposing (Msg(..))
 
@@ -47,7 +48,9 @@ view mode =
                 )
             , listItem "Available Melodic Attractions"
                 (ul [ class "list-disc ps-6" ]
-                    (List.map attraction modeData.possibleInflections)
+                    (List.filterMap (attraction modeData.possibleInflections)
+                        Degree.gamutList
+                    )
                 )
             ]
         , button
@@ -93,16 +96,20 @@ nonEmptyLevel2Degrees label degrees =
         (listItemLevel2 label (degreeList degrees))
 
 
-attraction : Mode.Inflection -> Html msg
-attraction inflection =
-    li []
-        [ Degree.textOctave inflection.degree
-        , text ": "
-        , inflection.accidentals
-            |> List.map (Accidental.toString >> text)
-            |> List.intersperse (text ", ")
-            |> span []
-        ]
+attraction : DegreeDataDict (Maybe Mode.Inflection) -> Degree -> Maybe (Html msg)
+attraction inflections degree =
+    DegreeDataDict.get degree inflections
+        |> Maybe.map
+            (\inflection ->
+                li []
+                    [ Degree.textOctave inflection.degree
+                    , text ": "
+                    , inflection.accidentals
+                        |> List.map (Accidental.toString >> text)
+                        |> List.intersperse (text ", ")
+                        |> span []
+                    ]
+            )
 
 
 degreeList : List Degree -> Html msg

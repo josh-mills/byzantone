@@ -1,7 +1,7 @@
 module Byzantine.PitchPosition exposing
     ( PitchPosition
     , pitchPosition, pitchPositions
-    , inflect, compare, isValidInflection, unwrap, toFloat
+    , inflect, compare, isValidInflection, Neighbors, staysShortOfNeighbor, unwrap, toFloat
     )
 
 {-| Pitch positions in moria. Di is fixed at 84.
@@ -20,7 +20,7 @@ attractions and inflections.
 
 ## Functions
 
-@docs inflect, compare, isValidInflection, unwrap, toFloat
+@docs inflect, compare, isValidInflection, Neighbors, staysShortOfNeighbor, unwrap, toFloat
 
 -}
 
@@ -95,10 +95,10 @@ compare position1 position2 =
 pitchPositions : Scale -> Array PitchPosition
 pitchPositions scale =
     case scale of
-        Diatonic ->
+        SoftDiatonic ->
             diatonicPitchPositions
 
-        Enharmonic ->
+        HardDiatonic ->
             enharmonicPitchPositions
 
         SoftChromatic ->
@@ -152,26 +152,48 @@ position of the next degree in the direction of inflection.
 isValidInflection : Scale -> Accidental -> Degree -> Bool
 isValidInflection scale accidental degree =
     let
-        proposedPitchPosition =
-            pitchPosition scale degree (Just accidental)
-
-        naturalPosition degree_ =
-            pitchPosition scale degree_ Nothing
+        naturalNeighborPosition step =
+            Degree.step degree step
+                |> Maybe.map (\neighbor -> pitchPosition scale neighbor Nothing)
     in
+    staysShortOfNeighbor accidental
+        { below = naturalNeighborPosition -1
+        , above = naturalNeighborPosition 1
+        }
+        (pitchPosition scale degree (Just accidental))
+
+
+{-| The positions of the degrees immediately below and above a degree, if there
+are any.
+-}
+type alias Neighbors =
+    { below : Maybe PitchPosition
+    , above : Maybe PitchPosition
+    }
+
+
+{-| Given the position of a degree _after_ inflection by the accidental, does it
+remain short of the neighbor in the direction of inflection? Only that neighbor
+matters. Where there is none, because the degree is at the edge of the gamut,
+the inflection is not allowed.
+
+The caller decides what the neighbors' positions reflect: `isValidInflection`
+uses natural positions, while callers that track applied accidentals can pass
+their inflected positions.
+
+-}
+staysShortOfNeighbor : Accidental -> Neighbors -> PitchPosition -> Bool
+staysShortOfNeighbor accidental neighbors inflectedPosition =
     case accidentalInflectionDirection accidental of
         Up ->
-            Degree.step degree 1
-                |> Maybe.Extra.unwrap False
-                    (\nextDegree ->
-                        compare (naturalPosition nextDegree) proposedPitchPosition == GT
-                    )
+            Maybe.Extra.unwrap False
+                (\above -> compare above inflectedPosition == GT)
+                neighbors.above
 
         Down ->
-            Degree.step degree -1
-                |> Maybe.Extra.unwrap False
-                    (\nextDegree ->
-                        compare (naturalPosition nextDegree) proposedPitchPosition == LT
-                    )
+            Maybe.Extra.unwrap False
+                (\below -> compare below inflectedPosition == LT)
+                neighbors.below
 
 
 type AccidentalInflectionDirection

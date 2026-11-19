@@ -270,10 +270,10 @@ baseOctave scale =
             Array.slice index (index + 8) gamut
     in
     case scale of
-        Diatonic ->
+        SoftDiatonic ->
             octaveFrom Pa
 
-        Enharmonic ->
+        HardDiatonic ->
             octaveFrom Ni
 
         SoftChromatic ->

@@ -6,7 +6,7 @@ for example, there is no purpose in modeling the ison.
 -}
 
 import Byzantine.Accidental exposing (Accidental)
-import Byzantine.Degree as Degree
+import Byzantine.Degree as Degree exposing (Degree)
 import Byzantine.Interval exposing (Interval)
 import Byzantine.Pitch as Pitch exposing (Pitch)
 import Byzantine.Scale exposing (Scale)
@@ -68,14 +68,18 @@ unwrapTargetPitch movement =
             Nothing
 
 
-applyAccidental : Scale -> Maybe Accidental -> Movement -> Movement
-applyAccidental scale accidental movement =
+{-| Apply an accidental to the target pitch of a movement. The given function
+constructs a pitch from an optional accidental and a degree, and so determines
+whether the accidental is valid for the degree (e.g., `Mode.pitchFrom mode`).
+-}
+applyAccidental : (Maybe Accidental -> Degree -> Pitch) -> Maybe Accidental -> Movement -> Movement
+applyAccidental pitchFrom accidental movement =
     case movement of
         AscendTo pitch ->
-            AscendTo (Pitch.applyAccidental scale pitch accidental)
+            AscendTo (pitchFrom accidental (Pitch.unwrapDegree pitch))
 
         DescendTo pitch ->
-            DescendTo (Pitch.applyAccidental scale pitch accidental)
+            DescendTo (pitchFrom accidental (Pitch.unwrapDegree pitch))
 
         None ->
             None

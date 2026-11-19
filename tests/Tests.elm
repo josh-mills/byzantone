@@ -3,11 +3,14 @@ module Tests exposing (..)
 import Array
 import Byzantine.Accidental as Accidental exposing (Accidental(..))
 import Byzantine.Degree as Degree exposing (Degree(..))
+import Byzantine.Mode as Mode exposing (Mode(..))
+import Byzantine.Mode.Signature as Signature
 import Byzantine.Pitch as Pitch
 import Byzantine.PitchPosition as PitchPosition
 import Byzantine.Scale as Scale exposing (Scale(..))
 import Expect
 import List.Extra
+import Maybe.Extra as Maybe
 import Model.DegreeDataDict as DegreeDataDict
 import Model.PitchState as PitchState exposing (IsonStatus(..))
 import Test exposing (Test, describe, test)
@@ -171,6 +174,199 @@ accidentalBuilder =
     next [] |> List.reverse
 
 
+accidentalSteppingTests : Test
+accidentalSteppingTests =
+    let
+        stepCase name step candidates from expected =
+            test name <|
+                \_ -> Expect.equal expected (step candidates from)
+    in
+    describe "Accidental stepping"
+        [ describe "over every accidental, steps one at a time without crossing natural"
+            [ stepCase "raise from natural" Accidental.raiseWithin Accidental.all Nothing (Just Sharp2)
+            , stepCase "raise Sharp2" Accidental.raiseWithin Accidental.all (Just Sharp2) (Just Sharp4)
+            , stepCase "raise Sharp6" Accidental.raiseWithin Accidental.all (Just Sharp6) (Just Sharp8)
+            , stepCase "raise Sharp8" Accidental.raiseWithin Accidental.all (Just Sharp8) Nothing
+            , stepCase "raise Flat8" Accidental.raiseWithin Accidental.all (Just Flat8) (Just Flat6)
+            , stepCase "raise Flat4" Accidental.raiseWithin Accidental.all (Just Flat4) (Just Flat2)
+            , stepCase "raise Flat2 does not cross to a sharp" Accidental.raiseWithin Accidental.all (Just Flat2) Nothing
+            , stepCase "lower from natural" Accidental.lowerWithin Accidental.all Nothing (Just Flat2)
+            , stepCase "lower Flat2" Accidental.lowerWithin Accidental.all (Just Flat2) (Just Flat4)
+            , stepCase "lower Flat6" Accidental.lowerWithin Accidental.all (Just Flat6) (Just Flat8)
+            , stepCase "lower Flat8" Accidental.lowerWithin Accidental.all (Just Flat8) Nothing
+            , stepCase "lower Sharp8" Accidental.lowerWithin Accidental.all (Just Sharp8) (Just Sharp6)
+            , stepCase "lower Sharp4" Accidental.lowerWithin Accidental.all (Just Sharp4) (Just Sharp2)
+            , stepCase "lower Sharp2 does not cross to a flat" Accidental.lowerWithin Accidental.all (Just Sharp2) Nothing
+            ]
+        , describe "within a subset of candidates"
+            [ stepCase "raise from natural skips irrelevant accidentals" Accidental.raiseWithin [ Sharp4, Sharp8 ] Nothing (Just Sharp4)
+            , stepCase "raise skips over an irrelevant accidental" Accidental.raiseWithin [ Sharp4, Sharp8 ] (Just Sharp4) (Just Sharp8)
+            , stepCase "raise from an accidental that is not itself a candidate" Accidental.raiseWithin [ Sharp4, Sharp8 ] (Just Sharp6) (Just Sharp8)
+            , stepCase "raise from natural ignores flat candidates" Accidental.raiseWithin [ Flat2, Flat4 ] Nothing Nothing
+            , stepCase "raise from a flat ignores sharp candidates" Accidental.raiseWithin [ Sharp4 ] (Just Flat2) Nothing
+            , stepCase "raise picks the nearest candidate regardless of order" Accidental.raiseWithin [ Sharp6, Sharp2 ] Nothing (Just Sharp2)
+            , stepCase "lower from natural skips irrelevant accidentals" Accidental.lowerWithin [ Flat4, Flat8 ] Nothing (Just Flat4)
+            , stepCase "lower skips over an irrelevant accidental" Accidental.lowerWithin [ Flat4, Flat8 ] (Just Flat4) (Just Flat8)
+            , stepCase "lower from natural ignores sharp candidates" Accidental.lowerWithin [ Sharp2 ] Nothing Nothing
+            , stepCase "lower picks the nearest candidate regardless of order" Accidental.lowerWithin [ Flat6, Flat2 ] Nothing (Just Flat2)
+            , stepCase "no candidates" Accidental.raiseWithin [] Nothing Nothing
+            ]
+        ]
+
+
+pitchStateTests : Test
+pitchStateTests =
+    describe "PitchState Tests"
+        [ test "hasAppliedAccidentals is False initially" <|
+            \_ ->
+                PitchState.hasAppliedAccidentals PitchState.initialPitchState
+                    |> Expect.equal False
+        , test "hasAppliedAccidentals is True when any degree has an accidental" <|
+            \_ ->
+                let
+                    pitchState =
+                        PitchState.initialPitchState
+                in
+                { pitchState
+                    | appliedAccidentals =
+                        DegreeDataDict.set Zo_ (Just Sharp2) pitchState.appliedAccidentals
+                }
+                    |> PitchState.hasAppliedAccidentals
+                    |> Expect.equal True
+        ]
+
+
+modeTests : Test
+modeTests =
+    describe "Mode Tests"
+        [ test "Mode.all is complete and unique" <|
+            \_ ->
+                Expect.equalLists modeBuilder Mode.all
+        , test "every Signature belongs to at least one Mode" <|
+            \_ ->
+                let
+                    modeSignatures =
+                        List.concatMap (Mode.data >> .signatures) Mode.all
+                in
+                Signature.all
+                    |> List.filter (\signature -> not (List.member signature modeSignatures))
+                    |> Expect.equalLists []
+        , test "relevantAccidentals collects each possible accidental once, sorted by moria adjustment" <|
+            \_ ->
+                Mode.relevantAccidentals AuthenticOne_Ke_Papadic
+                    |> Expect.equalLists [ Flat4, Flat2, Sharp2, Sharp4, Sharp6 ]
+        , test "relevantAccidentals is unique and covers every possible inflection for every Mode" <|
+            \_ ->
+                Mode.all
+                    |> List.filter
+                        (\mode ->
+                            let
+                                relevant =
+                                    Mode.relevantAccidentals mode
+                            in
+                            relevant
+                                /= List.Extra.unique relevant
+                                || List.any
+                                    (\degree ->
+                                        DegreeDataDict.get degree (Mode.data mode).possibleInflections
+                                            |> Maybe.map (.accidentals >> List.all (\accidental -> List.member accidental relevant) >> not)
+                                            |> Maybe.withDefault False
+                                    )
+                                    Degree.gamutList
+                        )
+                    |> Expect.equalLists []
+        ]
+
+
+{-| Walks through every `Mode` constructor in declaration order. Because the
+`case` expression must be exhaustive, adding a constructor to `Mode` without
+updating this builder is a compile error, which in turn forces `Mode.all` to be
+kept in sync via the test above.
+-}
+modeBuilder : List Mode
+modeBuilder =
+    let
+        next : List Mode -> List Mode
+        next modes =
+            case List.head modes of
+                Nothing ->
+                    AuthenticOne_Ke_Papadic :: modes |> next
+
+                Just AuthenticOne_Ke_Papadic ->
+                    AuthenticOne_Pa_Eirmologic :: modes |> next
+
+                Just AuthenticOne_Pa_Eirmologic ->
+                    AuthenticOne_Pa_Sticheraric :: modes |> next
+
+                Just AuthenticOne_Pa_Sticheraric ->
+                    AuthenticTwo_Di :: modes |> next
+
+                Just AuthenticTwo_Di ->
+                    AuthenticThree_Ga_Eirmologic :: modes |> next
+
+                Just AuthenticThree_Ga_Eirmologic ->
+                    AuthenticThree_Ga_Papadic :: modes |> next
+
+                Just AuthenticThree_Ga_Papadic ->
+                    AuthenticFour_Bou_Legetos :: modes |> next
+
+                Just AuthenticFour_Bou_Legetos ->
+                    AuthenticFour_Di_Agia :: modes |> next
+
+                Just AuthenticFour_Di_Agia ->
+                    AuthenticFour_Pa_Sticheraric :: modes |> next
+
+                Just AuthenticFour_Pa_Sticheraric ->
+                    AuthenticFour_DiBou :: modes |> next
+
+                Just AuthenticFour_DiBou ->
+                    PlagalOne_Pa_Sticheraric :: modes |> next
+
+                Just PlagalOne_Pa_Sticheraric ->
+                    PlagalOne_Pa_Papadic :: modes |> next
+
+                Just PlagalOne_Pa_Papadic ->
+                    PlagalOne_Ke_Eirmologic :: modes |> next
+
+                Just PlagalOne_Ke_Eirmologic ->
+                    PlagalOne_Pa_Pentaphone :: modes |> next
+
+                Just PlagalOne_Pa_Pentaphone ->
+                    PlagalOne_Pa_Phrygian :: modes |> next
+
+                Just PlagalOne_Pa_Phrygian ->
+                    PlagalOne_Pa_Minor :: modes |> next
+
+                Just PlagalOne_Pa_Minor ->
+                    PlagalTwo_Pa :: modes |> next
+
+                Just PlagalTwo_Pa ->
+                    PlagalTwo_Di :: modes |> next
+
+                Just PlagalTwo_Di ->
+                    PlagalTwo_Di_Triphone :: modes |> next
+
+                Just PlagalTwo_Di_Triphone ->
+                    PlagalThree_Ga :: modes |> next
+
+                Just PlagalThree_Ga ->
+                    PlagalThree_Zo :: modes |> next
+
+                Just PlagalThree_Zo ->
+                    PlagalThree_Zo_Hard :: modes |> next
+
+                Just PlagalThree_Zo_Hard ->
+                    PlagalFour_Ni :: modes |> next
+
+                Just PlagalFour_Ni ->
+                    PlagalFour_Ga :: modes |> next
+
+                Just PlagalFour_Ga ->
+                    modes
+    in
+    next [] |> List.reverse
+
+
 degreeDataDictTests : Test
 degreeDataDictTests =
     describe "DegreeDataDict Tests"
@@ -221,8 +417,8 @@ degreeDataDictTests =
         ]
 
 
-pitchStateTests : Test
-pitchStateTests =
+pitchStateResetTests : Test
+pitchStateResetTests =
     let
         resetIson ison =
             { initialPitchState | ison = ison }
@@ -252,22 +448,288 @@ pitchStateTests =
         ]
 
 
+{-| The pitch space is small enough to cover exhaustively: every scale, every
+degree, every accidental, and every combination of applied accidentals (or none)
+on the neighboring degrees. Each case is checked against an oracle written in
+plain integer moria taken straight from the position tables, so it shares no
+logic with `PitchPosition.staysShortOfNeighbor`.
+-}
+pitchPositionInflectionTests : Test
+pitchPositionInflectionTests =
+    describe "PitchPosition inflection, exhaustively"
+        [ describe "staysShortOfNeighbor agrees with the oracle"
+            (perScaleAndDegree "oracle" staysShortOracleFailures)
+        , describe "staysShortOfNeighbor is monotonic in the size of the accidental"
+            (perScaleAndDegree "monotonic" monotonicFailures)
+        , describe "isValidInflection agrees with the oracle"
+            (perScaleAndDegree "isValidInflection" isValidInflectionOracleFailures)
+        , describe "isValidInflection never inflects outward from the edge of the gamut"
+            (perScaleAndDegree "edges" outwardEdgeFailures)
+        ]
+
+
+{-| One degree of one scale, with an accidental to try and the applied
+accidentals (if any) on the degrees below and above.
+-}
+type alias InflectionCase =
+    { scale : Scale
+    , index : Int
+    , degree : Degree
+    , accidental : Accidental
+    , belowState : Maybe Accidental
+    , aboveState : Maybe Accidental
+    }
+
+
+accidentalStates : List (Maybe Accidental)
+accidentalStates =
+    Nothing :: List.map Just Accidental.all
+
+
+neighborStates : List ( Maybe Accidental, Maybe Accidental )
+neighborStates =
+    List.concatMap (\below -> List.map (Tuple.pair below) accidentalStates) accidentalStates
+
+
+inflectionCase : Scale -> ( Int, Degree ) -> ( Maybe Accidental, Maybe Accidental ) -> Accidental -> InflectionCase
+inflectionCase scale ( index, degree ) ( belowState, aboveState ) accidental =
+    { scale = scale
+    , index = index
+    , degree = degree
+    , accidental = accidental
+    , belowState = belowState
+    , aboveState = aboveState
+    }
+
+
+allInflectionCases : Scale -> ( Int, Degree ) -> List InflectionCase
+allInflectionCases scale scaleDegree =
+    List.concatMap
+        (\states -> List.map (inflectionCase scale scaleDegree states) Accidental.all)
+        neighborStates
+
+
+stateToString : Maybe Accidental -> String
+stateToString =
+    Maybe.unwrap "natural" Accidental.toString
+
+
+describeCase : InflectionCase -> String
+describeCase c =
+    String.join " "
+        [ Scale.name c.scale
+        , Degree.toString c.degree
+        , Accidental.toString c.accidental
+        , "below:"
+        , stateToString c.belowState
+        , "above:"
+        , stateToString c.aboveState
+        ]
+
+
+{-| One test per scale and degree, failing with every offending case.
+-}
+perScaleAndDegree : String -> (Scale -> ( Int, Degree ) -> List String) -> List Test
+perScaleAndDegree label failuresFor =
+    Scale.all
+        |> List.concatMap
+            (\scale ->
+                Degree.gamutList
+                    |> List.indexedMap Tuple.pair
+                    |> List.map
+                        (\( index, degree ) ->
+                            test (label ++ ": " ++ Scale.name scale ++ " " ++ Degree.toString degree) <|
+                                \_ -> Expect.equal [] (failuresFor scale ( index, degree ))
+                        )
+            )
+
+
+{-| The function under test, with neighbors reflecting the case's applied
+accidentals.
+-}
+actualStaysShort : InflectionCase -> Bool
+actualStaysShort c =
+    let
+        positionAt index state =
+            PitchPosition.pitchPositions c.scale
+                |> Array.get index
+                |> Maybe.map (\position -> Maybe.unwrap position (PitchPosition.inflect position) state)
+    in
+    PitchPosition.staysShortOfNeighbor c.accidental
+        { below = positionAt (c.index - 1) c.belowState
+        , above = positionAt (c.index + 1) c.aboveState
+        }
+        (PitchPosition.pitchPosition c.scale c.degree (Just c.accidental))
+
+
+{-| The oracle: is the inflected position short of the neighbor in the direction
+of inflection? Written against raw integer moria from the position table.
+-}
+oracleStaysShort : InflectionCase -> Bool
+oracleStaysShort c =
+    let
+        moriaAt index state =
+            PitchPosition.pitchPositions c.scale
+                |> Array.get index
+                |> Maybe.map
+                    (\position ->
+                        PitchPosition.unwrap position
+                            + Maybe.unwrap 0 Accidental.moriaAdjustment state
+                    )
+
+        inflected =
+            Maybe.withDefault -1 (moriaAt c.index (Just c.accidental))
+    in
+    if Accidental.moriaAdjustment c.accidental > 0 then
+        Maybe.unwrap False (\above -> above > inflected) (moriaAt (c.index + 1) c.aboveState)
+
+    else
+        Maybe.unwrap False (\below -> below < inflected) (moriaAt (c.index - 1) c.belowState)
+
+
+staysShortOracleFailures : Scale -> ( Int, Degree ) -> List String
+staysShortOracleFailures scale scaleDegree =
+    allInflectionCases scale scaleDegree
+        |> List.filter (\c -> actualStaysShort c /= oracleStaysShort c)
+        |> List.map describeCase
+
+
+allowedRank : Bool -> Int
+allowedRank allowed =
+    if allowed then
+        0
+
+    else
+        1
+
+
+{-| If a sharp is allowed, every smaller sharp is too; likewise flats.
+-}
+monotonicFailures : Scale -> ( Int, Degree ) -> List String
+monotonicFailures scale scaleDegree =
+    let
+        allowedFirst results =
+            results == List.sortBy allowedRank results
+
+        isMonotonic states =
+            let
+                allowed =
+                    inflectionCase scale scaleDegree states >> actualStaysShort
+            in
+            allowedFirst (List.map allowed Accidental.allSharps)
+                && allowedFirst (List.map allowed (List.reverse Accidental.allFlats))
+    in
+    neighborStates
+        |> List.filter (not << isMonotonic)
+        |> List.map
+            (\( below, above ) ->
+                Scale.name scale
+                    ++ " "
+                    ++ Degree.toString (Tuple.second scaleDegree)
+                    ++ " below: "
+                    ++ stateToString below
+                    ++ " above: "
+                    ++ stateToString above
+            )
+
+
+{-| `isValidInflection` is the natural-neighbor case.
+-}
+isValidInflectionOracleFailures : Scale -> ( Int, Degree ) -> List String
+isValidInflectionOracleFailures scale (( _, degree ) as scaleDegree) =
+    Accidental.all
+        |> List.map (inflectionCase scale scaleDegree ( Nothing, Nothing ))
+        |> List.filter
+            (\c -> PitchPosition.isValidInflection scale c.accidental degree /= oracleStaysShort c)
+        |> List.map describeCase
+
+
+{-| The edges of the gamut have nothing to inflect toward.
+-}
+outwardEdgeFailures : Scale -> ( Int, Degree ) -> List String
+outwardEdgeFailures scale ( index, degree ) =
+    let
+        outward =
+            if index == List.length Degree.gamutList - 1 then
+                Accidental.allSharps
+
+            else if index == 0 then
+                Accidental.allFlats
+
+            else
+                []
+    in
+    outward
+        |> List.filter (\accidental -> PitchPosition.isValidInflection scale accidental degree)
+        |> List.map (\accidental -> Scale.name scale ++ " " ++ Degree.toString degree ++ " " ++ Accidental.toString accidental)
+
+
+pitchPositionTests : Test
+pitchPositionTests =
+    let
+        base =
+            PitchPosition.pitchPosition SoftDiatonic Di Nothing
+
+        shifted accidental =
+            PitchPosition.inflect base accidental
+
+        neighbors =
+            { below = Just (shifted Flat8), above = Just (shifted Sharp8) }
+    in
+    describe "PitchPosition.staysShortOfNeighbor"
+        [ test "a sharp short of the neighbor above is allowed" <|
+            \_ ->
+                PitchPosition.staysShortOfNeighbor Sharp6 neighbors (shifted Sharp6)
+                    |> Expect.equal True
+        , test "a sharp reaching the neighbor above is not allowed" <|
+            \_ ->
+                PitchPosition.staysShortOfNeighbor Sharp8 neighbors (shifted Sharp8)
+                    |> Expect.equal False
+        , test "a flat short of the neighbor below is allowed" <|
+            \_ ->
+                PitchPosition.staysShortOfNeighbor Flat6 neighbors (shifted Flat6)
+                    |> Expect.equal True
+        , test "a flat reaching the neighbor below is not allowed" <|
+            \_ ->
+                PitchPosition.staysShortOfNeighbor Flat8 neighbors (shifted Flat8)
+                    |> Expect.equal False
+        , test "a sharp with no neighbor above is not allowed" <|
+            \_ ->
+                PitchPosition.staysShortOfNeighbor Sharp2
+                    { neighbors | above = Nothing }
+                    (shifted Sharp2)
+                    |> Expect.equal False
+        , test "a flat with no neighbor below is not allowed" <|
+            \_ ->
+                PitchPosition.staysShortOfNeighbor Flat2
+                    { neighbors | below = Nothing }
+                    (shifted Flat2)
+                    |> Expect.equal False
+        , test "only the neighbor in the direction of inflection matters" <|
+            \_ ->
+                PitchPosition.staysShortOfNeighbor Sharp2
+                    { neighbors | below = Nothing }
+                    (shifted Sharp2)
+                    |> Expect.equal True
+        ]
+
+
 pitchTests : Test
 pitchTests =
     describe "Pitch Tests"
         [ describe "Scale Encode/Decode Tests"
             [ test "Scale.encode/decode roundtrip for Diatonic" <|
                 \_ ->
-                    Diatonic
+                    SoftDiatonic
                         |> Scale.encode
                         |> Scale.decode
-                        |> Expect.equal (Ok Diatonic)
+                        |> Expect.equal (Ok SoftDiatonic)
             , test "Scale.encode/decode roundtrip for Enharmonic" <|
                 \_ ->
-                    Enharmonic
+                    HardDiatonic
                         |> Scale.encode
                         |> Scale.decode
-                        |> Expect.equal (Ok Enharmonic)
+                        |> Expect.equal (Ok HardDiatonic)
             , test "Scale.encode/decode roundtrip for SoftChromatic" <|
                 \_ ->
                     SoftChromatic
@@ -288,8 +750,8 @@ pitchTests =
             , test "Scale.encode produces the expected string for each scale" <|
                 \_ ->
                     Expect.all
-                        [ \_ -> Expect.equal "ds" (Scale.encode Diatonic)
-                        , \_ -> Expect.equal "dh" (Scale.encode Enharmonic)
+                        [ \_ -> Expect.equal "ds" (Scale.encode SoftDiatonic)
+                        , \_ -> Expect.equal "dh" (Scale.encode HardDiatonic)
                         , \_ -> Expect.equal "cs" (Scale.encode SoftChromatic)
                         , \_ -> Expect.equal "ch" (Scale.encode HardChromatic)
                         ]
@@ -347,7 +809,7 @@ pitchTests =
                 \_ ->
                     let
                         scale =
-                            Diatonic
+                            SoftDiatonic
 
                         pitch =
                             Pitch.natural Degree.Pa

@@ -9,33 +9,9 @@
     - Soft Chromatic
     - Hard Chromatic
   - By Classification
-    - First Mode
-      - Base Pa
-      - Base Ke
-    - Second Mode
-      - Base Pa
-      - Base Bou
-      - Base Di
-    - Third Mode
-      - Base Ga
-    - Fourth Mode
-      - Base Pa
-      - Base Bou
-      - Base Di
-    - Plagal First Mode
-      - Base Pa
-      - Base Ke
-    - Plagal Second Mode
-      - Base Pa
-      - Base Bou
-      - Base Di
-    - Grave Mode
-      - Base Zo-flat
-      - Base Zo
-      - Base Ga
-    - Plagal Fourth Mode
-      - Base Ni
-      - Base Ga
+    - Classification (First Mode, Second Mode, Third Mode, Fourth Mode, Plagal First Mode, Plagal Second Mode, Grave Mode, Plagal Fourth Mode)
+      - Full Signature, for any signature belonging to that classification (across all Ichos/Indicator variants)
+        - Genre (only when the signature is shared by more than one mode, e.g., Lower Mode One: Eirmologic / Sticheraric)
   - By Signature
     - Ichos
       - First
@@ -63,3 +39,13 @@
       - Plagal First
       - Plagal Second
       - Plagal Fourth
+    - Genre (after the signature, only when it is shared by more than one mode, e.g., Lower Mode One: Eirmologic / Sticheraric)
+
+
+# TODO
+- [x] I need the build-by-signature path to collect the signature as it goes
+- [x] I need the two-column layout to have a min width threshold so it's a flat list (non-grid) beneath a threshold. I think lg.
+- [ ] Elements of the modal signatures are overflowing the modal on the mode info view. We'll need to clean that up.
+- [ ] Bottom three pitches need rendering fixes
+- [ ] I need to decide how to handle the range setting, particularly with regard to how this interacts with the mode-derived range.
+- [ ] I'll need to do some testing with mobile usability for modes with greater ranges.
